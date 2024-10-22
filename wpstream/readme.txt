@@ -1,8 +1,8 @@
 === WpStream - Live Streaming, Video on Demand, Pay Per View ===
 Contributors: wpstream
-Tags: live streaming, stream live, live video, live broadcast, streaming video, ppv live streaming, ppv live, stream webcam, streaming, broadcast, live video, video streaming, pay par view, tv stream, webcast, live, video, streaming
+Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
-Tested up to: 6.6.1
+Tested up to: 6.7
 Requires PHP: 7.1
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
@@ -19,7 +19,9 @@ WpStream is the only video streaming solution on WordPress that is designed to h
 WpStream makes it possible for you to stream live content directly on your site, bypassing the need for third-party solutions. By taking control of your live stream, you can fully maximize the use of your video content, choosing how to display it, to whom, and whether you want to charge for it.
 
 
+<h3><a href="https://wpstream.net/wpstream-video-streaming-theme/" target="_blank">Hello WpStream Theme</a></h3>
 
+Hello WpStream is a lightweight, flexible WordPress theme designed for seamless integration with WpStream, the ultimate live streaming plugin. Perfect for businesses and creators, this theme offers an intuitive setup, responsive design, and full support for live shopping, video content, and real-time interactions. Whether you're hosting live events, product launches, or virtual classes, Hello WpStream makes it easy to engage your audience and enhance your e-commerce experience.
 
 <h3>Live Streaming</h3>
 
@@ -71,16 +73,6 @@ Allow regular users, streamers, and influencers to go LIVE on your website via t
 <h4>Live Channels and Video Lists</h4>
 
 Show viewers which streamer or channel is currently LIVE on your video streaming website and all the On Demand videos they can catch up with any time, any where, on any device. Use the <a href="https://wpstream.net/wpstream-shortcodes/" target="_blank">WpStream Channel List or WpStream Video on Demand List</a>.  Available with Elementor, WPBakery, and other page builders.
-
-
-== What’s New? ==
-
-<ul>
-<li>Onboarding wizard experience - We walk you through your first live stream via browser broadcasting</li>
-<li><a href="https://wpstream.net/affiliates/" target="_blank">Affiliate program</a> for experienced WpStreamers. Partner with us on this live streaming journey for attractive lifetime commissions.</li>
-<li><a href="https://youtu.be/JKI6PYnT0fY" target="_blank">Improved plugin functionality</a>, User experience (UX), and language.</li>
-<li><a href="https://wpstream.net/" target="_blank">New website design, logo, and makeover.</a> A fresh start, elevated ideas, and on a serious mission to take your video streaming needs to the next level.</li>
-</ul>
 
 
 Check out our <a href="https://docs.wpstream.net/docs-category/getting-started/" target="_blank">documentation</a>, <a href="https://wpstream.net/blog/" target="_blank">blog</a>, and <a href="https://www.youtube.com/channel/UCIjItiJc4Z7aJApj3W6ArJA" target="_blank">YouTube Channel</a> for latest updates, tips, and instructions on how to create your video streaming website.
@@ -143,6 +135,9 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+
+= 4.6.1 =
+* Enhancement - Collect and send QoE data
 
 = 4.6.0.7 =
 * Hotfix - temporarily disable player title overlay

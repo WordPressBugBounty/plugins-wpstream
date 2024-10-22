@@ -266,6 +266,7 @@ class WpstreamPlayback {
     this.master = master;
     this.setupBasePlayer(id, autoplay);
     this.runWatchdog();
+    this.qoe = new Qoe(master.liveConnect.sendQoeData, master.liveConnect);
   }
 
   setupBasePlayer(id, autoplay) {
@@ -420,6 +421,31 @@ class WpstreamPlayback {
     // setTimeout(() => {
     //     this.player.bigPlayButton.show();
     // }, 2000);
+
+    this.player.on("play", () => {
+      if (!this.playingTrailer) this.qoe.play();
+    });
+    this.player.on("pause", () => {
+      if (!this.playingTrailer) this.qoe.waiting();
+    });
+    this.player.on("waiting", () => {
+      if (!this.playingTrailer) this.qoe.waiting();
+    });
+    this.player.on("playing", () => {
+      if (!this.playingTrailer)this.qoe.playing();
+    });
+    this.player.on("loadeddata", () => {
+      if (!this.playingTrailer)this.qoe.loadeddata();
+    });
+    this.player.on("resolutionchange", () => {
+      if (!this.playingTrailer)this.qoe.resolutionchange();
+    });
+    this.player.on("ended", () => {
+      if (!this.playingTrailer)this.qoe.waiting();
+    });
+    this.player.on("error", () => {
+      if (!this.playingTrailer) this.qoe.error();
+    });
   }
 
   playTrailer(src, click) {
@@ -664,6 +690,117 @@ function findNearbyElements(target, targetClass) {
     return nearbyElements;
 }
 
+
+function randomString32() {
+  return Array.from({ length: 32 }, () =>
+    Math.random().toString(36)[2]
+  ).join('');
+}
+
+class Qoe {
+  constructor(callback, callbackScope) {
+    // console.log("Qoe: ", callback, callbackScope);
+    this.callback = callback;
+    this.callbackScope = callbackScope;
+  }
+
+  play() {
+    // console.log("qoe play");
+    this.reportCurrentSession();
+    if (this.reportInterval){
+      clearInterval(this.reportInterval);
+      this.reportInterval = null;
+    }
+    this.reportInterval = setInterval(() => {
+      this.reportCurrentSession()
+    }, 60 * 1000);
+    this.currentSession = randomString32();
+    this.rebufferCount = 0;
+    this.startupTime = 0;
+    this.totalPlaybackTime = 0;
+    this.totalRebufferTime = 0;
+    this.playTime = performance.now();
+  }
+
+  reportCurrentSession(){
+    // console.log("reportCurrentSession: ", this.lastPlayingTime);
+    if (this.totalPlaybackTime > 0 || this.lastPlayingTime){
+      let totalPlaybackTime = this.totalPlaybackTime;
+      // console.log("totalPlaybackTime: ", totalPlaybackTime);
+      if (this.lastPlayingTime){
+        totalPlaybackTime += performance.now() - this.lastPlayingTime;
+      }
+      // console.log("totalPlaybackTime: ", totalPlaybackTime);
+      
+      if (!this.lastReportedPlaybackTime || this.lastReportedPlaybackTime != totalPlaybackTime){
+        let report = {
+          startupTime: this.startupTime,
+          totalPlaybackTime: totalPlaybackTime,
+          rebufferCount: this.rebufferCount, 
+          totalRebufferTime: this.totalRebufferTime,
+          session: this.currentSession,
+        }
+        // console.log("report: ", report);
+        // console.log("callback: ", this.callback)
+        this.callback.call(this.callbackScope, report);
+        this.lastReportedPlaybackTime = totalPlaybackTime;
+      }
+    }
+  }
+
+  waiting(){
+    // console.log("qoe waiting");
+    // console.log("playTime: ", this.playTime);
+    // console.log("lastRebufferStart: ", this.lastRebufferStart);
+
+    if (this.lastPlayingTime){
+      let playingTime = performance.now() - this.lastPlayingTime;
+      this.lastPlayingTime = null;
+      // console.log("playingTime: ", playingTime);
+      this.totalPlaybackTime += playingTime;
+      // console.log("totalPlaybackTime: ", this.totalPlaybackTime);
+    }
+
+    if (this.playTime){  //it's the first time it buffers
+      // do nothing
+    }
+    else if (!this.lastRebufferStart) {
+      this.rebufferCount ++;
+      // console.log("rebufferCount: ", this.rebufferCount);
+      this.lastRebufferStart = performance.now();
+    }
+  }
+
+  playing(){
+    // console.log("qoe playing");
+    // console.log("lastRebufferStart: ", this.lastRebufferStart);
+    if (this.playTime){
+      this.startupTime = performance.now() - this.playTime;
+      // console.log("startupTime: ", this.startupTime / 1000);
+      this.playTime = null;
+    }
+    if (this.lastRebufferStart) {
+      let rebufferTime = performance.now() - this.lastRebufferStart;
+      // console.log("rebufferTime: ", rebufferTime / 1000);
+      this.totalRebufferTime += rebufferTime;
+      this.lastRebufferStart = null;
+    }
+    this.lastPlayingTime = performance.now();
+  }
+
+  loadeddata(){
+    // console.log("qoe loadeddata")
+  }
+
+  resolutionchange(){
+    // console.log("qoe resolutionchange")
+  }
+
+  error(){
+    // console.log("qoe error")
+  }
+}
+
 class WpstreamChat {
   // connected = '';
 
@@ -825,6 +962,14 @@ class LiveConnect {
       this.ws.close();
     }
     this.ws = null;
+  }
+
+  sendQoeData(data){
+    // console.log("sendQoeData: ", data);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN){
+      const message = {type:'qoe', data}
+      this.ws.send(JSON.stringify(message));
+    }
   }
 
   connect() {
