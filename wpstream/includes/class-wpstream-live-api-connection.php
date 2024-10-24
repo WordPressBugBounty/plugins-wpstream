@@ -119,6 +119,9 @@ class Wpstream_Live_Api_Connection  {
         else if ($http_code != 200) {
             if (!$quiet){
                 switch ($http_code) {
+                    case 0:
+                        $message = "CURL failed with code 0. Please address CURL connectivity with your hosting provider.";
+                        break;
                     case 429:
                         $message = "API: Too many Requests";
                         break;

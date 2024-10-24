@@ -136,6 +136,10 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 == Changelog ==
 
+= 4.6.1.1 =
+* Enhancement - QoE adjustments
+* Enhancement - more explicit error messages
+
 = 4.6.1 =
 * Enhancement - Collect and send QoE data
 

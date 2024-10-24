@@ -1676,7 +1676,7 @@ class Wpstream_Admin {
                                     echo '</div>';
 
                                 }else if($token==''){
-                                    $text = get_option('wpstream_curl_failed') == false ?
+                                    $text = get_option('wpstream_curl_failed') === false ?
                                         ' Incorrect username or password. Please check your credentials or go <a href="https://wpstream.net/my-account/edit-account/" target="_blank">here</a> to reset your password.' :
                                         'Not connected to WpStream. Please note the errors above and contact support.';
                                     echo '<div class="api_not_conected">'.__($text,'wpstream').'</div>';

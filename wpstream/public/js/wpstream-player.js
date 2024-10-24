@@ -426,7 +426,7 @@ class WpstreamPlayback {
       if (!this.playingTrailer) this.qoe.play();
     });
     this.player.on("pause", () => {
-      if (!this.playingTrailer) this.qoe.waiting();
+      if (!this.playingTrailer) this.qoe.pause();
     });
     this.player.on("waiting", () => {
       if (!this.playingTrailer) this.qoe.waiting();
@@ -441,7 +441,7 @@ class WpstreamPlayback {
       if (!this.playingTrailer)this.qoe.resolutionchange();
     });
     this.player.on("ended", () => {
-      if (!this.playingTrailer)this.qoe.waiting();
+      if (!this.playingTrailer)this.qoe.ended();
     });
     this.player.on("error", () => {
       if (!this.playingTrailer) this.qoe.error();
@@ -705,7 +705,7 @@ class Qoe {
   }
 
   play() {
-    // console.log("qoe play");
+    // console.log("----qoe play");
     this.reportCurrentSession();
     if (this.reportInterval){
       clearInterval(this.reportInterval);
@@ -719,73 +719,60 @@ class Qoe {
     this.startupTime = 0;
     this.totalPlaybackTime = 0;
     this.totalRebufferTime = 0;
-    this.playTime = performance.now();
+    this.lastRebufferStartTimestamp = null;
+    this.playTimestamp = performance.now();
   }
 
-  reportCurrentSession(){
-    // console.log("reportCurrentSession: ", this.lastPlayingTime);
-    if (this.totalPlaybackTime > 0 || this.lastPlayingTime){
-      let totalPlaybackTime = this.totalPlaybackTime;
-      // console.log("totalPlaybackTime: ", totalPlaybackTime);
-      if (this.lastPlayingTime){
-        totalPlaybackTime += performance.now() - this.lastPlayingTime;
-      }
-      // console.log("totalPlaybackTime: ", totalPlaybackTime);
-      
-      if (!this.lastReportedPlaybackTime || this.lastReportedPlaybackTime != totalPlaybackTime){
-        let report = {
-          startupTime: this.startupTime,
-          totalPlaybackTime: totalPlaybackTime,
-          rebufferCount: this.rebufferCount, 
-          totalRebufferTime: this.totalRebufferTime,
-          session: this.currentSession,
-        }
-        // console.log("report: ", report);
-        // console.log("callback: ", this.callback)
-        this.callback.call(this.callbackScope, report);
-        this.lastReportedPlaybackTime = totalPlaybackTime;
-      }
+  pause(){
+    // console.log("----qoe pause");
+    this.waiting();
+  }
+
+  ended(){
+    // console.log("----qoe ended");
+    this.waiting();
+  }
+
+  playing(){
+    // console.log("----qoe playing");
+    // console.log("playTimestamp: ", this.playTimestamp);
+    // console.log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
+    if (this.playTimestamp){
+      this.startupTime = performance.now() - this.playTimestamp;
+      // console.log("startupTime: ", this.startupTime / 1000);
+      this.playTimestamp = null;
     }
+    if (this.lastRebufferStartTimestamp) {
+      let rebufferTime = performance.now() - this.lastRebufferStartTimestamp;
+      // console.log("rebufferTime: ", rebufferTime / 1000);
+      this.rebufferCount ++;
+      this.totalRebufferTime += rebufferTime;
+      this.lastRebufferStartTimestamp = null;
+    }
+    this.lastPlayingTimestamp = performance.now();
   }
 
   waiting(){
-    // console.log("qoe waiting");
-    // console.log("playTime: ", this.playTime);
-    // console.log("lastRebufferStart: ", this.lastRebufferStart);
+    // console.log("----qoe waiting");
+    // console.log("playTimestamp: ", this.playTimestamp);
+    // console.log("lastPlayingTimestamp: ", this.lastPlayingTimestamp);
+    // console.log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
 
-    if (this.lastPlayingTime){
-      let playingTime = performance.now() - this.lastPlayingTime;
-      this.lastPlayingTime = null;
-      // console.log("playingTime: ", playingTime);
+    if (this.lastPlayingTimestamp){
+      let playingTime = performance.now() - this.lastPlayingTimestamp;
+      this.lastPlayingTimestamp = null;
+      // console.log("playingTime: ", playingTime /1000);
       this.totalPlaybackTime += playingTime;
       // console.log("totalPlaybackTime: ", this.totalPlaybackTime);
     }
 
-    if (this.playTime){  //it's the first time it buffers
+    if (this.playTimestamp){  //it's the first time it buffers
       // do nothing
     }
-    else if (!this.lastRebufferStart) {
-      this.rebufferCount ++;
+    else if (!this.lastRebufferStartTimestamp) {
       // console.log("rebufferCount: ", this.rebufferCount);
-      this.lastRebufferStart = performance.now();
+      this.lastRebufferStartTimestamp = performance.now();
     }
-  }
-
-  playing(){
-    // console.log("qoe playing");
-    // console.log("lastRebufferStart: ", this.lastRebufferStart);
-    if (this.playTime){
-      this.startupTime = performance.now() - this.playTime;
-      // console.log("startupTime: ", this.startupTime / 1000);
-      this.playTime = null;
-    }
-    if (this.lastRebufferStart) {
-      let rebufferTime = performance.now() - this.lastRebufferStart;
-      // console.log("rebufferTime: ", rebufferTime / 1000);
-      this.totalRebufferTime += rebufferTime;
-      this.lastRebufferStart = null;
-    }
-    this.lastPlayingTime = performance.now();
   }
 
   loadeddata(){
@@ -798,6 +785,34 @@ class Qoe {
 
   error(){
     // console.log("qoe error")
+  }
+
+  reportCurrentSession(){
+    // console.log("----reportCurrentSession: ");
+    // console.log("totalPlaybackTime: ", this.totalPlaybackTime);
+    // console.log("lastPlayingTimestamp: ", this.lastPlayingTimestamp);
+    if (this.totalPlaybackTime > 0 || this.lastPlayingTimestamp){
+      let totalPlaybackTime = this.totalPlaybackTime;
+      // console.log("totalPlaybackTime: ", totalPlaybackTime);
+      if (this.lastPlayingTimestamp){
+        totalPlaybackTime += performance.now() - this.lastPlayingTimestamp;
+      }
+      // console.log("totalPlaybackTime: ", totalPlaybackTime);
+      
+      if (!this.lastReportedPlaybackTime || this.lastReportedPlaybackTime != totalPlaybackTime){
+        let report = {
+          startupTime: this.startupTime,
+          totalPlaybackTime: totalPlaybackTime,
+          rebufferCount: this.rebufferCount, 
+          totalRebufferTime: this.totalRebufferTime,
+          session: this.currentSession,
+        }
+        console.log("report: ", report);
+        // console.log("callback: ", this.callback)
+        this.callback.call(this.callbackScope, report);
+        this.lastReportedPlaybackTime = totalPlaybackTime;
+      }
+    }
   }
 }
 
