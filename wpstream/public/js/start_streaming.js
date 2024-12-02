@@ -343,8 +343,11 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
 
                 parent.find('.wpstream_larix_rtmp').text(larix_rtmp); 
                 parent.find('.larrix_test').text(larix_rtmp); 
+              
 
-                var print_qrcode= "https://chart.googleapis.com/chart?cht=qr&chs=110x110&chl="+encodeURIComponent(larix_qr) +"&choe=UTF-8";
+                var print_qrcode= "https://qrcode.tec-it.com/API/QRCode?size=small&dpi=110&data="+encodeURIComponent(larix_qr);
+
+
                 parent.find('.print_qrcode').attr('src',print_qrcode); 
                 
                 parent.parent().find('.wpstream_live_data').attr('href',server_status.live_data_url);         
@@ -805,7 +808,8 @@ function wpstream_check_live_connections_from_database( acesta,channel_id,server
                 var   larix_qr ='larix://set/v1?conn[][url]='+encodeURIComponent(larix_rtmp);
                 acesta.find('.wpstream_start_with_larix_mobile').attr('href',larix_qr); 
                 
-                var print_qrcode= "https://chart.googleapis.com/chart?cht=qr&chs=110x110&chl="+encodeURIComponent(larix_qr) +"&choe=UTF-8";
+             
+                var print_qrcode= "https://qrcode.tec-it.com/API/QRCode?size=small&dpi=110&data="+encodeURIComponent(larix_qr);
 
                 acesta.find('.print_qrcode').attr('src',print_qrcode); 
                 acesta.find('.wpstream_live_data').attr('href',server_status.live_data_url);

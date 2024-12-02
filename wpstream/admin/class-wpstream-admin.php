@@ -1908,8 +1908,10 @@ class Wpstream_Admin {
 
 
                                 $to_return .='<a class="create_new_free_video" href="'.esc_url($add_free_video_url).'">'.esc_html__('Create new Free-To-View VOD from this recording').'</a>'; 
-                                $to_return .='<a class="create_new_ppv_video" href="'.esc_url($add_paid_video_url).'">'.esc_html__('Create new Pay-Per-View VOD from this recording').'</a>'; 
-
+                                if (class_exists('WooCommerce')) {
+                                    $to_return .='<a class="create_new_ppv_video" href="'.esc_url($add_paid_video_url).'">'.esc_html__('Create new Pay-Per-View VOD from this recording').'</a>'; 
+                                }
+                                
                             $to_return.='</div>';
                         endif;
                         
@@ -2244,6 +2246,7 @@ class Wpstream_Admin {
         */ 
         
         public function wpstream_add_custom_general_fields() {
+            
 
             global $woocommerce, $post;
             if(function_exists('wcs_user_has_subscription')){
@@ -2260,6 +2263,8 @@ class Wpstream_Admin {
 
             echo '<div class="options_group show_if_live_stream" style="border:none;"></div>';  
             echo '<div class="options_group show_if_video_on_demand">';  
+
+            
                 $selected='';
                 if( isset( $_GET['new_video_name']) && $_GET['new_video_name']!=''  ){
                     $selected=esc_html($_GET['new_video_name']);
@@ -2267,16 +2272,19 @@ class Wpstream_Admin {
                 if($selected==''){
                    $selected= get_post_meta($post->ID,'_movie_url',true);
                 }
-
-                woocommerce_wp_select( 
-                    array( 
-                        'id'      =>    '_movie_url', 
-                        'label'   =>    __( 'Choose video', 'woocommerce' ), 
-                        'options' =>     $this->main->wpstream_live_connection->wpstream_get_videos(),
-                        'selected'=>    true,
-                        'value'    =>   $selected
-                        )
-                );
+                if( !current_user_can('administrator') ){
+                    print '<div style="margin:10px;">'.esc_html('You need to be an administrator in order to assign videos','wpstream').'</div>';	
+                }else{
+                    woocommerce_wp_select( 
+                        array( 
+                            'id'      =>    '_movie_url', 
+                            'label'   =>    __( 'Choose video', 'woocommerce' ), 
+                            'options' =>     $this->main->wpstream_live_connection->wpstream_get_videos(),
+                            'selected'=>    true,
+                            'value'    =>   $selected
+                            )
+                    );
+                }   
                 
               
 

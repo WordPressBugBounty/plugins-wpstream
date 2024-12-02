@@ -213,6 +213,10 @@
 .vjs-youtube .vjs-poster {
     background-size: contain!important;
 }
+.vjs-youtube .vjs-poster img {
+    background-size: contain!important;
+    width: 100%;
+}
 
 
 /*product list shortcode*/

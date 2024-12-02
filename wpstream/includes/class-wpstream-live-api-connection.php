@@ -1033,7 +1033,8 @@ class Wpstream_Live_Api_Connection  {
         global $wpstream_plugin;
         if( !$wpstream_plugin->main->wpstream_check_user_can_stream() ){
             if($with_exit=='yes'){
-                exit('You are not allowed to start a live stream !');
+               // esc_html_e ('You are not allowed to start a live stream !','wpstream');
+                return;
             }else{
                 return;
             }
@@ -1194,7 +1195,7 @@ class Wpstream_Live_Api_Connection  {
     */
     public function wpstream_get_videos(){
         if( !current_user_can('administrator') ){
-            exit('not admin on wpstream_get_videos');
+          return;
         }
 
         

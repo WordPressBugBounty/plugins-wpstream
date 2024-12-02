@@ -1410,6 +1410,7 @@ input:checked + .wpstream_slider:before {
     position: absolute;
     top: 73px;
     right: 12px;
+    width: 75px;
 }
 
 

@@ -52,12 +52,12 @@ class Wpstream_Player{
         $event_data_for_transient   =   get_transient( $transient_name );
        
     
-
+        $usefull_info =' get cache from transiet'; 
         if ( false ===  $event_data_for_transient || $event_data_for_transient=='' ) { //ws || $hls_to_return==''        
             $notes                      =   'wpstream_player_check_status_note_from_js';   
             $event_status               =   $this->main->wpstream_live_connection-> wpstream_check_event_status_api_call($channel_id,$notes);
             $event_data_for_transient   =   $event_status;
-
+            $usefull_info =' no cache found';
             set_transient($transient_name,$event_data_for_transient,45);
         }
         
@@ -68,6 +68,7 @@ class Wpstream_Player{
             echo json_encode(   array(
                
                     'started'               =>  'yes',
+                    'usefull_info'          =>  $usefull_info,
                     'channel_id'            =>  $channel_id,
                     'event_uri'             =>  $event_data_for_transient['hls_playback_url'],
                     'live_conect_views'     =>  $event_data_for_transient['stats_url'],
@@ -76,6 +77,7 @@ class Wpstream_Player{
                  
                                    
             ));
+            $usedfull_info =' ';
             update_post_meta($channel_id,'stream_name',$event_data_for_transient['stream_name']);
             update_post_meta($channel_id,'hls_key_retrieval_url',$event_data_for_transient['hls_key_retrieval_url']);
             delete_transient(  'free_event_streamName_'.$event_data_for_transient['stream_name']);
@@ -85,11 +87,13 @@ class Wpstream_Player{
             ob_end_clean();
             echo json_encode(   array(
                     'started'               =>  'no',
+                    'usefull_info'          =>  $usefull_info,
                     'server_id'             =>  '',
-                    'channel_id'              =>  $channel_id,
+                    'channel_id'            =>  $channel_id,
                     'event_uri'             =>  '',
                     'live_conect_views'     =>  '',
                     'chat_url'              =>  '',
+                    
                                    
             ));
        
@@ -164,7 +168,8 @@ class Wpstream_Player{
 
     public function wpstream_video_player_shortcode($from_sh_id='') {
 
- 
+        wp_enqueue_script('video.min');
+        wp_enqueue_script('wpstream-player');
 
         if ( is_user_logged_in() ) {
             global $product;
@@ -248,6 +253,9 @@ class Wpstream_Player{
     */
 
     public function wpstream_video_player_shortcode_low_latency($from_sh_id='') {
+        wp_enqueue_script('video.min');
+        wp_enqueue_script('wpstream-player');
+
 
         if ( is_user_logged_in() ) {
             global $product;
@@ -339,7 +347,10 @@ class Wpstream_Player{
     */
     
     function wpstream_live_event_player($channel_id,$poster_show='',$use_chat=''){
-           
+        wp_enqueue_script('video.min');
+        wp_enqueue_script('wpstream-player');
+
+
         $now                =   time().rand(0,1000000);
         $overlay_video_div_id = "random_id_".$now;
         // print '<div id="'.esc_attr($overlay_video_div_id).'" class="vjs-title-overlay wpstream-video-title-overlay">'.esc_html__('Playing:','wpstream').' '.get_the_title($channel_id).'</div>';
@@ -669,7 +680,7 @@ class Wpstream_Player{
              
                 $wpstream_vod_domain_lock = intval( get_option('wpstream_vod_domain_lock','') ) ;
                 $corsorigin='*';
-                if($wpstream_vod_domain_lock === 0 ){
+                if($wpstream_vod_domain_lock !== 0 ){
                     $corsorigin=$domain_scheme.'://'.$domain['host'];
                 }
 
@@ -761,6 +772,7 @@ class Wpstream_Player{
                     
                     $video_type         =   'video/mp4';
                     $video_path_final=esc_html(get_post_meta($product_id, 'wpstream_free_video_external', true));
+                    wp_enqueue_script('youtube.min');
                 }
                 
             $return_array                       =   array();
@@ -781,6 +793,9 @@ class Wpstream_Player{
         */
 
         public function wpstream_video_on_demand_player($product_id){
+            wp_enqueue_script('video.min');
+            wp_enqueue_script('wpstream-player');
+            
             
                     $uri_details        =   $this->wpstream_video_on_demand_player_uri_request($product_id);
                     $video_path_final   =   $uri_details['video_path_final'];
@@ -946,6 +961,9 @@ class Wpstream_Player{
         * @author cretu
         */
         public function wpstream_video_on_demand_player_only_trailer($product_id){
+            wp_enqueue_script('video.min');
+            wp_enqueue_script('wpstream-player');
+         
             
             $now                =   time().rand(0,1000000);
             $overlay_video_div_id = "random_id_".$now;
@@ -1254,7 +1272,7 @@ class Wpstream_Player{
                 
            
                 if($this->wpstream_check_if_player_can_dsplay($product_id) ){
-                    
+            
                     echo '<div class="wpstream_player_wrapper "><div class="wpstream_player_container">';
 
                     $is_subscription_live_event =   esc_html(get_post_meta($product_id,'_subscript_live_event',true));
@@ -1264,6 +1282,7 @@ class Wpstream_Player{
                     if( $term_list[0]->name=='live_stream' || ($term_list[0]->name=='subscription' && $is_subscription_live_event=='yes' )  ){
                         $this->wpstream_live_event_player($product_id);
                     }else if( $term_list[0]->name=='video_on_demand'  || ($term_list[0]->name=='subscription' && $is_subscription_live_event=='no' ) ){
+         
                         $this->wpstream_video_on_demand_player($product_id);
                     }
                     echo '</div></div>';

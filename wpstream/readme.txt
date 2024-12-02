@@ -4,6 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.1
+Stable tag: 4.6.2
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -135,6 +136,13 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+= 4.6.2 =
+* improve the enqueque of wpstream js files
+* fixed the way WooCommerce "Shop Manager" user role see the admin interface
+* replace qr code generation link since google qr code is not available anymore
+* added stable tag
+* Lock To Website option fix ( inversed action)
+* Fix clicking on Create new Pay-Per-View VOD from this recording will lead to an error if WooCommerce is not installed
 
 = 4.6.1.1 =
 * Enhancement - QoE adjustments

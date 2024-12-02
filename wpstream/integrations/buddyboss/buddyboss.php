@@ -286,6 +286,10 @@ add_action( 'bp_after_activity_entry', 'wpstream_bb_after_activity_function',99,
 function wpstream_bb_after_activity_function($activity) {
     global $activities_template;
     global $wpstream_plugin;
+    
+    wp_enqueue_script('video.min');
+    wp_enqueue_script('wpstream-player');
+
     $notes='';
     $chat_url='';
     // Get the ID of the current activity item
