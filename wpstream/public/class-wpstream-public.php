@@ -84,7 +84,7 @@ class Wpstream_Public {
     public function enqueue_scripts() {
 
               
-                wp_register_script('video.min',              'https://vjs.zencdn.net/8.11.5/video.min.js', WPSTREAM_PLUGIN_VERSION, true);
+                wp_register_script('video.min',              'https://vjs.zencdn.net/8.20.0/video.min.js', WPSTREAM_PLUGIN_VERSION, true);
                 wp_register_script('youtube.min',          
                                   plugin_dir_url( __FILE__ ).'js/youtube.min.js',
                                   array('video.min'), 
@@ -95,11 +95,6 @@ class Wpstream_Public {
                                     array('video.min'), 
                                     WPSTREAM_PLUGIN_VERSION,true);
 
-
-                wp_enqueue_script('ovenplayer.min',         'https://cdn.jsdelivr.net/npm/ovenplayer/dist/ovenplayer.js', WPSTREAM_PLUGIN_VERSION, true);
-                wp_enqueue_script('hls.min',                'https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js', WPSTREAM_PLUGIN_VERSION, true);
-
-    
                 wp_localize_script('wpstream-player', 'wpstream_player_vars', 
                     array( 
                         'admin_url'             =>  get_admin_url(),

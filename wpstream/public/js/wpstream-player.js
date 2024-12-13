@@ -734,7 +734,7 @@ class Qoe {
   }
 
   playing(){
-    // console.log("----qoe playing");
+    // console.log("----qoe playing ", document.hidden);
     // console.log("playTimestamp: ", this.playTimestamp);
     // console.log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
     if (this.playTimestamp){
@@ -744,8 +744,10 @@ class Qoe {
     }
     if (this.lastRebufferStartTimestamp) {
       let rebufferTime = performance.now() - this.lastRebufferStartTimestamp;
-      // console.log("rebufferTime: ", rebufferTime / 1000);
-      this.rebufferCount ++;
+      // console.log("    rebufferTime: ", (rebufferTime / 1000).toFixed(2));
+      if (rebufferTime > 500){  //do not count short rebuffers
+        this.rebufferCount ++;
+      }
       this.totalRebufferTime += rebufferTime;
       this.lastRebufferStartTimestamp = null;
     }
@@ -753,7 +755,7 @@ class Qoe {
   }
 
   waiting(){
-    // console.log("----qoe waiting");
+    // console.log("----qoe waiting", document.hidden);
     // console.log("playTimestamp: ", this.playTimestamp);
     // console.log("lastPlayingTimestamp: ", this.lastPlayingTimestamp);
     // console.log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
@@ -761,7 +763,7 @@ class Qoe {
     if (this.lastPlayingTimestamp){
       let playingTime = performance.now() - this.lastPlayingTimestamp;
       this.lastPlayingTimestamp = null;
-      // console.log("playingTime: ", playingTime /1000);
+      // console.log("    playingTime: ", (playingTime / 1000).toFixed(2));
       this.totalPlaybackTime += playingTime;
       // console.log("totalPlaybackTime: ", this.totalPlaybackTime);
     }
@@ -769,7 +771,7 @@ class Qoe {
     if (this.playTimestamp){  //it's the first time it buffers
       // do nothing
     }
-    else if (!this.lastRebufferStartTimestamp) {
+    else if (!this.lastRebufferStartTimestamp && !document.hidden) {
       // console.log("rebufferCount: ", this.rebufferCount);
       this.lastRebufferStartTimestamp = performance.now();
     }
@@ -1103,30 +1105,67 @@ function initPlayer(playerID, low_latency_uri, muted, autoplay) {
 
   console.log("is_muted " + is_muted + "/ " + is_autoplay);
 
-  let player = OvenPlayer.create(playerID, {
-    autoStart: is_autoplay,
-    autoFallback: false,
-    mute: is_muted,
-    sources: [
-      {
-        type: "webrtc",
-        file: low_latency_uri,
-      },
-    ],
-    hlsConfig: {
-      liveSyncDuration: 1.5,
-      liveMaxLatencyDuration: 3,
-      maxLiveSyncPlaybackRate: 1.5,
-    },
-    webrtcConfig: {
-      timeoutMaxRetry: 100,
-      connectionTimeout: 10000,
-    },
-  });
+  loadScriptIfNeeded('https://cdn.jsdelivr.net/npm/ovenplayer/dist/ovenplayer.js')
+    .then(() => {
+        let player = OvenPlayer.create(playerID, {
+        autoStart: is_autoplay,
+        autoFallback: false,
+        mute: is_muted,
+        sources: [
+          {
+            type: "webrtc",
+            file: low_latency_uri,
+          },
+        ],
+        hlsConfig: {
+          liveSyncDuration: 1.5,
+          liveMaxLatencyDuration: 3,
+          maxLiveSyncPlaybackRate: 1.5,
+        },
+        webrtcConfig: {
+          timeoutMaxRetry: 100,
+          connectionTimeout: 10000,
+        },
+      });
+    })
+    .catch((error) => {
+        console.error('Error loading the script:', error);
+    });
+
+  
 }
 
 function removePlayer() {
   sldpPlayer.destroy();
+}
+
+function loadScriptIfNeeded(scriptUrl) {
+    return new Promise((resolve, reject) => {
+        // Check if the script is already loaded
+        if (document.querySelector(`script[src="${scriptUrl}"]`)) {
+            console.log(`Script already loaded: ${scriptUrl}`);
+            resolve(); // Resolve immediately if the script is already loaded
+            return;
+        }
+
+        // Create and append the script if not loaded
+        const script = document.createElement('script');
+        script.src = scriptUrl;
+        script.type = 'text/javascript';
+        script.async = true;
+
+        script.onload = () => {
+            console.log(`Script loaded: ${scriptUrl}`);
+            resolve();
+        };
+
+        script.onerror = () => {
+            console.error(`Failed to load script: ${scriptUrl}`);
+            reject(new Error(`Failed to load script: ${scriptUrl}`));
+        };
+
+        document.head.appendChild(script);
+    });
 }
 
 // {

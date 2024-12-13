@@ -2,9 +2,9 @@
 Contributors: wpstream
 Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
-Tested up to: 6.7
+Tested up to: 6.7.1
 Requires PHP: 7.1
-Stable tag: 4.6.2
+Stable tag: 4.6.4
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,12 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+= 4.6.4 =
+* Tested up to WordPress 6.7.1
+* Upgrade video.js to 8.20
+* Load ultra-low-latency scripts on demand
+* QoE enhancements
+
 = 4.6.2 =
 * improve the enqueque of wpstream js files
 * fixed the way WooCommerce "Shop Manager" user role see the admin interface
