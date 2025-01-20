@@ -362,8 +362,16 @@ class Wpstream_Player{
         $autoplay           =   true;
         
         $event_settings     =   $this->wpestream_return_event_settings($channel_id);
-        $notes              =   'wpstream_live_event_player_note';
-        $event_status       =   $this->main->wpstream_live_connection-> wpstream_check_event_status_api_call($channel_id,$notes);
+
+        $transient_name = 'event_data_to_return_'.   $channel_id;
+        $event_status = get_transient( $transient_name );
+
+        if ( false ===  $event_status || $event_status=='' ) {
+            $notes              =   'wpstream_live_event_player_note';
+            $event_status       =   $this->main->wpstream_live_connection-> wpstream_check_event_status_api_call($channel_id,$notes);
+            set_transient($transient_name, $event_status, 45);
+        }
+
         $hls_playback_url     =   '';
         $live_conect_views  =   '';
         

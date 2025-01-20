@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.7.1
 Requires PHP: 7.1
-Stable tag: 4.6.4
+Stable tag: 4.6.5
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,11 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+= 4.6.5 =
+* Feature - set up import demos
+* Enhancement - cache channel info in transient for lower api usage
+* Enhancement - QoE adjustments
+
 = 4.6.4 =
 * Tested up to WordPress 6.7.1
 * Upgrade video.js to 8.20

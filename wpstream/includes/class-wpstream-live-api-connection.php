@@ -679,7 +679,10 @@ class Wpstream_Live_Api_Connection  {
         }
 
         $corsorigin='';
-        if( isset($local_event_options['domain_lock']) && intval( $local_event_options['domain_lock']) ==0 ){
+        if( !isset($local_event_options['domain_lock'])){
+            $corsorigin='*';
+        }
+        else if(intval( $local_event_options['domain_lock']) ==0 ){
             $corsorigin='*';
         }
             

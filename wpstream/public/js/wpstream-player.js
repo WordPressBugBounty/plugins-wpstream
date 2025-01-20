@@ -745,10 +745,12 @@ class Qoe {
     if (this.lastRebufferStartTimestamp) {
       let rebufferTime = performance.now() - this.lastRebufferStartTimestamp;
       // console.log("    rebufferTime: ", (rebufferTime / 1000).toFixed(2));
-      if (rebufferTime > 500){  //do not count short rebuffers
-        this.rebufferCount ++;
+      if (rebufferTime < 60 * 1000){  //discard unrealistically long rebuffers
+        if (rebufferTime > 500){  //do not count short rebuffers
+          this.rebufferCount ++;
+        }
+        this.totalRebufferTime += rebufferTime;
       }
-      this.totalRebufferTime += rebufferTime;
       this.lastRebufferStartTimestamp = null;
     }
     this.lastPlayingTimestamp = performance.now();
