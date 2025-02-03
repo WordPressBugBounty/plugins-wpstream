@@ -131,6 +131,14 @@ var start_onboarding='';
 function wpstream_bind_start_event(button){
    
     button.click(function(event){
+        var basicStreaming = jQuery('#wpstream_basic_streaming').val() === 'true';
+        if (basicStreaming){
+            console.log("doing basic streaming");
+            if(!confirm(wpstream_start_streaming_vars.basic_streaming_warning)){
+                return false;
+            }
+        }
+        
         event.preventDefault();
         button.unbind('click');
         var ajaxurl             =   wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
@@ -166,6 +174,7 @@ function wpstream_bind_start_event(button){
                 'show_id'           :   show_id,
                 'is_record'         :   is_record,
                 'is_encrypt'        :   is_encrypt,
+                'basic_streaming'   :   basicStreaming,
                 'start_onboarding'  :   start_onboarding,
                
                 
@@ -327,13 +336,11 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
         function(server_status){
       
             if(server_status.status==='active' ){
-              
-            
-                wpstream_event_ready_make_actions_visible(parent);
-
                 parent.find('.start_webcaster').attr('data-webcaster-url',server_status.webcaster_url);
                 parent.find('.wpstream_live_uri_text').text(server_status.obs_uri);
                 parent.find('.wpstream_live_key_text').text(server_status.obs_stream);
+
+                wpstream_event_ready_make_actions_visible(parent);
 
                 var larix_rtmp= server_status.obs_uri+server_status.obs_stream;
                 parent.find('.wpstream_larix_rtmp').text(larix_rtmp); 
@@ -439,7 +446,13 @@ function wpstream_event_ready_make_actions_visible(parent){
     parent.find('.wpstream-button-icon').removeClass('wpstream_inactive_icon');
     parent.find('.wpstream_show_settings').addClass('wpstream_inactive_icon');
     parent.find('.wpstream_channel_status').text(wpstream_start_streaming_vars.channel_on);
- 
+    
+    var webcasterUrl = parent.find('.start_webcaster').attr('data-webcaster-url');
+    if (webcasterUrl === ""){
+        parent.find('.start_webcaster').addClass('wpstream_inactive_icon');
+        parent.find('.wpstream_tooltip_disabled').text('Browser Broadcasting is not Available for your plan.');
+    }
+
     //for onboarding
     var check_against='3';
     var check_against_camera_icon='5';
@@ -795,11 +808,13 @@ function wpstream_check_live_connections_from_database( acesta,channel_id,server
         function(server_status){
   
             if(server_status.status==='active' ){
-                wpstream_event_ready_make_actions_visible( acesta );
+                
                 acesta.find('.wpstream_ready_to_stream .start_webcaster').attr('data-webcaster-url',server_status.webcaster_url);
                 acesta.find('.wpstream_live_uri_text').text(server_status.obs_uri);
                 acesta.find('.wpstream_live_key_text').text(server_status.obs_stream);
             
+                wpstream_event_ready_make_actions_visible( acesta );
+
                 var larix_rtmp= server_status.obs_uri+server_status.obs_stream;
                 acesta.find('.wpstream_larix_rtmp').text(larix_rtmp);
 

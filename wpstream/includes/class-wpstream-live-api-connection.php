@@ -626,6 +626,7 @@ class Wpstream_Live_Api_Connection  {
 
 
         $channel_id  =   intval($_POST['show_id']);
+        $basic_streaming = filter_var($_POST['basic_streaming'], FILTER_VALIDATE_BOOLEAN);
         $on_boarding =   '';
         if(isset($_POST['start_onboarding'])){
             $on_boarding =   sanitize_text_field($_POST['start_onboarding']);
@@ -687,7 +688,7 @@ class Wpstream_Live_Api_Connection  {
         }
             
         
-        $event_data         =   $this->wpstream_request_live_stream_uri($channel_id,$is_autostart,$is_record,$is_encrypt,$low_latency,$adaptive_bitrate,$userID,$corsorigin,$on_boarding);
+        $event_data         =   $this->wpstream_request_live_stream_uri($channel_id,$is_autostart,$is_record,$is_encrypt,$low_latency,$adaptive_bitrate,$userID,$corsorigin,$on_boarding, $basic_streaming);
        
         
         
@@ -738,7 +739,7 @@ class Wpstream_Live_Api_Connection  {
      */
 
 
-    public function wpstream_request_live_stream_uri($schannel_id,$is_autostart,$is_record,$is_encrypt,$low_latency,$adaptive_bitrate,$request_by_userid,$corsorigin,$on_boarding){    
+    public function wpstream_request_live_stream_uri($schannel_id,$is_autostart,$is_record,$is_encrypt,$low_latency,$adaptive_bitrate,$request_by_userid,$corsorigin,$on_boarding, $basic_streaming){    
           
             $domain         = parse_url ( get_site_url() );
             $domain_scheme  =   'http';
@@ -766,7 +767,8 @@ class Wpstream_Live_Api_Connection  {
                 $low_latency = false;
             }
 
-            
+            $basic_streaming = $basic_streaming ? 'true' : 'false';
+
             $url            =   'channel/start';
             $access_token   =   $this->wpstream_get_token();
             
@@ -792,11 +794,11 @@ class Wpstream_Live_Api_Connection  {
                 'allow_key_access_from' =>  $domain_ip,
                 'metadata'              =>  json_encode($metadata_array),
                 'autostart'             =>  $is_autostart,
+                'basic_streaming'       =>  $basic_streaming,
               //  'fakeError'             =>  'init'
             );
             
          
-       
             $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);       
             $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
             // $curl_response_decoded['curl_post_fields']=$curl_post_fields;

@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.7.1
 Requires PHP: 7.1
-Stable tag: 4.6.5
+Stable tag: 4.6.6
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -104,14 +104,14 @@ Check out our <a href="https://docs.wpstream.net/docs-category/getting-started/"
 =What can I use WpStream for?=
 Live Streaming, Video (On Demand), and Pay-Per-View on WordPress websites. Most popular use cases for live video content include <a href="https://wpstream.net/broadcast-live-fitness-and-exercise-classes/" target="_blank">Fitness</a>, <a href="https://wpstream.net/churches-and-houses-of-worship/" target="_blank">Faith</a>, <a href="https://wpstream.net/education-and-e-learning/" target="_blank">Education</a>, and <a href="https://wpstream.net/news-broadcasting/" target="_blank">News / TV Broadcasting</a>.
 
-=Which subscription plan is the best for my streaming needs?=
+=Which plan is the best for my streaming needs?=
 We calculate your ideal plan based on the number of hours you will be streaming, the number of viewers, the amount of storage you need, and the quality of your broadcast. You can calculate which plan is best for you by adding your numbers <a href="https://wpstream.net/pricing/#band_calculator" target="_blank">here</a>.
 
 =How many LIVE channels can I run concurrently?=
-You can run anywhere from 5 to 150  LIVE concurrent channels, depending on the subscription plan you have. Check them out <a href="https://wpstream.net/pricing/" target="_blank">here</a>.
+You can run anywhere from 5 to 150  LIVE concurrent channels, depending on the streaming plan you have. Check them out <a href="https://wpstream.net/pricing/" target="_blank">here</a>.
 
 =Can I monetize my LIVE and Video (On Demand) content?=
-Absolutely! You can set up subscription plans, pay-per-view, or hybrid models with WooCommerce. Find out more information about the different monetization options for LIVE and Video content  <a href="https://wpstream.net/how-to-monetize-your-live-streaming-content-with-wpstream/" target="_blank">here</a>.
+Absolutely! You can set up subscriptions, pay-per-view, or hybrid models with WooCommerce. Find out more information about the different monetization options for LIVE and Video content  <a href="https://wpstream.net/how-to-monetize-your-live-streaming-content-with-wpstream/" target="_blank">here</a>.
 
 =Can my website users go live on my website on their own?=
 Regular users are able to GO LIVE via the Front-End. Check out the <a href="https://docs.wpstream.net/docs/elementor-3/" target="_blank">documentation</a> to find out how streaming video is done by regular users.
@@ -136,6 +136,11 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+= 4.6.6 =
+* Feature - basic streaming
+* Enhancement - change text/labels
+* Enhancement - iproved error logging
+
 = 4.6.5 =
 * Feature - set up import demos
 * Enhancement - cache channel info in transient for lower api usage

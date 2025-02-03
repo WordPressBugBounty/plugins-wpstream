@@ -214,7 +214,21 @@ class Wpstream_Admin {
                         'channel_turning_off'   =>  esc_html__('Channel is turning off','wpstream'),
                         'channel_on'            =>  esc_html__('Channel is ON','wpstream'),
                         'channel_off'           =>  esc_html__('Channel is OFF','wpstream'),
-                        'turn_off_confirm'      =>  esc_html__('ARE YOU SURE you\'d like to TURN OFF the channel now? '.PHP_EOL.PHP_EOL.'Channels TURN OFF automatically after 1 hour of inactivity (no active broadcast).'.PHP_EOL.PHP_EOL.'Manual TURN OFF is only useful if you require to change the channel settings immediately.'.PHP_EOL.PHP_EOL.'Statistics may be unavailable or incomplete for up to an hour.'.PHP_EOL.PHP_EOL.'If your channel is configured with Auto TURN ON, it will turn back on as soon as there is a broadcast.','wpstream')
+                        'turn_off_confirm' => esc_html__(
+                            'ARE YOU SURE you\'d like to TURN OFF the channel now? ' . PHP_EOL . PHP_EOL .
+                            '- Channels TURN OFF automatically after 1 hour of inactivity (no active broadcast).' . PHP_EOL . 
+                            '- Manual TURN OFF is only useful if you require to change the channel settings immediately.' . PHP_EOL . 
+                            '- If your channel is configured with Auto TURN ON, it will turn back on as soon as there is a broadcast.',
+                            'wpstream'
+                        ),
+                        'basic_streaming_warning' => esc_html__(
+                            'Your account is now in BASIC STREAMING mode.' . PHP_EOL . PHP_EOL .
+                            'Certain features, such as recording, browser broadcasting, and content protection are unavailable.' . PHP_EOL .
+                            '- To take advantage of all features, please choose Cancel and upgrade your plan.' . PHP_EOL . 
+                            '- Otherwise, choose OK to start your channel with restricted settings.' . PHP_EOL . PHP_EOL .
+                            'ARE YOU SURE you want to continue with Basic Streaming?',
+                            'wpstream'
+                        )
                     ));
 
 
@@ -336,6 +350,12 @@ class Wpstream_Admin {
 
             $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
             print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
+            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+            if( isset($pack_details['available_data_mb'])){
+                if ($pack_details['available_data_mb'] <= 0){
+                    print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
+                }
+            }
             $current_user       =   wp_get_current_user();
             $allowded_html      =   array();
             $userID             =   $current_user->ID;
@@ -1815,7 +1835,7 @@ class Wpstream_Admin {
                     $to_return.='<div class="wpstream_upload_container">'.esc_html__('Not connected. Please connect to WpStream to upload videos.','wpstream').'</div>';
                 }
                 else {
-                    $to_return.='<div class="wpstream_upload_alert">'.esc_html__('There isn\'t enough storage space under your account to upload a new item. Please delete some videos or upgrade your subscription.','wpstream').'</div>';
+                    $to_return.='<div class="wpstream_upload_alert">'.esc_html__('You don\'t have enough cloud storage and data to upload a new item. Please delete some videos or upgrade your plan.','wpstream').'</div>';
                 }
                 return $to_return;
             }
@@ -2520,6 +2540,12 @@ class Wpstream_Admin {
             if( get_post_status($post->ID)!='auto-draft' ){
                 $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
                 print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
+                $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+                if( isset($pack_details['available_data_mb'])){
+                    if ($pack_details['available_data_mb'] <= 0){
+                        print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
+                    }
+                }
     
                 $this->wpstream_live_stream_unit($post->ID);
                 print '<div class="wpstream_modal_background"></div>';

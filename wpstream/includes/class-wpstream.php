@@ -107,7 +107,7 @@ class Wpstream {
         
         public function wpstream_convert_band($megabits){
             $gigabit    =   $megabits   *   0.001;
-            $gigabit    =   number_format($gigabit,2);
+            $gigabit = floatval(sprintf('%.1f', $gigabit));
             return $gigabit;
         }
 
@@ -403,8 +403,14 @@ class Wpstream {
                 $wpstream_convert_storage =   $this->wpstream_convert_band($pack_details['available_storage_mb']);
                 if($wpstream_convert_storage<0)$wpstream_convert_storage=0;
                 
-                print '<div class="pack_details_wrapper"><strong>'.__('Your account information: ','wpstream').'</strong> '.__('You have','wpstream').'<strong> '.$wpstream_convert_band.' Gb</strong> '.__('available streaming data and','wpstream').' <strong>'.$wpstream_convert_storage.' Gb</strong> '.__('available recording storage','wpstream');
-                print '<a href="https://wpstream.net/pricing/" class="wpstream_upgrade_topbar" target="_blank">'.esc_html__('Upgrade Subscription','wpstream').'</a>';
+                print '<div class="pack_details_wrapper">'
+				    . '<strong>' . __('Your account information: ', 'wpstream') . '</strong> '
+				    . __('You have', 'wpstream') . '<strong> ' . $wpstream_convert_band . ' GB</strong> '
+				    . __('available cloud data and', 'wpstream') . ' '
+				    . '<strong>' . $wpstream_convert_storage . ' GB</strong> '
+				    . __('available cloud storage', 'wpstream') . '.';
+
+                print '<a href="https://wpstream.net/pricing/" class="wpstream_upgrade_topbar" target="_blank">'.esc_html__('Upgrade Plan','wpstream').'</a>';
                 print '</div>';
                 print'<input type="hidden" id="wpstream_band" value="'.$pack_details['available_data_mb'].'">';
                 print'<input type="hidden" id="wpstream_storage" value="'.$pack_details['available_storage_mb'].'">';
