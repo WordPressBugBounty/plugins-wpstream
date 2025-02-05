@@ -392,7 +392,7 @@ const ONBOARD=(function(){
                         if(data.token==='false' || data.token===false){
                             jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text('We couldn\'t authenticate with your new credentials').show();
                         }else{
-                            jQuery('.wpstream_onboarding_notification').text('Register successful, please stand by...').show();
+                            jQuery('.wpstream_onboarding_notification').text('Registration successful, please stand by...').show();
                             setTimeout(function() {
 
                                 var nextThing = 'wpstream_step_2';

@@ -153,7 +153,12 @@ class Wpstream_Admin {
         wp_enqueue_style( 'wpstream-roboto', "https://fonts.googleapis.com/css?family=Roboto:300,400,500,600,700,900&display=swap&subset=latin-ext" );  
         wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/wpstream-admin.css', array(), WPSTREAM_PLUGIN_VERSION, 'all' );
     
-        wp_enqueue_style( 'wpstream-on-boarding-css', plugin_dir_url( __FILE__ ) . 'css/wpstream-admin-onboarding.css', array(), rand(1,999999999999), 'all' );
+        wp_enqueue_style(
+	'wpstream-on-boarding-css',
+			plugin_dir_url( __FILE__ ) . 'css/wpstream-admin-onboarding.css',
+			array(),
+			filemtime(plugin_dir_path(__FILE__) . 'css/wpstream-admin-onboarding.css'),
+		);
     
         if (!did_action('wp_enqueue_media')) {
             wp_enqueue_media();
@@ -3461,10 +3466,6 @@ class Wpstream_Admin {
         *
         */
         public function wpstream_on_board_register(){
-
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-
             check_ajax_referer( 'wpstream_onboarding_nonce', 'security' );
             
             if(current_user_can('administrator')){
@@ -3475,6 +3476,8 @@ class Wpstream_Admin {
                 
                 $validate = $this->wpstream_validate_onboard_register($wpstream_register_email,$wpstream_register_password);
                 if(!$validate['success']){
+                    // cleanup any previous echo before sending json
+                    ob_end_clean();
                     echo json_encode($validate);
                     die();
                 }
@@ -3504,6 +3507,8 @@ class Wpstream_Admin {
         
                         $token          =   $this->main->wpstream_live_connection->wpstream_get_token();
 
+                        // cleanup any previous echo before sending json
+                        ob_end_clean();
                         echo json_encode( array(
                             'success'   =>  true, 
                             'token'     =>  $token ,
@@ -3513,6 +3518,8 @@ class Wpstream_Admin {
                         die();
                     }else{
 
+                        // cleanup any previous echo before sending json
+                        ob_end_clean();
                         echo json_encode( array(
                             'success'=>  false, 
                             'message'=> $curl_response_decoded['request']['message'],
@@ -3530,7 +3537,7 @@ class Wpstream_Admin {
                     ob_end_clean();
                     echo json_encode( array(
                         'success'=>  false, 
-                        'message'=> esc_html__('Register action could not be completed. Please register on wpstream.net','wpstream'),
+                        'message'=> esc_html__('Registration could not be completed. Please try again or register on wpstream.net','wpstream'),
                         
                     ));
                     die();
@@ -3544,6 +3551,8 @@ class Wpstream_Admin {
 
                 
             }else{
+                // cleanup any previous echo before sending json
+                ob_end_clean();
                 echo json_encode( array(
                     'success'=>  false, 
                     'message'  =>  esc_html('You are not an administrator','wpstream') 

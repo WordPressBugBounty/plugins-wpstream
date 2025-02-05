@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.7.1
 Requires PHP: 7.1
-Stable tag: 4.6.6
+Stable tag: 4.6.6.2
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,12 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+= 4.6.6.2 =
+* Fix - plugin crashes on playground.wordpress.net
+
+= 4.6.6.1 =
+* Fix - display error when plugin registration times out
+
 = 4.6.6 =
 * Feature - basic streaming
 * Enhancement - change text/labels
