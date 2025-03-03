@@ -191,21 +191,29 @@ jQuery(document).ready(function ($) {
        
         datatype: 'xml',
             add: function (event, data) {
-               
-          
+
+
                if( data.files[0].type!=='video/mp4' && data.files[0].type!=='video/quicktime'){
-                    jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.not_accepted);
+                   jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.not_accepted);
+                   jQuery('#wpstream_label_action').text(wpstream_admin_control_vars.choose_a_file);
                    return;
                }
-                    
-          
-             
+
+                // Check file size
+                var fileSizeInBytes = data.files[0].size;
+               console.log(data);
+                var maxFileSizeInBytes = 5 * 1000000000;
+
+                if (fileSizeInBytes > maxFileSizeInBytes) {
+                    jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.exceeding_limit);
+                    jQuery('#wpstream_label_action').text(wpstream_admin_control_vars.choose_a_file);
+                    return;
+                }
+
                var file_size    = (parseInt(data.files[0].size,10))/1000000;
                var user_storage = jQuery('#wpstream_storage').val();
                var user_band    = jQuery('#wpstream_band').val();
-               
-         
-               
+
                if(file_size > user_storage || file_size>user_band){
                     jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.no_band_no_store);
                     return;
@@ -213,7 +221,11 @@ jQuery(document).ready(function ($) {
                
                
                 $('#wpstream_label_action').text(wpstream_admin_control_vars.uploading)
-                
+                $('#wpstream_upload').prop('disabled', true);
+                $('label[for="wpstream_upload"]')
+                    .css('cursor','not-allowed')
+                    .css('background-color','#8c8f94');
+
                 jQuery('#wpstream_uploaded_mes').empty().html();
                 // Show warning message if your leaving the page during an upload.
                 window.onbeforeunload = function () {
@@ -241,25 +253,29 @@ jQuery(document).ready(function ($) {
                 var percent = Math.round((data.loaded / data.total) * 100);
                 $('.progress[data-mod="'+data.files[0].size+'"] .bar').css('width', percent + '%').html(percent+'%');
             },
-            
+
             fail: function (e, data) {
-             
                 // Remove the 'unsaved changes' message.
                 window.onbeforeunload = null;
                 $('.progress[data-mod="'+data.files[0].size+'"] .bar').css('width', '100%').addClass('red').html('');
                 $('.bar').remove();
                 $('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_failed);
                 $('#wpstream_label_action').empty().html(wpstream_admin_control_vars.upload_failed2);
+                $('label[for="wpstream_upload"]')
+                    .css('cursor','')
+                    .css('background-color','');
             },
-             
+
             error: function (e, data) {
-          
                 // Remove the 'unsaved changes' message.
                 window.onbeforeunload = null;
-                $('.progress[data-mod="'+data.files[0].size+'"] .bar').css('width', '100%').addClass('red').html('');
                 $('.bar').remove();
                 $('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_failed);
                 $('#wpstream_label_action').empty().html(wpstream_admin_control_vars.upload_failed2);
+                $('#wpstream_upload').prop('disabled', false);
+                $('label[for="wpstream_upload"]')
+                    .css('cursor','')
+                    .css('background-color','');
             },
             done: function (event, data) {
                
@@ -267,6 +283,10 @@ jQuery(document).ready(function ($) {
                 $('.bar').remove();
                 $('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_complete);
                 $('#wpstream_label_action').text(wpstream_admin_control_vars.upload_complete2);
+                $('#wpstream_upload').prop('disabled', false);
+                $('label[for="wpstream_upload"]')
+                    .css('cursor','')
+                    .css('background-color','');
 
                 var new_file_name=data.files[0].name;
 

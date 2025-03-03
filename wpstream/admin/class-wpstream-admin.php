@@ -181,12 +181,16 @@ class Wpstream_Admin {
                         'admin_url'             =>  get_admin_url(),
                         'loading_url'           =>  WPSTREAM_PLUGIN_DIR_URL.'/img/loading.gif',
                         'download_mess'         =>  esc_html__('Click to download!','wpstream'),
-                        'uploading'             =>  esc_html('We are uploading your file.Do not close this window!','wpstream'),
-                        'upload_complete2'      =>  esc_html('Upload Complete! You can upload another file!','wpstream'),
-                        'not_accepted'          =>  esc_html('The file is not an accepted video format','wpstream'),
-                        'upload_complete'       =>  esc_html('Upload Complete!','wpstream'),
-                        'no_band'               =>  esc_html('Not enough streaming data.','wpsteam'),
-                        'no_band_no_store'      =>  esc_html('Not enough streaming data or storage.','wpsteam')
+                        'uploading'             =>  esc_html__('We are uploading your file. Do not close this window!','wpstream'),
+                        'upload_complete2'      =>  esc_html__('Upload Complete! You can upload another file!','wpstream'),
+                        'not_accepted'          =>  esc_html__('The file is not an accepted video format','wpstream'),
+                        'upload_complete'       =>  esc_html__('Upload Complete!','wpstream'),
+                        'no_band'               =>  esc_html__('Not enough streaming data.','wpsteam'),
+                        'no_band_no_store'      =>  esc_html__('Not enough streaming data or storage.','wpsteam'),
+                        'exceeding_limit'       =>  esc_html__('File size exceeds 5GB limit.','wpsteam'),
+                        'upload_failed'         =>  esc_html__('Upload Failed!','wpstream'),
+                        'upload_failed2'        =>  esc_html__('Upload Failed! Please Try again!','wpstream'),
+                        'choose_a_file'         =>  esc_html__('Choose a file&hellip;','wpstream')
 
                     ));
                 
@@ -228,9 +232,10 @@ class Wpstream_Admin {
                         ),
                         'basic_streaming_warning' => esc_html__(
                             'Your account is now in BASIC STREAMING mode.' . PHP_EOL . PHP_EOL .
-                            'Certain features, such as recording, browser broadcasting, and content protection are unavailable.' . PHP_EOL .
+                'Instead of offloading to the WpStream Cloud, this mode relies on WordPress and hosting resources to process and deliver video. In some WP environments, streaming may be unreliable.' . PHP_EOL . 
+                            'Certain features, such as recording, browser broadcasting, and content protection are unavailable.' . PHP_EOL . PHP_EOL .
                             '- To take advantage of all features, please choose Cancel and upgrade your plan.' . PHP_EOL . 
-                            '- Otherwise, choose OK to start your channel with restricted settings.' . PHP_EOL . PHP_EOL .
+                            '- Otherwise, choose OK to start your channel with these limitations.' . PHP_EOL . PHP_EOL .
                             'ARE YOU SURE you want to continue with Basic Streaming?',
                             'wpstream'
                         )
@@ -1860,16 +1865,17 @@ class Wpstream_Admin {
                                   class="direct-upload">';
 
                     $to_return.='<input id="wpstream_upload" type="file" class="inputfile inputfile-1" value="Pick a video file" name="file" multiple>';
-                    $to_return.='<label for="wpstream_upload"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17"><path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z"/></svg> <span id="wpstream_label_action">Choose a file&hellip;</span></label>';
+                    $to_return.='<label for="wpstream_upload"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="17" viewBox="0 0 20 17"><path d="M10 0l-5.2 4.9h3.3v5.1h3.8v-5.1h3.3l-5.2-4.9zm9.3 11.5l-3.2-2.1h-2l3.4 2.6h-3.5c-.1 0-.2.1-.2.1l-.8 2.3h-6l-.8-2.2c-.1-.1-.1-.2-.2-.2h-3.6l3.4-2.6h-2l-3.2 2.1c-.4.3-.7 1-.6 1.5l.6 3.1c.1.5.7.9 1.2.9h16.3c.6 0 1.1-.4 1.3-.9l.6-3.1c.1-.5-.2-1.2-.7-1.5z"/></svg> <span id="wpstream_label_action">' . esc_html__('Choose a file&hellip;','wpstream') . '</span></label>';
 
 
                     $to_return.='<div class="wpstream_file_drop_color">';
                     $to_return.='<div class="wpstream_form_ex">'.esc_html__('Drop a video file here!','wpstream').'</div>';      
-                    $to_return.='<div class="wpstream_form_ex_details">'.__('The Video File must be encoded with the following settings:
+                    $to_return.='<div class="wpstream_form_ex_details">'.__('The Video File must be encoded with the following settings:<br>
 
-                    Container: <strong>MP4</strong>,
-                    Video codec: <strong>H264</strong>,
-                    Audio codec: <strong>AAC</strong>. Media will fail to play if it does not follow the above settings. 
+                    Container: <strong>MP4</strong>,<br>
+                    Video codec: <strong>H264</strong>,<br>
+                    Audio codec: <strong>AAC</strong>.<br>
+                    Media will fail to play if it does not follow the above settings. 
                     You may use a tool like MediaInfo to verify your file. Also you may convert it with specialized software like HandBrake.','wpstream').'<strong> '.esc_html__('Accepted file extensions: .mp4, .mov','wpstream').'</strong></div>';    
                     if(is_array($formInputs)){      
                         foreach ($formInputs['ref'] as $name => $value) { 
