@@ -45,13 +45,18 @@ if (!defined('ABSPATH')) exit;
                                 'import_notice'                 =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
                                 'preview_url'                   =>  'https://church.wpstream.net/',
                                 
-                )
-            
-                            
-        );               
+                ),
+		        'live-shopping-demo' =>  array(
+			        'import_file_name'            =>  'Live Shopping Demo',
+			        'import_file_url'             =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_content.xml',
+			        'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_widgets.wie',
+			        'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_customizer.dat',
+			        'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/live-shoping/preview.png' ,
+			        'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+			        'preview_url'                 =>  'https://liveshopping.wpstream.net/',
+		        )
+        );
 
-
-       
         return $demo_array;
     
     }
