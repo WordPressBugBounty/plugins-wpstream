@@ -533,7 +533,17 @@ function wpstream_bb_activity_allowed_tags_callback( $allow_html_tags ) {
 }
 
 
-
+/**
+ * Enqueue WPStream player scripts for BuddyPress activity feed
+ */
+function wpstream_enqueue_buddyboss_scripts() {
+	// Check if we're on the activity directory, single activity page, or member activity page
+	if (bp_is_activity_component() && (bp_is_activity_directory() || bp_is_single_activity() || bp_is_user_activity())) {
+		wp_enqueue_script('video.min');
+		wp_enqueue_script('wpstream-player');
+	}
+}
+add_action('bp_enqueue_scripts', 'wpstream_enqueue_buddyboss_scripts', 10);
 
 
 ?>

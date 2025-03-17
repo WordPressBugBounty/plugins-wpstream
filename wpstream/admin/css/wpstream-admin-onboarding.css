@@ -653,3 +653,15 @@ max-width: 450px;
     }
 
 }
+
+.wpstream_accordion_container .spinner {
+    visibility: visible;
+    background-position: center;
+    width: 100%;
+}
+
+.wpstream_warning_onboarding {
+    a {
+        box-shadow: none;
+    }
+}

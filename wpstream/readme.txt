@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.7.1
 Requires PHP: 7.1
-Stable tag: 4.6.6.4
+Stable tag: 4.6.6.5
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,10 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+
+= 4.6.6.5 =
+* Fix - Show the videos list in the Quick Start Wizard after login
+* Fix - Fix BuddyBoss live stream issue in the News Feed and Activity pages
 
 = 4.6.6.4 =
 * Enhancement - Added new demo option

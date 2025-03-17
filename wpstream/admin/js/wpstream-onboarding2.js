@@ -226,6 +226,7 @@ const ONBOARD=(function(){
     function init(){
         wpstream_by_pass_login();
         wpstream_onboard_login();
+        wpstream_get_videos_list();
         wpstream_onboard_register();
         wpstream_main_on_boarding_function();
         wpstream_on_boarding_click_actions();
@@ -288,7 +289,7 @@ const ONBOARD=(function(){
 
             var api_username    =   jQuery('#api_username').val();
             var api_password    =   jQuery('#api_password').val();
-            var ajaxurl         =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+            var ajaxurl  =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
             var nonce           =   jQuery('#wpstream_onboarding_nonce').val();
          
         
@@ -312,6 +313,7 @@ const ONBOARD=(function(){
                         setTimeout(function() {
 
                             var nextThing = 'wpstream_step_2';
+                            jQuery('.wpstream_onboarding_notification').empty().hide();
                             jQuery('.wpstream_step_wrapper').hide();
                             jQuery('#'+nextThing).show();    
                         
@@ -326,6 +328,72 @@ const ONBOARD=(function(){
             });
             
         });
+    }
+
+    function wpstream_get_videos_list() {
+        var nonce   = jQuery('#wpstream_onboarding_video_list_nonce').val();
+        var ajaxurl = wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+
+        jQuery('.wpstream_action_next_step.wpstream_step_4a, .wpstream_action_next_step.wpstream_step_4b').on('click', function() {
+            // check the current object
+            var data_control = jQuery(this).attr('data-control');
+            jQuery.ajax({
+                type: 'POST',
+                url: ajaxurl,
+                dataType: 'json',
+                data: {
+                    'action': 'wpstream_get_videos_list',
+                    'security': nonce
+                },
+                success: function(data) {
+                    if(data.success) {
+                        if ( data.videos === null ||
+                            data.videos === undefined ||
+                            data.videos === '' ||
+                            Array.isArray(data.videos) && data.videos.length === 0
+                        ) {
+                            // No videos found
+                            wpstream_no_videos_notice(data_control === 'wpstream_onboard_vod_free' ? '' : '_for_ppv');
+                        } else {
+                            if ( data_control === 'wpstream_onboard_vod_free' ) {
+                                wpstream_create_videos_list_content(data.videos, '');
+                                jQuery('#wpstream_onboard_vod_free > .spinner').css('display', 'none');
+                                jQuery('#wpstream_onboard_vod_free > .wpstream-step-container').css('display', 'block');
+                            } else {
+                                wpstream_create_videos_list_content(data.videos, '_for_ppv');
+                                jQuery('#wpstream_onboard_vod_ppv > .spinner').css('display', 'none');
+                                jQuery('#wpstream_onboard_vod_ppv > .wpstream-step-container').css('display', 'block');
+                            }
+                        }
+                    }
+                },
+                error: function(data) {
+                    jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text('Couldn\'t retrieve data.').show();
+                }
+            })
+        })
+    }
+
+    function wpstream_create_videos_list_content( data, data_control ) {
+        // if data_control is empty, it means it's for free vod
+        var container = data_control === '' ? jQuery('#wpstream_free_vod_dropdown_videos_list') : jQuery('#wpstream_ppv_vod_dropdown_videos_list');
+        container.empty();
+        var label = jQuery('<label value="">' + wpstream_admin_control_vars.choose_recording + '</label>');
+        container.append(label);
+        var select = jQuery('<select name="wpstream_free_vod_file_name" id="wpstream_free_vod_file_name' + data_control + '">');
+        var option = jQuery('<option value="">' + wpstream_admin_control_vars.select_recording + '</option>');
+        select.append(option);
+        for (let key in data) {
+            let option = jQuery('<option value="' + key + '">' + data[key] + '</option>');
+            select.append(option);
+        }
+        select.append('</select>');
+        container.append(select);
+    }
+
+    function wpstream_no_videos_notice(data_control) {
+        jQuery('#wpstream_onboard_vod_free, #wpstream_onboard_vod_ppv').css('display', 'none');
+        jQuery('.wpstream_warning_onboarding').css('display', 'block');
     }
 
 
@@ -668,15 +736,15 @@ const ONBOARD=(function(){
                 'file_name'                 :   file_name,
                 'security'                  :   nonce
             },
-            success: function (data) {     
+            success: function (data) {
                 if(data.success){
                     var new_link = data.link;
                     var decoded = new_link.replace(/&amp;/g, '&');
                     window.location.href=decodeURI(decoded);
                 }
-            
+
             },
-            error: function (errorThrown) { 
+            error: function (errorThrown) {
                 jQuery('#wpstream_onboard_vod_free_notice').empty().addClass('onboarding_error').show().text('Something did not work .Please try again.')
             }
         });
@@ -710,7 +778,7 @@ const ONBOARD=(function(){
         var channel_name    =   jQuery('#wpstream_onboarding_ppv_vod_name').val();
         var file_name       =   jQuery('#wpstream_free_vod_file_name_for_ppv').val();
         var vod_price       =   jQuery('#wpstream_onboarding_vod_price').val()
-        var ajaxurl         =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+        var ajaxurl  =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
         var nonce           =   jQuery('#wpstream_onboarding_nonce').val();
         
 

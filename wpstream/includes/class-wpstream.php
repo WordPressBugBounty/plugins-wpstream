@@ -94,6 +94,7 @@ class Wpstream {
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
+        $this->define_ajax_hooks();
                 
             
                 $this->wpstream_conection();
@@ -111,8 +112,11 @@ class Wpstream {
             return $gigabit;
         }
 
-        
-        
+
+        private function define_ajax_hooks() {
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-wpstream-ajax.php';
+            $ajax = new WpStream_Ajax( $this->main );
+        }
         
         
         private function wpstream_conection(){
@@ -248,7 +252,7 @@ class Wpstream {
 
                 $this->loader->add_action( 'admin_notices',                             $plugin_admin,'wpstream_admin_notice' );
                 $this->loader->add_action( 'wp_ajax_wpstream_update_cache_notice',      $plugin_admin,'wpstream_update_cache_notice' );
-                
+//		        $this->loader->add_action( 'wp_ajax_wpstream_get_videos_list',  $plugin_admin,'wpstream_get_videos_list' );
 
 
                  

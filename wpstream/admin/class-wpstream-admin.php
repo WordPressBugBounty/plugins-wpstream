@@ -190,8 +190,9 @@ class Wpstream_Admin {
                         'exceeding_limit'       =>  esc_html__('File size exceeds 5GB limit.','wpsteam'),
                         'upload_failed'         =>  esc_html__('Upload Failed!','wpstream'),
                         'upload_failed2'        =>  esc_html__('Upload Failed! Please Try again!','wpstream'),
-                        'choose_a_file'         =>  esc_html__('Choose a file&hellip;','wpstream')
-
+                        'choose_a_file'         =>  esc_html__('Choose a file&hellip;','wpstream'),
+                        'choose_recording'      =>  esc_html__( 'Choose Recording', 'wpstream' ),
+                        'select_recording'      =>  esc_html__( 'Please select a recording from the list', 'wpstream' ),
                     ));
                 
                 
@@ -2730,7 +2731,7 @@ class Wpstream_Admin {
 
 
                         <div class="wpstream_check_account_status">
-                            Checking if you are already logged.....
+                            <?php esc_html_e( 'Checking if you are already logged.....', 'wpstream' ); ?>
                         </div>
 
                         <div class="wpstream_onboarding_notification"></div>
@@ -2815,8 +2816,8 @@ class Wpstream_Admin {
                 <div id="wpstream_on_board" class="wpstream_action_next_step" data-nextthing="wpstream_step_2" style="display:none;"  >Move to step 2</div>
             </div>
             <?php
-      
-            if(trim($token)!==''){
+
+            if( !is_null( $token ) && trim( $token ) !== '' ) {
                 print '<div id="wpstream_have_token"></div>';
             }
         }
@@ -2882,7 +2883,7 @@ class Wpstream_Admin {
             <div class="wpstream_step_wrapper wpstream_step_3 wpstream_onboarding_live" id="wpstream_step_3">
             <h1><?php esc_html_e('Do you want to charge a fee for watching?','wpstream'); ?></h1>
 
-                <div class="wpstream_accordion_header wpstream_action_next_step" data-nextthing="wpstream_step_3a"><?php esc_html_e('No - Free-To-View (FTV)','wpstream');?></div>
+                <div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_3a" data-nextthing="wpstream_step_3a"><?php esc_html_e('No - Free-To-View (FTV)','wpstream');?></div>
                 <div class="wpstram_or">or</div>
                 <div class="wpstream_accordion_header wpstream_action_next_step" data-nextthing="wpstream_step_3b" ><?php esc_html_e('Yes - Pay-Per-View (PPV)','wpstream');?></div>
             
@@ -2936,7 +2937,7 @@ class Wpstream_Admin {
         public function wpstream_onboarding_step_3_B_live_streaming_pay_per_view(){
             ?>
             
-            <div class="wpstream_step_wrapper wpstream_step_3a wpstream_onboarding_live" id="wpstream_step_3b"> 
+            <div class="wpstream_step_wrapper wpstream_step_3b wpstream_onboarding_live" id="wpstream_step_3b">
             <h1><?php esc_html_e('Make your live stream Pay Per View','wpstream');?></h1>
                 <?php
                 if ( class_exists( 'WooCommerce' ) ) {
@@ -2996,11 +2997,10 @@ class Wpstream_Admin {
             <div class="wpstream_step_wrapper wpstream_step_4 wpstream_onboarding_vod" id="wpstream_step_4">
             <h1><?php esc_html_e('Do you want to charge a fee for watching?','wpstream');?></h1>
 
-                <div class="wpstream_accordion_header wpstream_action_next_step" data-control="wpstream_onboard_vod_free"  data-nextthing="wpstream_step_4a" ><?php esc_html_e('No - Free-To-View (FTV)','wpstream'); ?></div>
+                <div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_4a" data-control="wpstream_onboard_vod_free"  data-nextthing="wpstream_step_4a" ><?php esc_html_e('No - Free-To-View (FTV)','wpstream'); ?></div>
                 <div class="wpstram_or">or</div>
-                <div class="wpstream_accordion_header wpstream_action_next_step" data-control="wpstream_onboard_vod_ppv"   data-nextthing="wpstream_step_4b" ><?php esc_html_e('Yes - Pay-Per-View (PPV)','wpstream'); ?></div>
-
-               
+                <input type="hidden" id="wpstream_onboarding_video_list_nonce" value="<?php echo wp_create_nonce( "wpstream_onboarding_video_list_nonce" ); ?>">
+                <div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_4b" data-control="wpstream_onboard_vod_ppv"   data-nextthing="wpstream_step_4b" ><?php esc_html_e('Yes - Pay-Per-View (PPV)','wpstream'); ?></div>
                 <div class="wpstream_initial_onboarding_controls_wrapper">
                     <span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_2"><?php esc_html_e('Prev','wpstream');?></span>
                 </div>
@@ -3021,37 +3021,22 @@ class Wpstream_Admin {
             if($current_screen->base !=='wpstream_page_wpstream_onboard'){
                 return;
             }
-
-            $token          =   $this->main->wpstream_live_connection->wpstream_get_token();
-            $video_list     =   array();
-            if($token!=''){
-                $video_list =  $this->main->wpstream_live_connection->wpstream_get_videos();
-            }
-             
             ?>
-            
-            <div class="wpstream_step_wrapper wpstream_step_3a wpstream_onboarding_live" id="wpstream_step_4a"> 
+
+            <div class="wpstream_step_wrapper wpstream_step_4a wpstream_onboarding_live" id="wpstream_step_4a">
             <h1><?php esc_html_e('Let’s create your first Free-To-View VOD','wpstream');?></h1>
-
-              
-
-                <?php 
-                if( count($video_list) !== 0 ) { 
-                ?>
-                    <div id="wpstream_onboard_vod_free_notice" class="wpstream_onboarding_notification"></div>
-                    <div id="wpstream_onboard_vod_free" class="wpstream_accordion_container">
+                <div id="wpstream_onboard_vod_free_notice" class="wpstream_onboarding_notification"></div>
+                <div id="wpstream_onboard_vod_free" class="wpstream_accordion_container">
+                    <div class="spinner"></div>
+                    <div class="wpstream-step-container" style="display: none">
                         <label><?php esc_html_e('Name your FTV Video-On-Demand','wpstream')?></label>
                         <input type="text" name="channel_name" class="wpstream_onboarding_vod_name" id="wpstream_onboarding_vod_name" value="<?php esc_html_e('My First FTV VOD','wpstream');?>" >
-                        <?php $this->wpstream_show_vod_dropdown_onboarding($video_list); ?>
-                        <input type="submit" name="submit"  class="wpstream_button wpstream_button_action wpstream_onboard_vod_free_action" id="wpstream_onboard_vod_free_action" value="<?php esc_html_e('Create FTV VOD','wpstream');?>" />
+                        <div id="wpstream_free_vod_dropdown_videos_list"></div>
+                        <input type="submit" name="submit"  class="wpstream_button wpstream_button_action wpstream_onboard_vod_free_action" id="wpstream_onboard_vod_free_action" value="Create FTV VOD">
                     </div>
+                </div>
+                <?php $this->wpstream_obboarding_file_warning(); ?>
 
-                <?php }else{ 
-                    $this->wpstream_obboarding_file_warning();
-                 } ?>
-
-           
-            
                 <div class="wpstream_initial_onboarding_controls_wrapper">
                     <span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_4"><?php esc_html_e('Prev','wpstream');?></span>
                 </div>
@@ -3067,32 +3052,8 @@ class Wpstream_Admin {
         *
         *
         */
-
-        public function wpstream_show_vod_dropdown_onboarding($video_list,$appendix=''){
-
-            print '<label>'.esc_html__('Choose Recording','wpstream').'</label>
-            <select name="wpstream_free_vod_file_name" id="wpstream_free_vod_file_name'.$appendix.'">
-                <option value="">'.esc_html__('Please select a recording from the list','wpstream').'</option>';
-                
-                if(is_array($video_list)){
-                    foreach ($video_list as $key=>$value){
-                        print '<option value="'.$key.'"'; 
-                        print '>'.$value.'</option>';
-                    }
-                }
-            print'</select>';
-
-        }
-
-
-
-        /*
-        * 
-        *
-        *
-        */
         public function wpstream_obboarding_file_warning(){
-            print   '<div class="wpstream_warning_onboarding">
+            print   '<div class="wpstream_warning_onboarding" style="display: none">
                         '.esc_html__('A recording is needed to create a VOD from. There are no recordings under your account. You can create new recordings by recording a live channel or uploading video files directly.','wpstream').'
                         </br>
                         <div class="wpstream_upload_video">'.esc_html__('Upload Video','wpstream').'</div>
@@ -3100,9 +3061,6 @@ class Wpstream_Admin {
                         <div class="wpstream_onboarding_tryagain">'.esc_html__('Try Again','wpstream').'</div>
                     </div>';
         }
-
-
-
 
         /*
         * 
@@ -3115,51 +3073,33 @@ class Wpstream_Admin {
             if($current_screen->base !=='wpstream_page_wpstream_onboard'){
                 return;
             }
-    
-            $token          =   $this->main->wpstream_live_connection->wpstream_get_token();
-            $video_list     =   array();
-            if($token!=''){
-                $video_list =  $this->main->wpstream_live_connection->wpstream_get_videos();
-            }
             ?>
-            
-            <div class="wpstream_step_wrapper wpstream_step_3a wpstream_onboarding_live" id="wpstream_step_4b"> 
+
+            <div class="wpstream_step_wrapper wpstream_step_4b wpstream_onboarding_live" id="wpstream_step_4b">
             <h1><?php esc_html_e('Let\'s create your first Pay-Per-View VOD','wpstream');?></h1>
 
             <div id="wpstream_onboard_vod_ppv_notice" class="wpstream_onboarding_notification"></div>
-                <?php 
-                if( count($video_list) !== 0 ) { 
-                    if ( class_exists( 'WooCommerce' ) ) {
-                    ?>
-                        <div id="wpstream_onboard_vod_ppv" class="wpstream_accordion_container">
-                            <label><?php esc_html_e('Name your PPV Video-On-Demand','wpstream'); ?></label>
-                            <input type="text" name="channel_name" class="wpstream_onboarding_ppv_vod_name" id="wpstream_onboarding_ppv_vod_name" value="<?php esc_html_e('My First PPV VOD','wpstream');?>">
-
-                            <?php $this->wpstream_show_vod_dropdown_onboarding($video_list,'_for_ppv'); ?>
-                            
-                            <label><?php esc_html_e('Pay-Per-View Price','wpstream');?></label>
-                            <input type="text" name="channel_name" class="wpstream_onboarding_vod_price" id="wpstream_onboarding_vod_price" value="10">
-                            <input type="submit" name="submit"  class="wpstream_button wpstream_button_action wpstream_onboard_vod_ppv_action" id="wpstream_onboard_vod_ppv_action" value="<?php esc_html_e('Create PPV VOD','wpstream');?>" />
-                
-                        </div>
-                <?php }else{
-                        $this->wpstream_onboarding_woo_warning();
-                    } 
-               
-            
-                }else{  
-                  $this->wpstream_obboarding_file_warning();
-                }
-                ?>
-
-            
+                <?php
+                if ( class_exists( 'WooCommerce' ) ) { ?>
+                <div id="wpstream_onboard_vod_ppv" class="wpstream_accordion_container">
+                    <div class="spinner"></div>
+                    <div class="wpstream-step-container" style="display: none">
+                        <label><?php esc_html_e('Name your PPV Video-On-Demand','wpstream'); ?></label>
+                        <input type="text" name="channel_name" class="wpstream_onboarding_ppv_vod_name" id="wpstream_onboarding_ppv_vod_name" value="<?php esc_html_e('My First PPV VOD','wpstream');?>">
+                        <div id="wpstream_ppv_vod_dropdown_videos_list"></div>
+                        <label><?php esc_html_e('Pay-Per-View Price','wpstream');?></label>
+                        <input type="text" name="channel_name" class="wpstream_onboarding_vod_price" id="wpstream_onboarding_vod_price" value="10">
+                        <input type="submit" name="submit"  class="wpstream_button wpstream_button_action wpstream_onboard_vod_ppv_action" id="wpstream_onboard_vod_ppv_action" value="<?php esc_html_e('Create PPV VOD','wpstream');?>" />
+                    </div>
+                </div>
+                <?php $this->wpstream_obboarding_file_warning(); ?>
+                <?php } else {
+                    $this->wpstream_onboarding_woo_warning();
+                } ?>
                 <div class="wpstream_initial_onboarding_controls_wrapper">
                     <span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_4"><?php esc_html_e('Prev','wpstream');?></span>
                 </div>
-
             </div>
-
-            
             <?php
         }
 
@@ -3431,12 +3371,13 @@ class Wpstream_Admin {
                 update_option('wpstream_api_password',$password);
 
                 $token          =   $this->main->wpstream_live_connection->wpstream_get_token();
+                $videos_list    =   $this->main->wpstream_live_connection->wpstream_get_videos();
                 // cleanup any previous echo before sending json
                 ob_end_clean();
                 // !DO NOT SEND TOKEN TO THE CLIENT!
                 if ($token){
                     echo json_encode( array(
-                        'success'=>  true, 
+                        'success'=>  true
                     ));
                 }
                 else {
