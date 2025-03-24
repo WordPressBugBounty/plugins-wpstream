@@ -174,28 +174,51 @@ class Wpstream_Admin {
 
                 wp_enqueue_script("jquery-ui-slider");
                 wp_enqueue_script("jquery-ui-datepicker");  
-                wp_enqueue_script('jquery.fileupload',   plugin_dir_url( __FILE__ ) .'js/jquery.fileupload.js?v='.time(),array(), WPSTREAM_PLUGIN_VERSION, true);  
-                wp_enqueue_script('wpstream-admin-control',   plugin_dir_url( __FILE__ ) .'js/admin_control.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true); 
+                wp_enqueue_script('jquery.fileupload',   plugin_dir_url( __FILE__ ) .'js/jquery.fileupload.js?v='.time(),array(), WPSTREAM_PLUGIN_VERSION, true);
+
+                wp_enqueue_script( 'wpstream-admin-utils',  plugin_dir_url( __FILE__ ) .'js/utils/admin_utils.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
+                wp_enqueue_script('wpstream-admin-control',   plugin_dir_url( __FILE__ ) .'js/admin_control.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
                 wp_localize_script('wpstream-admin-control', 'wpstream_admin_control_vars', 
                     array( 
-                        'admin_url'             =>  get_admin_url(),
-                        'loading_url'           =>  WPSTREAM_PLUGIN_DIR_URL.'/img/loading.gif',
-                        'download_mess'         =>  esc_html__('Click to download!','wpstream'),
-                        'uploading'             =>  esc_html__('We are uploading your file. Do not close this window!','wpstream'),
-                        'upload_complete2'      =>  esc_html__('Upload Complete! You can upload another file!','wpstream'),
-                        'not_accepted'          =>  esc_html__('The file is not an accepted video format','wpstream'),
-                        'upload_complete'       =>  esc_html__('Upload Complete!','wpstream'),
-                        'no_band'               =>  esc_html__('Not enough streaming data.','wpsteam'),
-                        'no_band_no_store'      =>  esc_html__('Not enough streaming data or storage.','wpsteam'),
-                        'exceeding_limit'       =>  esc_html__('File size exceeds 5GB limit.','wpsteam'),
-                        'upload_failed'         =>  esc_html__('Upload Failed!','wpstream'),
-                        'upload_failed2'        =>  esc_html__('Upload Failed! Please Try again!','wpstream'),
-                        'choose_a_file'         =>  esc_html__('Choose a file&hellip;','wpstream'),
-                        'choose_recording'      =>  esc_html__( 'Choose Recording', 'wpstream' ),
-                        'select_recording'      =>  esc_html__( 'Please select a recording from the list', 'wpstream' ),
+                        'admin_url'                => get_admin_url(),
+                        'loading_url'              => WPSTREAM_PLUGIN_DIR_URL.'/img/loading.gif',
+                        'download_mess'            => esc_html__('Click to download!','wpstream'),
+                        'uploading'                => esc_html__('We are uploading your file. Do not close this window!','wpstream'),
+                        'upload_complete2'         => esc_html__('Upload Complete! You can upload another file!','wpstream'),
+                        'not_accepted'             => esc_html__('The file is not an accepted video format','wpstream'),
+                        'upload_complete'          => esc_html__('Upload Complete!','wpstream'),
+                        'no_band'                  => esc_html__('Not enough streaming data.','wpsteam'),
+                        'no_band_no_store'         => esc_html__('Not enough streaming data or storage.','wpsteam'),
+                        'exceeding_limit'          => esc_html__('File size exceeds 5GB. Initiating multipart upload...','wpsteam'),
+                        'upload_failed'            => esc_html__('Upload Failed!','wpstream'),
+                        'upload_failed2'           => esc_html__('Upload Failed! Please Try again!','wpstream'),
+                        'choose_a_file'            => esc_html__('Choose a file&hellip;','wpstream'),
+                        'preparing_multipart'      => esc_html__('Preparing multipart upload...','wpstream'),
+                        'uploading_part'           => esc_html__('Uploading part {part} of {total}...','wpstream'),
+                        'upload_failed_part'       => esc_html__('Failed to upload part {part}. Please try again.','wpstream'),
+                        'completing_upload'        => esc_html__('Completing upload. Please wait...','wpstream'),
+                        'upload_failed_part_retry' => esc_html__('Failed to upload part {part}. Retrying...','wpstream'),
+                        'choose_recording'         => esc_html__( 'Choose Recording', 'wpstream' ),
+                        'select_recording'         => esc_html__( 'Please select a recording from the list', 'wpstream' ),
+                        'invalid_response'         => esc_html__('Invalid response from server. Missing required upload data.', 'wpsteram'),
+                        'video_processing'         => esc_html__( 'The video is still processing', 'wpstream' ),
+                        'file_name_text'           => esc_html__('File Name:','wpstream'),
+
                     ));
                 
-                
+                wp_enqueue_script('wpstream-recordings-videos-list',   plugin_dir_url( __FILE__ ) .'js/recordings_videos_list.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
+                wp_localize_script( 'wpstream-recordings-videos-list', 'wpstream_recordings_videos_list_vars',
+                    array(
+                        'delete_file' => esc_html__('Delete file', 'wpstream'),
+                        'download'           => esc_html__( 'Download', 'wpstream'),
+                        'download_available' => esc_html__( 'Click to download! The url will work for the next 20 minutes!', 'wpstream'),
+                        'add_free_video_url' => esc_url( admin_url( 'post-new.php?post_type=wpstream_product_vod') . '&new_video_name=' ),
+                        'create_ftv_vod'     => esc_html__( 'Create new Free-To-View VOD from this recording' , 'wpstream' ),
+                        'woocommerce_exists' => class_exists( 'WooCommerce' ),
+                        'add_paid_video_url' => esc_url( admin_url( 'post-new.php?post_type=product').'&new_video_name=' ),
+                        'create_ptv_vod'     => esc_html__( 'Create new Pay-Per-View VOD from this recording' , 'wpstream' ),
+                    )
+                );
                 
                 wp_enqueue_script('wpstream-start-streaming_admin',   plugin_dir_url( __DIR__  ) .'/public/js/start_streaming.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true); 
                 wp_localize_script('wpstream-start-streaming_admin', 'wpstream_start_streaming_vars', 
@@ -976,7 +999,7 @@ class Wpstream_Admin {
                   <li>2. Choose Custom Streaming Server in the Stream Type dropdown menu.</li>
                   <li>3. In the URL box, type/paste your Server.</li>
                   <li>4. In the Stream key, type/paste your Stream key.</li>
-                  <li>5. Save changes.Close the Settings window and click on the “Start Streaming” button in the main window of OBS.</li></ul>';
+                  <li>5. Save changes.Close the Settings window and click on the "Start Streaming" button in the main window of OBS.</li></ul>';
                   
                 print '</div>';           
             
@@ -1084,7 +1107,7 @@ class Wpstream_Admin {
                     <li>2. Choose Custom RTMP in the Set up a new output dropdown menu.</li>
                     <li>3. In the URL box, type/paste your RTMP Url.</li>
                     <li>4. In the Stream key, type/paste your Stream key.</li>
-                    <li>5. Save changes and click on the “Stream” button in the main window.</li></ul>';
+                    <li>5. Save changes and click on the "Stream" button in the main window.</li></ul>';
                 print '</div>';  
 
             print '</div>';
@@ -1906,21 +1929,40 @@ class Wpstream_Admin {
          */  
         public function wpstream_present_file_management(){
                 $video_list_raw = $this->main->wpstream_live_connection->wpstream_get_videos_from_api();
+//                echo '<pre>';
+//                var_dump($video_list_raw);
+//                echo '</pre>';
 
-                $video_list_raw_array=array();
-                if(isset($video_list_raw['items'])){
-                    $video_list_raw_array=$video_list_raw['items'];
+                $video_list_raw_array = [];
+                if( isset( $video_list_raw['items'] ) ){
+                    $video_list_raw_array = $video_list_raw['items'];
                 }
-            
-                $keys = array_column($video_list_raw_array, 'time');
+
+                $keys = array_column( $video_list_raw_array, 'time' );
                 array_multisort($keys, SORT_DESC , $video_list_raw_array);
                 
                 $to_return='';
-              
-                if(is_array($video_list_raw['items'])){
+
+                // show pending items
+                if ( is_array( $video_list_raw['pending'] ) ) {
+                    foreach ( $video_list_raw['pending'] as $key => $video ) {
+                        $video_size = intval($video['size']/1048576);
+                        $video_name = esc_html($video['name']);
+                        if($video_name!=''):
+                            $to_return.='<div class="wpstream_video_wrapper">';
+                                $to_return.='<div class="wpstream_video_title">';
+                                $to_return.='<div class="wpstream_video_notice"></div></div>';
+                                $to_return.='<div class="wpstream_video_title"><strong class="storage_file_name">'.esc_html__('File Name :','wpstream').'</strong>'.'<span class="storage_file_name_real">'.$video_name.'</span><span class="storage_file_size">'.$video_size.' MB </span></div>';
+                                $to_return.='<div class="wpstream_video_pending">' . esc_html__( 'The video is still processing', 'wpstream') . '</div>';
+                            $to_return.='</div>';
+                        endif;
+
+                    }
+                }
+
+                // show uploaded items
+                if( is_array($video_list_raw['items'] ) ) {
                     foreach ($video_list_raw_array as $key =>$video){
-                        
-                    
                         $video_size = intval($video['size']/1048576);
                         $video_name = esc_html($video['name']);
                         if($video_name!=''):
@@ -1928,7 +1970,7 @@ class Wpstream_Admin {
 
                                 $to_return.='<div class="wpstream_video_title">';
                                 $to_return.='<div class="wpstream_video_notice"></div></div>';
-                                $to_return.='<div class="wpstream_video_title"><strong class="storage_file_name">'.esc_html__('File Name :','wpstream').'</strong>'.'<span class="storage_file_name_real">'.$video_name.'</span><span class="storage_file_size">'.$video_size.' MB </span></div>';
+                                $to_return.='<div class="wpstream_video_title"><strong class="storage_file_name">'.esc_html__('File Name:','wpstream').'</strong>'.'<span class="storage_file_name_real">'.$video_name.'</span><span class="storage_file_size">'.$video_size.' MB </span></div>';
                                 $to_return.=' <div class="wpstream_delete_media" ';
                                 $to_return.=' onclick="return confirm(\' Are you sure you wish to delete '.$video_name.'?\')" data-filename="'.$video_name.'">'.esc_html__('delete file','wpstream').'</div>';
                                 $to_return.='<div class="wpstream_get_download_link" data-filename="'.$video_name.'">'.esc_html__('download','wpstream').'</div>';
@@ -1949,10 +1991,11 @@ class Wpstream_Admin {
                         
                     }
                     $current_page= get_current_screen();
-        
-                    
-               } else {
-                   $to_return.= '<div class="wpstream_video_wrapper">'.esc_html__('You don\'t have any videos.','wpstream').'</div>';
+				}
+
+                // no items to show
+                if ( !is_array( $video_list_raw['items'] ) || !is_array( $video_list_raw['pending'] ) ) {
+                    $to_return.= '<div class="wpstream_video_wrapper">'.esc_html__('You don\'t have any videos.','wpstream').'</div>';
                }
                return $to_return;
         }
@@ -3562,4 +3605,117 @@ class Wpstream_Admin {
 
             return $return;die();
         }
+
+    /**
+     * Handle the AJAX request to initiate a multipart upload
+     *
+     * @since    3.0.1
+     */
+    public function handle_initiate_multipart_upload() {
+        // Security check - only admins can do this
+        if (!current_user_can('administrator')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+
+        // Get file details from request
+        $file_name = sanitize_text_field($_POST['file_name']);
+        $file_size = intval($_POST['file_size']);
+        $content_type = sanitize_text_field($_POST['content_type']);
+        $num_parts = intval($_POST['parts']);
+
+        if (empty($file_name) || $file_size <= 0 || $num_parts <= 0) {
+            wp_send_json_error('Invalid file information');
+            return;
+        }
+
+        // Prepare a clean filename (similar to the standard upload process)
+        $file_name_array = explode(".", $file_name);
+        $file_extension = $file_name_array[count($file_name_array) - 1];
+        $temp_file_name = $file_name_array[0];
+        $temp_file_name = str_replace(' ', '_', $temp_file_name);
+        $temp_file_name = preg_replace('/\W/', '', $temp_file_name);
+        $clean_file_name = $temp_file_name . '.' . $file_extension;
+
+        // Make API call to initiate multipart upload
+        $url = 'video/upload';
+        $access_token = $this->main->wpstream_live_connection->wpstream_get_token();
+
+        if (!$access_token) {
+            wp_send_json_error('Not connected to WPStream service');
+            return;
+        }
+
+        $api_params = array(
+            'access_token' => $access_token,
+            'size' => $file_size,
+            'name' => $clean_file_name,
+            'content_type' => $content_type,
+            'parts' => $num_parts
+        );
+
+        $response = $this->main->wpstream_live_connection->wpstream_baker_do_curl_base($url, $api_params, true);
+        $response_data = json_decode($response, true);
+
+        if (!isset($response_data['success']) || $response_data['success'] !== true) {
+            $error_message = isset($response_data['error']) ? $response_data['error'] : 'Failed to initiate multipart upload';
+            wp_send_json_error($error_message);
+            return;
+        }
+
+        // Return the upload ID and pre-signed URLs for each part
+        wp_send_json_success($response_data);
+    }
+
+    /**
+     * Handle the AJAX request to complete a multipart upload
+     *
+     * @since    3.0.1
+     */
+    public function handle_complete_multipart_upload() {
+        // Security check - only admins can do this
+        if (!current_user_can('administrator')) {
+            wp_send_json_error('Unauthorized access');
+            return;
+        }
+
+        // Get completion details
+        $parts = json_decode(stripslashes($_POST['parts']), true);
+        $file_name = sanitize_text_field($_POST['file_name']);
+        $handle = sanitize_text_field($_POST['handle']);
+
+        if (empty($parts) || !is_numeric($parts) || empty($file_name)) {
+            wp_send_json_error('Invalid completion information');
+            return;
+        }
+
+        // Make API call to complete the multipart upload
+        $url = 'video/upload';
+        $access_token = $this->main->wpstream_live_connection->wpstream_get_token();
+
+        if (!$access_token) {
+            wp_send_json_error('Not connected to WPStream service');
+            return;
+        }
+
+        $api_params = array(
+            'access_token' => $access_token,
+            'parts' => $parts,
+            'name' => $file_name,
+            'handle' => $handle,
+            'action' => 'complete'
+        );
+
+        $response = $this->main->wpstream_live_connection->wpstream_baker_do_curl_base($url, $api_params, true);
+        $response_data = json_decode($response, true);
+
+        if (!isset($response_data['success']) || $response_data['success'] !== true) {
+            $error_message = isset($response_data['error']) ? $response_data['error'] : 'Failed to complete multipart upload';
+            wp_send_json_error($error_message);
+            return;
+        }
+
+        // Return success
+        wp_send_json_success();
+    }
 }

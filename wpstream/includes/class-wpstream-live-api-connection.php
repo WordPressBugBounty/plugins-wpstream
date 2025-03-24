@@ -19,14 +19,12 @@ class Wpstream_Live_Api_Connection  {
         
         add_action( 'admin_notices',array($this, 'wpstream_admin_notices') );
 
+		add_action( 'wp_ajax_wpstream_check_pending_videos', array($this,'wpstream_check_pending_videos') );
+
       
     }
-    
-    
 
 
-
-    
     /*
      * Admin Notices
      * 
@@ -67,7 +65,7 @@ class Wpstream_Live_Api_Connection  {
             echo '<div class="api_not_conected wpstream_notice_top">'.__($text,'wpstream').'</div>';
         }
               
-}
+	}
     
     
     /*
@@ -1340,11 +1338,14 @@ class Wpstream_Live_Api_Connection  {
     }
 
 
-    
-    
-    
+	public function wpstream_check_pending_videos() {
+		if (!current_user_can('administrator')) {
+			wp_send_json_error(__('Unauthorized', 'wpstream'));
+		}
 
-        
-        
-        
+		$videos_list_raw = $this->wpstream_get_videos_from_api();
+		wp_send_json_success($videos_list_raw);
+	}
+
+
 }// end class

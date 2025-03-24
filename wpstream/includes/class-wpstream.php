@@ -249,6 +249,9 @@ class Wpstream {
                 $this->loader->add_action( 'wp_ajax_wpstream_on_board_login',  $plugin_admin,'wpstream_on_board_login' );
                 $this->loader->add_action( 'wp_ajax_wpstream_on_board_register',  $plugin_admin,'wpstream_on_board_register' );
                 
+                // Register AJAX actions for multipart uploads
+                $this->loader->add_action( 'wp_ajax_wpstream_initiate_multipart_upload', $plugin_admin, 'handle_initiate_multipart_upload' );
+                $this->loader->add_action( 'wp_ajax_wpstream_complete_multipart_upload', $plugin_admin, 'handle_complete_multipart_upload' );
 
                 $this->loader->add_action( 'admin_notices',                             $plugin_admin,'wpstream_admin_notice' );
                 $this->loader->add_action( 'wp_ajax_wpstream_update_cache_notice',      $plugin_admin,'wpstream_update_cache_notice' );

@@ -1,12 +1,17 @@
 /*global $, jQuery, */
 var counters={};
-    
+
+const CHUNK_SIZE = 128 * 1024 * 1024; // 128MB in bytes
+const MAX_STANDARD_UPLOAD_SIZE = 5 * 1000000000; // 5GB in bytes
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 5000;
+
 jQuery(document).ready(function ($) {
     "use strict";
     
 
-    generate_download_link();
-    generate_delete_link();
+    WpStreamUtils.generate_download_link();
+    WpStreamUtils.generate_delete_link();
     wpstream_handle_video_selection();    
     wpstream_upload_images_in_wpadmin();
  
@@ -50,99 +55,7 @@ jQuery(document).ready(function ($) {
             }
         });
     });
-    
-    
-    
-    
-    function generate_delete_link(){
-        $('.wpstream_delete_media').on('click',function(){
-            
-           
-            var ajaxurl             =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
-            var video_name          =   $(this).attr('data-filename').trim();
-            var acesta              =   $(this);
-            var parent              =   $(this).parent();
 
-          
-            jQuery.ajax({
-                type: 'POST',
-                url: ajaxurl,
-                dataType: 'json',
-                data: {
-                    'action'            :   'wpstream_get_delete_file',
-                    'video_name'        :   video_name
-
-                },
-                success: function (data) {
-                    
-                    if(data.success===true){
-                        parent.remove();
-                    }
-                   
-
-                },
-                error: function (errorThrown) {
-                }
-            });
-        });
-
-    
-    }
-    
-    function generate_download_link(){
-            
-        $('.wpstream_get_download_link').on('click',function(){
-            var ajaxurl             =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
-            var video_name          =   $(this).attr('data-filename');
-            var acesta              =   $(this);
-            var parent              =   $(this).parent();
-
-            jQuery(this).remove();
-            parent.find('.wpstream_download_link').show().text('please wait...');
-
-
-
-            jQuery.ajax({
-                type: 'POST',
-                url: ajaxurl,
-                dataType: 'json',
-                data: {
-                    'action'            :   'wpstream_get_download_link',
-                    'video_name'        :   video_name,
-
-                },
-                success: function (data) {
-                    
-                   
-                    
-                    if(data.success===true){
-                        parent.find('.wpstream_download_link').show().text(wpstream_admin_control_vars.download_mess);
-                        parent.find('.wpstream_download_link').show().attr('href',data.url);
-                    }else{
-                        var error_message=data.error;
-                        
-                        if(data.error==='NOT_ENOUGH_TRAFFIC'){
-                            error_message = 'Not Enough data to download!';
-                            
-                        }
-                        
-                        parent.find('.wpstream_download_link').show().text(error_message); 
-                    }
-                    
-                    
-
-                },
-                error: function (errorThrown) {
-                }
-            });
-        });
-    
-    }
-
-    
-  
-    
-    
     $( '.inputfile' ).each( function(){
 		var $input	 = $( this ),
 			$label	 = $input.next( 'label' ),
@@ -179,13 +92,11 @@ jQuery(document).ready(function ($) {
 
 
     var form = $('.direct-upload');
-    var filesUploaded = [];
-    var folders = [];
+    var multipartUploadData = null;
+    var handle = null;
+    var currentUploadedParts = [];
 
-   // var new_file_name='';  
-    
     form.fileupload({
-        
         url: form.attr('action'),
         type: form.attr('method'),
        
@@ -199,139 +110,294 @@ jQuery(document).ready(function ($) {
                    return;
                }
 
-                // Check file size
-                var fileSizeInBytes = data.files[0].size;
-               console.log(data);
-                var maxFileSizeInBytes = 5 * 1000000000;
+                // Get file info
+                var file = data.files[0];
+                var fileSizeInBytes = file.size;
+                var file_size = (parseInt(fileSizeInBytes, 10))/1000000;
+                var user_storage = jQuery('#wpstream_storage').val();
+                var user_band = jQuery('#wpstream_band').val();
 
-                if (fileSizeInBytes > maxFileSizeInBytes) {
-                    jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.exceeding_limit);
-                    jQuery('#wpstream_label_action').text(wpstream_admin_control_vars.choose_a_file);
-                    return;
-                }
-
-               var file_size    = (parseInt(data.files[0].size,10))/1000000;
-               var user_storage = jQuery('#wpstream_storage').val();
-               var user_band    = jQuery('#wpstream_band').val();
-
-               if(file_size > user_storage || file_size>user_band){
+                if(file_size > user_storage || file_size > user_band){
                     jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.no_band_no_store);
                     return;
-               }
-               
-               
-                $('#wpstream_label_action').text(wpstream_admin_control_vars.uploading)
+                }
+                
+                // Update UI
+                $('#wpstream_label_action').text(wpstream_admin_control_vars.uploading);
                 $('#wpstream_upload').prop('disabled', true);
                 $('label[for="wpstream_upload"]')
                     .css('cursor','not-allowed')
                     .css('background-color','#8c8f94');
 
-                jQuery('#wpstream_uploaded_mes').empty().html();
-                // Show warning message if your leaving the page during an upload.
+                jQuery('#wpstream_uploaded_mes').empty();
+                
+                // Show warning message if leaving page during upload
                 window.onbeforeunload = function () {
                     return 'You have unsaved changes.';
                 };
-
-                var file = data.files[0];
                 
-               
+                // Set content headers
                 form.find('input[name="Content-Type"]').val(file.type);
                 form.find('input[name="Content-Length"]').val(file.size);
 
-                // Actually submit to form to S3.
-                data.submit();
-
                 // Show the progress bar
-                // Uses the file size as a unique identifier
                 var bar = $('<div class="progress" data-mod="'+file.size+'"><div class="bar"></div></div>');
                 $('.progress-bar-area').append(bar);
                 bar.slideDown('fast');
+
+                // Check if file size exceeds 5GB and requires multipart upload
+                if (fileSizeInBytes > MAX_STANDARD_UPLOAD_SIZE) {
+                    // Show multipart upload message
+                    jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.exceeding_limit);
+                    // Initiate multipart upload
+                    initiateMultipartUpload(file, data);
+                } else {
+                    // Standard upload for files under 5GB
+                    data.submit();
+                }
             },
             progress: function (e, data) {
-                // This is what makes everything really cool, thanks to that callback
-                // you can now update the progress bar based on the upload progress.
-                var percent = Math.round((data.loaded / data.total) * 100);
-                $('.progress[data-mod="'+data.files[0].size+'"] .bar').css('width', percent + '%').html(percent+'%');
+                // Standard upload progress
+                if (!multipartUploadData) {
+                    var percent = Math.round((data.loaded / data.total) * 100);
+                    $('.progress[data-mod="'+data.files[0].size+'"] .bar').css('width', percent + '%').html(percent+'%');
+                }
             },
 
-            fail: function (e, data) {
-                // Remove the 'unsaved changes' message.
-                window.onbeforeunload = null;
-                $('.progress[data-mod="'+data.files[0].size+'"] .bar').css('width', '100%').addClass('red').html('');
-                $('.bar').remove();
-                $('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_failed);
-                $('#wpstream_label_action').empty().html(wpstream_admin_control_vars.upload_failed2);
-                $('label[for="wpstream_upload"]')
-                    .css('cursor','')
-                    .css('background-color','');
+            fail: function () {
+                handleUploadFailure();
             },
 
-            error: function (e, data) {
-                // Remove the 'unsaved changes' message.
-                window.onbeforeunload = null;
-                $('.bar').remove();
-                $('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_failed);
-                $('#wpstream_label_action').empty().html(wpstream_admin_control_vars.upload_failed2);
-                $('#wpstream_upload').prop('disabled', false);
-                $('label[for="wpstream_upload"]')
-                    .css('cursor','')
-                    .css('background-color','');
+            error: function () {
+                handleUploadFailure();
             },
             done: function (event, data) {
-               
-                window.onbeforeunload = null;
-                $('.bar').remove();
-                $('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_complete);
-                $('#wpstream_label_action').text(wpstream_admin_control_vars.upload_complete2);
-                $('#wpstream_upload').prop('disabled', false);
-                $('label[for="wpstream_upload"]')
-                    .css('cursor','')
-                    .css('background-color','');
-
-                var new_file_name=data.files[0].name;
-
-                
-                var new_file_name_array =  data.files[0].name.split(".");
-                var temp_file_name      =  new_file_name_array[0].split(' ').join('_');
-                temp_file_name          =  temp_file_name.replace(/\W/g, '');           
-                new_file_name           =  temp_file_name+'.'+new_file_name_array[new_file_name_array.length-1];
-                
-                
-                
-                
-                var onclick_string=' Are you sure you wish to delete '+new_file_name+' ? ';
-
-                var to_insert='<div class="wpstream_video_wrapper"><div class="wpstream_video_title"><div class="wpstream_video_notice"></div></div><div class="wpstream_video_title">';
-                to_insert=to_insert+'<strong class="storage_file_name">File Name :</strong><span class="storage_file_name_real">'+new_file_name+' </span></div>';
-                to_insert=to_insert+'<div class="wpstream_delete_media"  '; 
-                to_insert=to_insert+' onclick=" return confirm('+onclick_string+') "';
-                to_insert=to_insert+' data-filename="'+new_file_name+'"  >delete file</div>';
-                to_insert=to_insert+'<div class="wpstream_get_download_link" data-filename="'+new_file_name+'">download</div> ';
-                to_insert=to_insert+'<a href="" class="wpstream_download_link">Click to download! The url will work for the next 20 minutes!</a></div>';
-                
-                $('#video_management_title').after(to_insert);
-                
-         
-
-                $('.wpstream_get_download_link').unbind('click');
-                $('.wpstream_delete_media').unbind('click');
-
-                generate_download_link();
-                generate_delete_link();
-                
-                setTimeout(function(){        window.location.href = window.location.href; }, 1000);
-
-               
+                if (!multipartUploadData) {
+                    // Handle standard upload completion
+                    handleUploadSuccess(data.files[0]);
+                }
             }
     });
-            
-    
-  
 
-    
-   
-    
-    
+    // Function to initiate multipart upload
+    function initiateMultipartUpload(file, data) {
+        var ajaxurl = wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+        var fileName = file.name;
+        var fileSize = file.size;
+
+        // Calculate number of parts needed
+        var numParts = Math.ceil(fileSize / CHUNK_SIZE);
+
+        jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.preparing_multipart);
+
+        jQuery.ajax({
+            type: 'POST',
+            url: ajaxurl,
+            dataType: 'json',
+            data: {
+                'action': 'wpstream_initiate_multipart_upload',
+                'file_name': fileName,
+                'file_size': fileSize,
+                'content_type': file.type,
+                'parts': numParts
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Validate required data exists in response
+                    if (!response.data ||
+                        !response.data.multipart ||
+                        !response.data.parts ||
+                        !response.data.handle
+                    ) {
+                        jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.invalid_response);
+                        handleUploadFailure();
+                        return;
+                    }
+
+                    multipartUploadData = {
+                        parts: response.data.parts
+                    };
+                    currentUploadedParts = [];
+                    handle = response.data.handle;
+
+                    // Start uploading chunks
+                    uploadNextChunk(file, 0, numParts);
+                } else {
+                    jQuery('#wpstream_uploaded_mes').html(response.error || wpstream_admin_control_vars.upload_failed);
+                    handleUploadFailure();
+                }
+            },
+            error: function() {
+                jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.upload_failed);
+                handleUploadFailure();
+            }
+        });
+    }
+
+    // Function to upload a chunk of the file
+    function uploadNextChunk(
+        file,
+        partIndex,
+        totalParts,
+        retryCount = 0
+    ) {
+        if (partIndex >= totalParts) {
+            // All parts uploaded, complete the multipart upload
+            completeMultipartUpload(file, totalParts);
+            return;
+        }
+
+        var start = partIndex * CHUNK_SIZE;
+        var end = Math.min((partIndex + 1) * CHUNK_SIZE, file.size);
+        var chunk = file.slice(start, end);
+        var partNumber = partIndex + 1;
+
+        jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.uploading_part.replace('{part}', partNumber).replace('{total}', totalParts));
+
+        // Update progress bar to show overall progress
+        var overallProgress = Math.round((partIndex / totalParts) * 100);
+        jQuery('.progress[data-mod="'+file.size+'"] .bar').css('width', overallProgress + '%').html(overallProgress+'%');
+
+        // Upload the chunk
+        var xhr = new XMLHttpRequest();
+        // xhr.open('POST', 'https://s3.amazonaws.com/' + partData.bucket, true);
+        xhr.open('PUT', multipartUploadData.parts[partIndex], true);
+
+        xhr.onload = function() {
+            if (xhr.status === 204 || xhr.status === 200) {
+                currentUploadedParts.push({
+                    PartNumber: partNumber,
+                });
+
+                // Upload next chunk
+                uploadNextChunk(file, partIndex + 1, totalParts);
+            } else {
+                var errorInfo = {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    response: xhr.responseText,
+                    headers: xhr.getAllResponseHeaders()
+                };
+                console.error('Part Upload Failed:', errorInfo);
+
+                jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.upload_failed_part.replace('{part}', partNumber));
+                handleUploadFailure();
+            }
+        };
+
+        xhr.onerror = function() {
+            handleChunkError(file, partIndex, totalParts, retryCount, xhr);
+            // jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.upload_failed_part.replace('{part}', partNumber));
+            // handleUploadFailure();
+        };
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                // Calculate chunk progress and overall progress
+                var chunkProgress = (e.loaded / e.total) * 100;
+                var overallProgress = Math.round((partIndex / totalParts * 100) + (chunkProgress / totalParts));
+                jQuery('.progress[data-mod="'+file.size+'"] .bar').css('width', overallProgress + '%').html(overallProgress+'%');
+            }
+        };
+
+        xhr.send(chunk);
+    }
+
+    // Function to retry uploading when failing
+    // Adding a delay of RETRY_DELAY seconds before retrying
+    function handleChunkError(file, partIndex, totalParts, retryCount, xhr) {
+        var partNumber = partIndex + 1;
+
+        if ( retryCount < MAX_RETRIES ) {
+            jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.upload_failed_part_retry.replace('{part}', partNumber).replace('{times}', retryCount + 1));
+            setTimeout(function() {
+                uploadNextChunk(file, partIndex, totalParts, retryCount + 1);
+            }, RETRY_DELAY);
+        } else {
+            handleUploadFailure();
+        }
+
+    }
+
+    // Function to complete multipart upload
+    function completeMultipartUpload(file, totalParts) {
+        var ajaxurl = wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+
+        jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.completing_upload);
+        jQuery.ajax({
+            type: 'POST',
+            url: ajaxurl,
+            dataType: 'json',
+            data: {
+                'action': 'wpstream_complete_multipart_upload',
+                'parts': totalParts,
+                'file_name': file.name,
+                'handle': handle,
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Reset multipart data
+                    multipartUploadData = null;
+                    currentUploadedParts = [];
+
+                    // Handle success
+                    handleUploadSuccess(file);
+                } else {
+                    jQuery('#wpstream_uploaded_mes').html(response.error || wpstream_admin_control_vars.upload_failed);
+                    handleUploadFailure();
+                }
+            },
+            error: function(e) {
+                jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.upload_failed);
+                handleUploadFailure();
+            }
+        });
+    }
+
+    // Handle upload failure
+    function handleUploadFailure() {
+        window.onbeforeunload = null;
+        jQuery('.bar').remove();
+        jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_failed);
+        jQuery('#wpstream_label_action').empty().html(wpstream_admin_control_vars.upload_failed2);
+        jQuery('#wpstream_upload').prop('disabled', false);
+        jQuery('label[for="wpstream_upload"]')
+            .css('cursor','')
+            .css('background-color','');
+
+        // Reset multipart upload data
+        multipartUploadData = null;
+        currentUploadedParts = [];
+    }
+
+    // Handle upload success
+    function handleUploadSuccess(file) {
+        window.onbeforeunload = null;
+        jQuery('.bar').remove();
+        jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_complete);
+        jQuery('#wpstream_label_action').text(wpstream_admin_control_vars.upload_complete2);
+        jQuery('#wpstream_upload').prop('disabled', false);
+        jQuery('label[for="wpstream_upload"]')
+            .css('cursor','')
+            .css('background-color','');
+
+        var new_file_name = file.name;
+        var new_file_size = Math.floor(file.size / 1048576);
+
+        var new_file_name_array = new_file_name.split(".");
+        var temp_file_name = new_file_name_array[0].split(' ').join('_');
+        temp_file_name = temp_file_name.replace(/\W/g, '');
+        new_file_name = temp_file_name+'.'+new_file_name_array[new_file_name_array.length-1];
+
+        var to_insert='<div class="wpstream_video_wrapper"><div class="wpstream_video_title"><div class="wpstream_video_notice"></div></div>';
+        to_insert += `<div class="wpstream_video_title"><strong class="storage_file_name">${wpstream_admin_control_vars.file_name_text}</strong><span class="storage_file_name_real">`+new_file_name+`</span><span class="storage_file_size">` + new_file_size + ` MB</span></div>`;
+        to_insert += `<div class="wpstream_video_pending">${wpstream_admin_control_vars.video_processing}</div>`;
+
+        jQuery('#video_management_title').after(to_insert);
+
+        WpStreamUtils.checkPendingVideos();
+    }
+
     jQuery('#product-type').on('change',function(){
         
         var product_type= jQuery('#product-type').val();
@@ -350,7 +416,6 @@ jQuery(document).ready(function ($) {
     }
     
     var product_type=  jQuery('#product-type').val();
-  console.log('xxx '+product_type); 
     if ( product_type === 'video_on_demand' ) {
         jQuery('.show_if_video_on_demand' ).show();      
     }else  if ( product_type === 'live_stream' ) {
@@ -443,8 +508,8 @@ jQuery(document).ready(function ($) {
                 'security'          :   nonce,
                 'show_id'           :   show_id
             },
-            success: function (data) {       
-                parent.remove();            
+            success: function (data) {
+                parent.remove();
             },
             error: function (errorThrown) {
               
@@ -452,13 +517,6 @@ jQuery(document).ready(function ($) {
         });
         
     });
-    
-  
-    
-    
- 
-
-
 });
 
 
