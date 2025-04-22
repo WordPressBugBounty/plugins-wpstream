@@ -261,7 +261,8 @@ function wpstream_bind_stop_event(button){
                 
             },
             success: function (data) {
-       
+
+                console.log(data);
                 if(data.conected===true){
                     
                     thisButton.unbind('click');
@@ -394,7 +395,7 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
  * 
 */
 
-function wpstream_check_event_status_in_js(channel_id,notes,callback){
+function wpstream_check_event_status_in_js(channel_id,notes,successCallback, errorCallback){
 
     var ajaxurl             =   wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
     jQuery.ajax({
@@ -413,17 +414,17 @@ function wpstream_check_event_status_in_js(channel_id,notes,callback){
 
             var obj = data;
             var channel_status = obj.status;
-             
+
             if(channel_status=='active' || channel_status=='stopped'  ){
-                callback(obj);
+                successCallback(obj);
             }else if(channel_status=='error'){
-                callback(obj);
+                successCallback(obj);
             }else{
-                callback(false); 
+                successCallback(false);
             }
             
         }, error: function (jqXHR,textStatus,errorThrown) {
-          
+            errorCallback();
         }
   });
 }
@@ -437,7 +438,7 @@ function wpstream_check_event_status_in_js(channel_id,notes,callback){
 */
 function wpstream_event_ready_make_actions_visible(parent){
 
-    var  actionButton = parent.find('.start_event');
+    var actionButton = parent.find('.start_event');
     parent.addClass('wpstream_show_started');
     actionButton.unbind('click');
     wpstream_bind_stop_event(actionButton);
@@ -445,8 +446,12 @@ function wpstream_event_ready_make_actions_visible(parent){
     actionButton.addClass('wpstream_stop_event').removeClass('start_event').html(wpstream_start_streaming_vars.stop_streaming+'<div class="wpstream_tooltip">'+wpstream_start_streaming_vars.turned_off_tooltip+'</div>');
     parent.find('.wpstream-button-icon').removeClass('wpstream_inactive_icon');
     parent.find('.wpstream_show_settings').addClass('wpstream_inactive_icon');
-    parent.find('.wpstream_channel_status').text(wpstream_start_streaming_vars.channel_on);
-    
+    const channelStatus = parent.find('.wpstream_channel_status');
+    if ( channelStatus.css('display', 'none') ) {
+        channelStatus.text(wpstream_start_streaming_vars.channel_on);
+        channelStatus.fadeIn(200);
+    }
+
     var webcasterUrl = parent.find('.start_webcaster').attr('data-webcaster-url');
     if (webcasterUrl === ""){
         parent.find('.start_webcaster').addClass('wpstream_inactive_icon');
@@ -483,6 +488,16 @@ function wpstream_event_ready_make_actions_visible(parent){
         }
 
     }
+}
+
+function wpstream_event_error_make_actions_visible(parent){
+    var actionButton = parent.find('.start_event');
+    const channelStatus = parent.find('.wpstream_channel_status');
+    actionButton.unbind('click');
+    actionButton.hide();
+    channelStatus.hide();
+
+    parent.find('.server_notification').html('<div class="wpstream_channel_status not_ready_to_stream"><span class="dashicons dashicons-dismiss"></span>'+wpstream_start_streaming_vars.failed_fetching+'</div>');
 }
 
 
@@ -837,7 +852,11 @@ function wpstream_check_live_connections_from_database( acesta,channel_id,server
                 
                 curent_content.html('<div class="wpstream_channel_status not_ready_to_stream"><span class="dashicons dashicons-dismiss"></span>'+wpstream_start_streaming_vars.failed_event_creation+'</div>');
             }
-        });
+        },
+        function(){
+            wpstream_event_error_make_actions_visible(acesta);
+        }
+        );
 
 }
 

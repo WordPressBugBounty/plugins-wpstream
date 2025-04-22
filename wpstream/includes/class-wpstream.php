@@ -82,23 +82,23 @@ class Wpstream {
         public $plugin_admin;
         
 	public function __construct() {
-                $this->main = $this;
+		$this->main = $this;
+
 		if ( defined( 'WPSTREAM_PLUGIN_VERSION' ) ) {
-                    $this->version = WPSTREAM_PLUGIN_VERSION;
+            $this->version = WPSTREAM_PLUGIN_VERSION;
 		} else {
-                    $this->version = '3.0.1';
+            $this->version = '3.0.1';
 		}
+
 		$this->plugin_name = 'wpstream';
 
 		$this->load_dependencies();
-		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
         $this->define_ajax_hooks();
-                
-            
-                $this->wpstream_conection();
-                $this->wpstream_player();
+
+        $this->wpstream_conection();
+        $this->wpstream_player();
 
 	}
 
@@ -201,7 +201,7 @@ class Wpstream {
 
 		$plugin_i18n = new Wpstream_i18n();
 
-		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
+		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain', 1 );
 
 	}
 
@@ -214,22 +214,24 @@ class Wpstream {
 	 */
 	private function define_admin_hooks() {
 
-                $this->admin=                $plugin_admin = new Wpstream_Admin( $this->get_plugin_name(), $this->get_version(), $this->main );
-                
-                $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin,  'enqueue_styles' );
+                $plugin_admin = new Wpstream_Admin( $this->get_plugin_name(), $this->get_version(), $this->main );
+
+		        $this->admin  = $plugin_admin;
+
+			    $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin,  'enqueue_styles' );
 		        $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin,  'enqueue_scripts' );
                 $this->loader->add_action( 'admin_menu',            $plugin_admin,  'wpstream_manage_admin_menu',999);
-                                  
+
                 $plugin_post_types = new Wpstream_Product();
                 $this->loader->add_action( 'init', $plugin_post_types, 'create_custom_post_type', 999 );
-                
+
                 // save and render metaboxed
                 $this->loader->add_action( 'add_meta_boxes',    $plugin_admin, 'add_wpstream_product_metaboxes' );
-                $this->loader->add_action( 'save_post',     $plugin_admin, 'wpstream_free_product_update_post',1,2 );    
-                $this->loader->add_action( 'publish_wpstream_product',     $plugin_admin, 'wpstream_publish_wpstream_product',1,2 );    
-                
-      
-              
+                $this->loader->add_action( 'save_post',     $plugin_admin, 'wpstream_free_product_update_post',1,2 );
+                $this->loader->add_action( 'publish_wpstream_product',     $plugin_admin, 'wpstream_publish_wpstream_product',1,2 );
+
+
+
                 // make product virtual
                 $this->loader->add_action( 'save_post',  $plugin_admin, 'wpstream_make_product_virtual',  99999, 2 );
                 
@@ -241,10 +243,10 @@ class Wpstream {
                 // on boarding actions
                 $this->loader->add_action('admin_footer',$plugin_admin, 'wpstream_admin_footer_onboarding');
                 $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_channel',  $plugin_admin,'wpstream_on_board_create_channel' );
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_channel_ppv',  $plugin_admin,'wpstream_on_board_create_channel_ppv' );                
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_free_vod',  $plugin_admin,'wpstream_on_board_create_free_vod' );     
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_ppv_vod',  $plugin_admin,'wpstream_on_board_create_ppv_vod' );     
-      
+                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_channel_ppv',  $plugin_admin,'wpstream_on_board_create_channel_ppv' );
+                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_free_vod',  $plugin_admin,'wpstream_on_board_create_free_vod' );
+                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_ppv_vod',  $plugin_admin,'wpstream_on_board_create_ppv_vod' );
+
 
                 $this->loader->add_action( 'wp_ajax_wpstream_on_board_login',  $plugin_admin,'wpstream_on_board_login' );
                 $this->loader->add_action( 'wp_ajax_wpstream_on_board_register',  $plugin_admin,'wpstream_on_board_register' );

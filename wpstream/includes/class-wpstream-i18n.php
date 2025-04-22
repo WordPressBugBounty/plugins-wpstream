@@ -37,7 +37,7 @@ class Wpstream_i18n {
 		load_plugin_textdomain(
 			'wpstream',
 			false,
-			dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/languages/'
+			WPSTREAM_PLUGIN_PATH . 'languages/'
 		);
 
 	}

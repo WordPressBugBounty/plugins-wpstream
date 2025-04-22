@@ -181,8 +181,6 @@
 .wpstream_live_player_wrapper .video-js .vjs-big-play-button ,
 .wpstream_player_container .video-js .vjs-big-play-button {
     line-height: 90px!important;
-    height: 90px!important;
-    width: 90px!important;
     position: absolute!important;
     top: 50%!important;
     left: 50%!important;
@@ -192,6 +190,15 @@
     font-size: 57px!important;
     border-radius: 50%!important;
     background-color: #2b333f!important;
+}
+
+.wpstream_player_container .video-js .vjs-big-play-button .vjs-icon-placeholder:before{
+    top: 30% !important;
+    left: 2px;
+}
+
+.wpstream_player_container .video-js .vjs-big-play-button .vjs-control-text {
+    width: max-content !important;
 }
 
 .video-js .vjs-big-play-button .vjs-icon-placeholder{
@@ -529,6 +536,9 @@
     cursor: pointer;
 }
 
+.event_list_unit.hidden {
+    display: none;
+}
 
 /* start streaming styling front end*/
 .event_unit_style_front.event_list_unit{

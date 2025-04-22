@@ -149,6 +149,7 @@ class Wpstream_Public {
                         'stop_streaming_action' =>  esc_html__('TURNING OFF','wpstream'),
                         'start_streaming'       =>  esc_html__('TURN ON','wpstream'),
                         'stop_streaming'        =>  esc_html__('TURN OFF','wpstream'),
+	                    'failed_fetching'       =>  esc_html__('Failed to get channel info. Please try again.','wpstream'),
                         'turned_on_tooltip'     =>  esc_html__('Channel is now OFF. Click to turn ON.','wpstream'),
                         'turned_off_tooltip'    =>  esc_html__('Click to turn channel off. This will interrupt any ongoing broadcast.','wpstream'),                     
                         'turning_on_tooltip'    =>  esc_html__('Turning a channel on may take 1-2 minutes or more. Please be patient.','wpstream'),

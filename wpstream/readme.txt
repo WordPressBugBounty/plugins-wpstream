@@ -2,9 +2,9 @@
 Contributors: wpstream
 Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
-Tested up to: 6.7.1
+Tested up to: 6.8
 Requires PHP: 7.1
-Stable tag: 4.6.6.6
+Stable tag: 4.6.6.7
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,12 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+
+= 4.6.6.7 =
+* Tested up to WordPress 6.8
+* Fix - Show the self-hosted or external video even when there are no resources
+* Fix - Creating multiple channels or VODs during the Quick Start Wizard
+* Fix - Channel status on first page load
 
 = 4.6.6.6 =
 * Enhancement - Add support for uploading video files larger than 5GB

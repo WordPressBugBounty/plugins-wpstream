@@ -206,7 +206,7 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 }
 
 
-.wpstream_channel_status{
+.wpstream_channel_status {
     position: absolute;
     background-color: rgb(255 255 255);
     color: red;
@@ -217,6 +217,12 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     padding: 4px 15px;
     letter-spacing: 0.25px;
     font-weight: 500;
+
+    .spinner {
+        display: block;
+        margin: 0 auto;
+        float: none;
+    }
 }
 
 .event_list_unit.wpstream_show_started .wpstream_channel_status{
@@ -451,6 +457,10 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     text-align: center;
     display: inline-block;
     margin-right: 10px;
+
+    .spinner {
+        float: none;
+    }
 }
 
 .wpstream_button:hover{
@@ -1579,5 +1589,15 @@ input:checked + .wpstream_slider:before {
     .wpstream_live_uri_text{
         width: 280px;
         word-break: break-all;
+    }
+}
+
+.wpstream_theme_event_list_unit {
+    .spinner {
+        visibility: visible;
+        background-repeat: no-repeat;
+        height: 20px;
+        background-size: contain;
+        background-position-x: center;
     }
 }

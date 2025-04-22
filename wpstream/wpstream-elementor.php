@@ -43,7 +43,7 @@ final class WpStream_Elementor_Base {
 	public function __construct() {
 
 		// Load translation
-		add_action( 'init', array( $this, 'i18n' ) );
+//		add_action( 'init', array( $this, 'i18n' ) );
 
 		// Init Plugin
 		add_action( 'plugins_loaded', array( $this, 'init' ) );

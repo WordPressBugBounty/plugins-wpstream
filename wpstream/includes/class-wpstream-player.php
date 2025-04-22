@@ -417,10 +417,13 @@ class Wpstream_Player{
       
             $message_show= esc_html( get_option('wpstream_you_are_not_live','We are not live at this moment')) ;
       
-            if(function_exists('wpstream_theme_not_live_section')){
-                print wpstream_theme_not_live_section($channel_id);
-            }else{
-                print '<div class="wpstream_not_live_mess" '.$show_wpstream_not_live_mess.'><div class="wpstream_not_live_mess_back"></div><div class="wpstream_not_live_mess_mess">'.esc_html($message_show).'</div></div>';
+            if( function_exists('wpstream_theme_not_live_section' ) ) {
+                print wpstream_theme_not_live_section( $channel_id );
+            } else {
+                print '<div class="wpstream_not_live_mess" '.$show_wpstream_not_live_mess.' style="display: none">
+					<div class="wpstream_not_live_mess_back"></div>
+					<div class="wpstream_not_live_mess_mess">'.esc_html($message_show).'</div>
+				</div>';
             }
             
                  
@@ -814,7 +817,6 @@ class Wpstream_Player{
                     $overlay_video_div_id = "random_id_".$now;
                     print '<div id="'.esc_attr($overlay_video_div_id).'" class="vjs-title-overlay wpstream-video-title-overlay">'.esc_html__('Playing:','wpstream').' '.get_the_title($product_id).'</div>';
 
-
                     $thumb_id               =   get_post_thumbnail_id($product_id);
                     $thumb                  =   wp_get_attachment_image_src($thumb_id,'small');
                     $usernamestream         =   esc_html ( get_option('wpstream_api_username','') );
@@ -845,9 +847,12 @@ class Wpstream_Player{
                     // $trailer_attachment_id = 1;
                     // $video_trailer = '/wp-content/uploads/2023/10/production-ID_4608975.mp4';
                     // $video_trailer = '/wp-content/uploads/2023/10/ultrawide.mp4';
-                
-                    
-                    if(isset($pack['available_data_mb']) && $pack['available_data_mb']>0){
+
+	                // If the video is self hosted or external, we should let the user see it
+	                $video_type = intval( get_post_meta($product_id, 'wpstream_product_type', true));
+
+
+                    if ( (isset($pack['available_data_mb']) && $pack['available_data_mb']>0) || $video_type === 3 ) {
                         
                         if($video_path_final==''){
                             if( $uri_details['post_type']=='wpstream_product_vod'  && $uri_details['free_video_type']==3 ){
@@ -891,7 +896,7 @@ class Wpstream_Player{
                             <svg width="30" height="24" viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path fill-rule="evenodd" clip-rule="evenodd" d="M26.6667 1.5H3.33337C2.50495 1.5 1.83337 2.17157 1.83337 3V21C1.83337 21.8284 2.50495 22.5 3.33338 22.5H26.6667C27.4951 22.5 28.1667 21.8284 28.1667 21V3C28.1667 2.17157 27.4951 1.5 26.6667 1.5ZM3.33337 0C1.67652 0 0.333374 1.34315 0.333374 3V21C0.333374 22.6569 1.67652 24 3.33338 24H26.6667C28.3236 24 29.6667 22.6569 29.6667 21V3C29.6667 1.34315 28.3236 0 26.6667 0H3.33337ZM4.83337 4C4.55723 4 4.33337 4.22386 4.33337 4.5V6.16667C4.33337 6.44281 4.55723 6.66667 4.83337 6.66667H6.50004C6.77618 6.66667 7.00004 6.44281 7.00004 6.16667V4.5C7.00004 4.22386 6.77618 4 6.50004 4H4.83337ZM23.5 4C23.2239 4 23 4.22386 23 4.5V6.16667C23 6.44281 23.2239 6.66667 23.5 6.66667H25.1667C25.4428 6.66667 25.6667 6.44281 25.6667 6.16667V4.5C25.6667 4.22386 25.4428 4 25.1667 4H23.5ZM4.33337 11.167C4.33337 10.8909 4.55723 10.667 4.83337 10.667H6.50004C6.77618 10.667 7.00004 10.8909 7.00004 11.167V12.8337C7.00004 13.1098 6.77618 13.3337 6.50004 13.3337H4.83337C4.55723 13.3337 4.33337 13.1098 4.33337 12.8337V11.167ZM23.5001 10.667C23.224 10.667 23.0001 10.8909 23.0001 11.167V12.8337C23.0001 13.1098 23.224 13.3337 23.5001 13.3337H25.1668C25.4429 13.3337 25.6668 13.1098 25.6668 12.8337V11.167C25.6668 10.8909 25.4429 10.667 25.1668 10.667H23.5001ZM4.33337 17.833C4.33337 17.5569 4.55723 17.333 4.83337 17.333H6.50004C6.77618 17.333 7.00004 17.5569 7.00004 17.833V19.4997C7.00004 19.7758 6.77618 19.9997 6.50004 19.9997H4.83337C4.55723 19.9997 4.33337 19.7758 4.33337 19.4997V17.833ZM23.5001 17.333C23.224 17.333 23.0001 17.5569 23.0001 17.833V19.4997C23.0001 19.7758 23.224 19.9997 23.5001 19.9997H25.1668C25.4429 19.9997 25.6668 19.7758 25.6668 19.4997V17.833C25.6668 17.5569 25.4429 17.333 25.1668 17.333H23.5001ZM19.0677 13.0997L13.4077 16.5087C13.0434 16.7281 12.6092 16.7094 12.2661 16.5091C11.9218 16.3081 11.6666 15.9224 11.6666 15.4086V8.59072C11.6666 8.07698 11.9218 7.69125 12.2661 7.49026C12.6092 7.28999 13.0434 7.27126 13.4077 7.49064L19.0677 10.8996C19.8663 11.3805 19.8663 12.6188 19.0677 13.0997Z"/>
                             </svg>
-                            '.esc_html('Play Trailer','wpstream').'</div>';
+                            '.esc_html__('Play Trailer','wpstream').'</div>';
 
                             print '<div class="wpstream_video_on_demand_play_video_wrapper" id="wpstream_video_on_demand_play_video_btn_' . $now . '" >
                             <div class="wpstream_video_on_demand_play_video">
@@ -899,7 +904,7 @@ class Wpstream_Player{
                                     <path fill-rule="evenodd" clip-rule="evenodd" d="M6.1808 28.9035L26.274 18.1652C29.1087 16.6503 29.1087 12.7497 26.274 11.2348L6.1808 0.496557C4.88769 -0.194506 3.34623 -0.1355 2.1283 0.495357C0.906043 1.12846 1.0095e-06 2.34351 9.38766e-07 3.96179L0 25.4382C-7.07369e-08 27.0565 0.906042 28.2715 2.1283 28.9046C3.34622 29.5355 4.88769 29.5945 6.1808 28.9035ZM24.8221 13.8026C25.5742 14.2045 25.5742 15.1955 24.8221 15.5974L4.72891 26.3356C3.94628 26.7539 3.01386 26.2165 3.01386 25.4382L3.01386 3.96179C3.01386 3.18347 3.94628 2.6461 4.72891 3.06436L24.8221 13.8026Z" fill="#F1F1F1"/>
                                 </svg>
                             </div>
-                            '.esc_html('Play Video','wpstream').'
+                            '.esc_html__('Play Video','wpstream').'
                             </div>';
 
 

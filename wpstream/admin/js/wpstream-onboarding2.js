@@ -608,11 +608,11 @@ const ONBOARD=(function(){
 
     function wpstream_actual_create_free_channel_action(){
         jQuery('#wpstream_onboard_live_notice').removeClass('onboarding_error').text('Creating your FTV live channel. Please Stand by...').show();
+        jQuery('#wpstream_on_board_create_channel').prop('disabled', true);
         var channel_name    =   jQuery('#wpstream_onboarding_channel_name').val();
-        var ajaxurl         =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+        var ajaxurl  =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
         var nonce           =   jQuery('#wpstream_onboarding_nonce').val();
-        
-      
+
         jQuery.ajax({
             type: 'POST',
             url: ajaxurl,
@@ -622,17 +622,20 @@ const ONBOARD=(function(){
                 'channel_name'              :   channel_name,
                 'security'                  :   nonce
             },
-            success: function (data) {     
+            success: function (data) {
                 
-                if(data.success){
+                if( data.success ) {
                     var new_link = data.link;
                     var decoded = new_link.replace(/&amp;/g, '&');
                     window.location.href=decodeURI(decoded);
+                } else {
+                    jQuery('#wpstream_onboard_live_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
+                    jQuery('#wpstream_on_board_create_channel').prop('disabled', false);
                 }
-            
             },
-            error: function (errorThrown) { 
-            
+            error: function ( errorThrown ) {
+                jQuery('#wpstream_onboard_live_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
+                jQuery('#wpstream_on_board_create_channel').prop('disabled', false);
             }
         });
     }
@@ -660,7 +663,7 @@ const ONBOARD=(function(){
 
     function wpstream_actual_create_ppv_channel_action(){
         jQuery('#wpstream_onboard_live_ppv_notice').removeClass('onboarding_error').text('Creating your Pay Per View live channel. Please Stand by...').show();
-     
+        jQuery('#wpstream_onboard_live_ppv_action').prop('disabled', true);
         var channel_name    =   jQuery('#wpstream_onboarding_channel_name_ppv').val();
         var channel_price   =   jQuery('#wpstream_onboarding_event_price_ppv').val();
         var ajaxurl         =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
@@ -679,15 +682,19 @@ const ONBOARD=(function(){
             },
             success: function (data) {     
 
-                if(data.success){
+                if( data.success ) {
                     var new_link = data.link;
                     var decoded = new_link.replace(/&amp;/g, '&');
                     window.location.href=decodeURI(decoded);
+                } else {
+                    jQuery('#wpstream_onboard_live_ppv_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
+                    jQuery('#wpstream_onboard_live_ppv_action').prop('disabled', false);
                 }
             
             },
-            error: function (errorThrown) { 
-            
+            error: function (errorThrown) {
+                jQuery('#wpstream_onboard_live_ppv_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
+                jQuery('#wpstream_onboard_live_ppv_action').prop('disabled', false);
             }
         });
     }
@@ -715,6 +722,7 @@ const ONBOARD=(function(){
 
     function wpstream_actual_create_free_vod_action(){
         jQuery('#wpstream_onboard_vod_free_notice').removeClass('onboarding_error').text('Creating your VOD. Please Stand by...').show();
+        jQuery('#wpstream_onboard_vod_free_action').prop('disabled', true);
         var channel_name    =   jQuery('#wpstream_onboarding_vod_name').val();
         var file_name       =   jQuery('#wpstream_free_vod_file_name').val();
         var ajaxurl         =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
@@ -722,8 +730,9 @@ const ONBOARD=(function(){
         
   
         if(file_name===''){
-           jQuery('#wpstream_onboard_vod_free_notice').empty().addClass('onboarding_error').show().text('Please select a recording from the list')
-           return;
+            jQuery('#wpstream_onboard_vod_free_notice').empty().addClass('onboarding_error').show().text('Please select a recording from the list')
+            jQuery('#wpstream_onboard_vod_free_action').prop('disabled', false);
+            return;
         }
 
         jQuery.ajax({
@@ -737,15 +746,18 @@ const ONBOARD=(function(){
                 'security'                  :   nonce
             },
             success: function (data) {
-                if(data.success){
+                if( data.success ) {
                     var new_link = data.link;
                     var decoded = new_link.replace(/&amp;/g, '&');
                     window.location.href=decodeURI(decoded);
+                } else {
+                    jQuery('#wpstream_onboard_vod_free_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
+                    jQuery('#wpstream_onboard_vod_free_action').prop('disabled', false);
                 }
-
             },
             error: function (errorThrown) {
-                jQuery('#wpstream_onboard_vod_free_notice').empty().addClass('onboarding_error').show().text('Something did not work .Please try again.')
+                jQuery('#wpstream_onboard_vod_free_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
+                jQuery('#wpstream_onboard_vod_free_action').prop('disabled', false);
             }
         });
     }
@@ -774,6 +786,7 @@ const ONBOARD=(function(){
 
     function wpstream_actual_create_ppv_vod_action(){
         jQuery('#wpstream_onboard_vod_ppv_notice').removeClass('onboarding_error').text('Creating your VOD. Please Stand by...').show();
+        jQuery('#wpstream_onboard_vod_ppv_action').prop('disabled', true);
 
         var channel_name    =   jQuery('#wpstream_onboarding_ppv_vod_name').val();
         var file_name       =   jQuery('#wpstream_free_vod_file_name_for_ppv').val();
@@ -782,9 +795,10 @@ const ONBOARD=(function(){
         var nonce           =   jQuery('#wpstream_onboarding_nonce').val();
         
 
-        if(file_name===''){
-           jQuery('#wpstream_onboard_vod_ppv_notice').empty().addClass('onboarding_error').show().text('Please select a recording from the list')
-           return;
+        if( file_name === '' ) {
+            jQuery('#wpstream_onboard_vod_ppv_notice').empty().addClass('onboarding_error').show().text('Please select a recording from the list')
+            jQuery('#wpstream_onboard_vod_ppv_action').prop('disabled', false);
+            return;
         }
 
   
@@ -800,15 +814,18 @@ const ONBOARD=(function(){
                 'security'                  :   nonce
             },
             success: function (data) {     
-                if(data.success){
+                if( data.success ) {
                     var new_link = data.link;
                     var decoded = new_link.replace(/&amp;/g, '&');
                     window.location.href=decodeURI(decoded);
+                } else {
+                    jQuery('#wpstream_onboard_vod_ppv_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
+                    jQuery('#wpstream_onboard_vod_ppv_action').prop('disabled', false);
                 }
-            
             },
             error: function (errorThrown) { 
                 jQuery('#wpstream_onboard_vod_ppv_notice').empty().addClass('onboarding_error').show().text('Something did not work .Please try again.')
+                jQuery('#wpstream_onboard_vod_ppv_action').prop('disabled', false);
             }
         });
     }

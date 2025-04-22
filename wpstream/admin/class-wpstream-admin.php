@@ -68,68 +68,60 @@ class Wpstream_Admin {
 
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-                $this->main = $plugin_main;
+        $this->main = $plugin_main;
 
-           
-                
-                $this->global_event_options = array(
-               
-                'record'    =>array(
-                                'name'      =>  esc_html__('Record Live Stream','wpstream'),
-                                'details'   =>  esc_html__('If enabled, live streams will be recorded and saved to your library.','wpstream'),
-                                'defaults'  =>  'no',
-                    
-                            ),
-                'view_count' =>array(
-                                'name'      =>  esc_html__('Display Viewer Count','wpstream'),
-                                'details'   =>  esc_html__('If enabled, the live viewer count will show up in the player.','wpstream'),
-                                'defaults'  =>  'yes',
-                            ),
-                'domain_lock'=>array(
-                                'name'      =>  esc_html__('Lock To Website','wpstream'),
-                                'details'   =>  sprintf ( esc_html__('If enabled, live video will only display on %1$s, otherwise it can show up on any website.','wpstream'),get_bloginfo('wpurl') ),
-                                'defaults'  =>  'no',
-                            ),
-                'autoplay'    =>array(
-                                'name'      =>  esc_html__('Autoplay','wpstream'),
-                                'details'   =>  esc_html__('If enabled, live video will attempt to start playing automatically. This is only achievable in some browsers.','wpstream'),
-                                'defaults'  =>  'yes',
-                            ),
-                'mute'    =>array(
-                                'name'      =>  esc_html__('Start Muted','wpstream'),
-                                'details'   =>  esc_html__('If enabled, live video will start muted. This may increase the rate of autoplay in some browsers. ','wpstream'),
-                                'defaults'  =>  'no',
-
-                            ),
-                'low_latency'   =>array(
-                                'name'      =>  esc_html__('Low Latency (beta)','wpstream'),
-                                'details'   =>  esc_html__('Shortens the live delay between streamer and viewers. Useful for interactive applications like gaming, auctions, trading etc. Low latency may worsen the viewer experience on some devices.','wpstream'),
-                                'defaults'  =>  'no',
-                            ),
-                'adaptive_bitrate'   =>array(
-                                'name'      =>  esc_html__('Adaptive Bitrate (beta)','wpstream'),
-                                'details'   =>  esc_html__('Ensures a smooth and uninterrupted viewing experience by adjusting video quality for viewers with reduced network speed or device capabilities.','wpstream'),
-                                'defaults'  =>  'no',
-                            ),
-                'encrypt'   =>array(
-                                'name'      =>  esc_html__('Encrypt Live Stream','wpstream'),
-                                'details'   =>  esc_html__('If enabled, video data will be encrypted. Enabling encryption may lead to reduced website performance under certain configurations. Encrypted video may not display in all browsers.','wpstream'),
-                                'defaults'  =>  'no',
-                            ),
-                'ses_encrypt'=>array(
-                                'name'      =>  esc_html__('Use Sessions with Encryption','wpstream'),
-                                'details'   =>  esc_html__('If enabled, encryption key distribution will be checked against valid user sessions. Setting may malfunction or lead to reduced website performance under certain configurations. ','wpstream'),
-                                'defaults'  =>  'no',
-                            ),
-                'autostart'    =>array(
-                    'name'      =>  esc_html__('Auto TURN ON','wpstream'),
-                    'details'   =>  esc_html__('If enabled, channel will TURN ON automatically when broadcasting with an External Streaming App (RTMP Encoder/Broadcaster)','wpstream'),
-                    'defaults'  =>  'no',
-                        ),
-
-              
-            );
-
+        $this->global_event_options = array(
+            'record'        => array(
+                'name'      => esc_html__('Record Live Stream','wpstream'),
+                'details'   => esc_html__('If enabled, live streams will be recorded and saved to your library.','wpstream'),
+                'defaults'  => 'no',
+            ),
+            'view_count'    => array(
+                'name'      => esc_html__('Display Viewer Count','wpstream'),
+                'details'   => esc_html__('If enabled, the live viewer count will show up in the player.','wpstream'),
+                'defaults'  => 'yes',
+            ),
+            'domain_lock'   => array(
+                'name'      => esc_html__('Lock To Website','wpstream'),
+                'details'   => sprintf ( esc_html__('If enabled, live video will only display on %1$s, otherwise it can show up on any website.','wpstream'),get_bloginfo('wpurl') ),
+                'defaults'  => 'no',
+            ),
+            'autoplay'      => array(
+                'name'      => esc_html__('Autoplay','wpstream'),
+                'details'   => esc_html__('If enabled, live video will attempt to start playing automatically. This is only achievable in some browsers.','wpstream'),
+                'defaults'  => 'yes',
+            ),
+            'mute'          => array(
+                'name'      => esc_html__('Start Muted','wpstream'),
+                'details'   => esc_html__('If enabled, live video will start muted. This may increase the rate of autoplay in some browsers. ','wpstream'),
+                'defaults'  => 'no',
+            ),
+            'low_latency'   => array(
+                'name'      => esc_html__('Low Latency (beta)','wpstream'),
+                'details'   => esc_html__('Shortens the live delay between streamer and viewers. Useful for interactive applications like gaming, auctions, trading etc. Low latency may worsen the viewer experience on some devices.','wpstream'),
+                'defaults'  => 'no',
+            ),
+            'adaptive_bitrate'   => array(
+                'name'           => esc_html__('Adaptive Bitrate (beta)','wpstream'),
+                'details'        => esc_html__('Ensures a smooth and uninterrupted viewing experience by adjusting video quality for viewers with reduced network speed or device capabilities.','wpstream'),
+                'defaults'  =>  'no',
+            ),
+            'encrypt'   =>array(
+                'name'      =>  esc_html__('Encrypt Live Stream','wpstream'),
+                'details'   =>  esc_html__('If enabled, video data will be encrypted. Enabling encryption may lead to reduced website performance under certain configurations. Encrypted video may not display in all browsers.','wpstream'),
+                'defaults'  =>  'no',
+            ),
+            'ses_encrypt'=>array(
+                'name'      =>  esc_html__('Use Sessions with Encryption','wpstream'),
+                'details'   =>  esc_html__('If enabled, encryption key distribution will be checked against valid user sessions. Setting may malfunction or lead to reduced website performance under certain configurations. ','wpstream'),
+                'defaults'  =>  'no',
+            ),
+            'autostart'    =>array(
+                'name'      =>  esc_html__('Auto TURN ON','wpstream'),
+                'details'   =>  esc_html__('If enabled, channel will TURN ON automatically when broadcasting with an External Streaming App (RTMP Encoder/Broadcaster)','wpstream'),
+                'defaults'  =>  'no',
+            ),
+        );
     }
 
     /**
@@ -203,7 +195,7 @@ class Wpstream_Admin {
                         'invalid_response'         => esc_html__('Invalid response from server. Missing required upload data.', 'wpsteram'),
                         'video_processing'         => esc_html__( 'The video is still processing', 'wpstream' ),
                         'file_name_text'           => esc_html__('File Name:','wpstream'),
-
+                        'channel_create_error'     => esc_html__('Something did not work. Please try again.', 'wpstream'),
                     ));
                 
                 wp_enqueue_script('wpstream-recordings-videos-list',   plugin_dir_url( __FILE__ ) .'js/recordings_videos_list.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
@@ -237,6 +229,7 @@ class Wpstream_Admin {
                         'stop_streaming_action' =>  esc_html__('TURNING OFF','wpstream'),
                         'start_streaming'       =>  esc_html__('TURN ON','wpstream'),
                         'stop_streaming'        =>  esc_html__('TURN OFF','wpstream'),
+                        'failed_fetching'       =>  esc_html__('Failed to get channel info. Please try again.','wpstream'),
                         'turned_on_tooltip'     =>  esc_html__('Channel is now OFF. Click to turn ON.','wpstream'),
                         'turned_off_tooltip'    =>  esc_html__('Click to turn channel off. This will interrupt any ongoing broadcast.','wpstream'),                     
                         'turning_on_tooltip'    =>  esc_html__('Turning a channel on may take 1-2 minutes or more. Please be patient.','wpstream'),
@@ -572,11 +565,15 @@ class Wpstream_Admin {
             if( $live_event_for_user=='' && $is_front=='front' ){
                 $live_event_for_user    =    $this->main->wpstream_live_connection->wpstream_get_live_event_for_user();
             }
-            $channel_status                 =   esc_html__('Channel is OFF','wpstream');
+            $channel_status = '<div class="spinner" style="visibility: visible"></div>';
+            $button_status  = '<div class="spinner" style="visibility: visible"></div>';
             if(is_array($live_event_for_user) && isset($live_event_for_user[$the_id])) {
                 $pending_streaming_class        =   'pending_trigger';
                 $live_data_url                  =   get_post_meta($the_id,'qos_url',true);
               //  $channel_status                 =   esc_html__('Channel is on','wpstream');
+            } else {
+                $channel_status                 =   esc_html__('Channel is OFF','wpstream');
+                $button_status                  = esc_html__('TURN ON','wpstream');
             }
 
             $server_id      =   get_post_meta($the_id,'server_id',true);
@@ -600,11 +597,11 @@ class Wpstream_Admin {
                         get_post_meta($the_id,'obs_stream',true).'***</br>'.   
                         get_post_meta($the_id,'broadcast_url',true);
                     */
-                    print '<div class="wpstream_channel_item_id">'.esc_html('#ID','wpstream').' '.$the_id.'</div>';
+                    print '<div class="wpstream_channel_item_id">'.esc_html( '#ID' ).' '.$the_id.'</div>';
                 print '</div>';
             
 
-                print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'" > '.esc_html__('TURN ON','wpstream');
+                print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'" > ' . $button_status;
                     print '<div class="wpstream_tooltip">'.esc_html__('Channel is now OFF. Click to turn ON.','wpestream').'</div>'; 
                 print '</div>';
                           
@@ -687,11 +684,6 @@ class Wpstream_Admin {
                     print '</div>';
                 print '</div>';
 
-         
-
-             
-
-
                 $this->wpstream_display_modal_seetings($the_id);
                 $this->wpstream_display_modal_share($the_id);
                 $this->wpstream_display_modal_broadcast($the_id,$external_software_streaming_class,$obs_uri,$obs_stream);
@@ -752,11 +744,17 @@ class Wpstream_Admin {
             if( $live_event_for_user=='' && $is_front=='front' ){
                 $live_event_for_user    =    $this->main->wpstream_live_connection->wpstream_get_live_event_for_user();
             }
-            $channel_status                 =   esc_html__('Channel is OFF','wpstream');
+
+            $spinner_url = admin_url('images/spinner-2x.gif');
+            $button_status = '<div class="spinner" style="background-image: url(' . $spinner_url . ')"></div>';
+            $channel_status = '';
             if(is_array($live_event_for_user) && isset($live_event_for_user[$the_id])) {
                 $pending_streaming_class        =   'pending_trigger';
                 $live_data_url                  =   get_post_meta($the_id,'qos_url',true);
               //  $channel_status                 =   esc_html__('Channel is on','wpstream');
+            } else {
+                $channel_status                 = esc_html__('Channel is OFF','wpstream');
+                $button_status                  = esc_html__('TURN ON', 'wpstream');
             }
 
             $server_id      =   get_post_meta($the_id,'server_id',true);
@@ -767,7 +765,7 @@ class Wpstream_Admin {
 
             print '<div class="wpstream_theme_event_list_unit event_list_unit '.$live_class.' '.$pending_streaming_class.' event_unit_style_'.esc_attr($is_front).'"  data-show-id="'.intval($the_id).'" data-server-id="'.$server_id.'" data-server-url="'.$rtmp_ip_uri.'"">';
 
-                print '<div class="wpstream_channel_status">'.$channel_status.'</div>';
+                print '<div class="wpstream_channel_status" style="' . ($channel_status ? '' : 'display: none') . '">'.$channel_status.'</div>';
 
                 print '<div class="server_notification"></div>';
 
@@ -866,7 +864,7 @@ class Wpstream_Admin {
                 print '</div>';
 
                   
-                    print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'" > '.esc_html__('TURN ON','wpstream');
+                    print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'" > '. $button_status;
                         print '<div class="wpstream_tooltip">'.esc_html__('Channel is now OFF. Click to turn ON.','wpestream').'</div>'; 
                     print '</div>';
                 
@@ -3206,7 +3204,7 @@ class Wpstream_Admin {
                     'post_type'     =>  'product',
                     'post_author'   => $current_user->ID
                 );
-                   
+
                 // Insert the post into the database
                 $post_id = wp_insert_post( $my_post );
 
@@ -3268,33 +3266,27 @@ class Wpstream_Admin {
                 $post_id = wp_insert_post( $my_post );
 
                 if(is_wp_error($post_id)){
-                    echo json_encode( array('succes'=>false) );        
+                    echo json_encode( array('succes'=>false) );
                 }else{
                     $permalink = get_edit_post_link($post_id);
 
                     $permalink= add_query_arg( 'onboard', 'yes', $permalink );
                     $permalink= add_query_arg( 'branch', '1', $permalink );
-                  
-                    
+
                     echo json_encode( array(
-                        'success'=>  true, 
-                        'link'  =>  ($permalink) 
+                        'success'=>  true,
+                        'link'  =>  ($permalink)
                     ));
                 }
-               
             }
             die();
         }
-
-        
 
         /*
         *
         * On Boarding create free vod
         *
         */
-
-
         public function wpstream_on_board_create_free_vod(){
             $current_user           =   wp_get_current_user();
             check_ajax_referer( 'wpstream_onboarding_nonce', 'security' );
@@ -3308,8 +3300,8 @@ class Wpstream_Admin {
                     'post_type'     =>  'wpstream_product_vod',
                     'post_author'   => $current_user->ID
                   );
-                   
-                  // Insert the post into the database
+
+                // Insert the post into the database
                 $post_id = wp_insert_post( $my_post );
 
                 if(is_wp_error($post_id)){
@@ -3359,13 +3351,13 @@ class Wpstream_Admin {
                     'post_type'     =>  'product',
                     'post_author'   => $current_user->ID
                 );
-                   
+
                 // Insert the post into the database
                 $post_id = wp_insert_post( $my_post );
 
-                if(is_wp_error($post_id)){
-                    echo json_encode( array('succes'=>false) );        
-                }else{
+                if( is_wp_error( $post_id ) ) {
+                    echo json_encode( array('succes'=>false) );
+                } else {
                 
                     $product    =   wc_get_product($post_id);
                     $price      =   wc_format_decimal($vod_price);

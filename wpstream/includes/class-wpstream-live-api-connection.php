@@ -1204,11 +1204,9 @@ class Wpstream_Live_Api_Connection  {
         
         $video_options          =   array();
         $video_array            =   $this->wpstream_get_videos_from_api();
-     
-        $video_list_raw_array   =   $video_array['items'];
         
-        
-        if(is_array($video_list_raw_array)){
+        if( is_array($video_array) && isset($video_array['items']) && is_array($video_array['items'])){
+	        $video_list_raw_array = $video_array['items'];
             $keys = array_column($video_list_raw_array, 'time');
             array_multisort($keys, SORT_DESC , $video_list_raw_array);
 
@@ -1220,7 +1218,6 @@ class Wpstream_Live_Api_Connection  {
 
         }
         return $video_options;
-                       
     }
     
     
