@@ -3,7 +3,7 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.6.6.7
+ * Version:           4.6.6.8
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
@@ -14,7 +14,7 @@
 if ( ! defined( 'WPINC' ) ) {
 	die;
 }
-define('WPSTREAM_PLUGIN_VERSION', '4.6.6.7');
+define('WPSTREAM_PLUGIN_VERSION', '4.6.6.8');
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 define('WPSTREAM_CLUBLINKSSL', 'https');
 define('WPSTREAM_PLUGIN_URL',  plugins_url() );
@@ -46,6 +46,8 @@ function deactivate_wpstream() {
 register_activation_hook( __FILE__, 'activate_wpstream' );
 register_deactivation_hook( __FILE__, 'deactivate_wpstream' );
 
+require plugin_dir_path( __FILE__ ) . 'wpstream-elementor.php';
+require plugin_dir_path( __FILE__ ) . 'streamify/streamify.php';
 
 /**
  * Begins execution of the plugin.
@@ -63,12 +65,10 @@ function wpstream_init_plugin() {
 	 * admin-specific hooks, and public-facing site hooks.
 	 */
 	require plugin_dir_path( __FILE__ ) . 'includes/class-wpstream.php';
-	require plugin_dir_path( __FILE__ ) . 'wpstream-elementor.php';
-	require plugin_dir_path( __FILE__ ) . 'streamify/streamify.php';
 
 	global $wpstream_plugin;
-    $wpstream_plugin = new Wpstream();
-    $wpstream_plugin->run();
+	$wpstream_plugin = new Wpstream();
+	$wpstream_plugin->run();
 }
 add_action( 'init', 'wpstream_init_plugin' );
 
