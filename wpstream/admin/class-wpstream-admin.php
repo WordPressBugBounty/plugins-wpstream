@@ -70,6 +70,10 @@ class Wpstream_Admin {
         $this->version = $version;
         $this->main = $plugin_main;
 
+        add_action('init', array($this, 'load_global_event_options'));
+    }
+
+    public function load_global_event_options() {
         $this->global_event_options = array(
             'record'        => array(
                 'name'      => esc_html__('Record Live Stream','wpstream'),
@@ -1927,9 +1931,6 @@ class Wpstream_Admin {
          */  
         public function wpstream_present_file_management(){
                 $video_list_raw = $this->main->wpstream_live_connection->wpstream_get_videos_from_api();
-//                echo '<pre>';
-//                var_dump($video_list_raw);
-//                echo '</pre>';
 
                 $video_list_raw_array = [];
                 if( isset( $video_list_raw['items'] ) ){
