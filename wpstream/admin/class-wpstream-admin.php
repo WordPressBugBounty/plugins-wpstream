@@ -254,7 +254,7 @@ class Wpstream_Admin {
                         'basic_streaming_warning' => esc_html__(
                             'Your account is now in BASIC STREAMING mode.' . PHP_EOL . PHP_EOL .
                 'Instead of offloading to the WpStream Cloud, this mode relies on WordPress and hosting resources to process and deliver video. In some WP environments, streaming may be unreliable.' . PHP_EOL . 
-                            'Certain features, such as recording, browser broadcasting, and content protection are unavailable.' . PHP_EOL . PHP_EOL .
+                            'Certain features, such as recording, viewer count, browser broadcasting, and content protection are unavailable.' . PHP_EOL . PHP_EOL .
                             '- To take advantage of all features, please choose Cancel and upgrade your plan.' . PHP_EOL . 
                             '- Otherwise, choose OK to start your channel with these limitations.' . PHP_EOL . PHP_EOL .
                             'ARE YOU SURE you want to continue with Basic Streaming?',

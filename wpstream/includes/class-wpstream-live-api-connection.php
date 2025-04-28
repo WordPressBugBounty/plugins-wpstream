@@ -777,7 +777,10 @@ class Wpstream_Live_Api_Connection  {
             if($on_boarding!=''){
                 $metadata_array['on_boarding']='yes';
             }
-
+            $permalink = get_permalink($schannel_id);
+            if ($permalink !== false) {
+                $metadata_array['permalink'] = $permalink;
+            }
             
             $curl_post_fields=array( 
                 'access_token'          =>  $access_token, 

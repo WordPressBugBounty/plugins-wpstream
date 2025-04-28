@@ -405,10 +405,19 @@ class Wpstream_Player{
 
         echo '<div class="wpstream_live_player_wrapper function_wpstream_live_event_player" data-now="'.$now.'" data-me="'.esc_attr($usernamestream).'" data-product-id="'.$channel_id.'" id="wpstream_live_player_wrapper'.$now.'" > ';
                 
-            if( ( isset($event_settings['view_count'] ) && intval($event_settings['view_count'])==1 ) || !isset($event_settings['view_count']) ){
-                echo '<div id="wpestream_live_counting" class="wpestream_live_counting"></div>';
+            $show_viewer_count = (
+                ( isset($event_settings['view_count']) && intval($event_settings['view_count']) == 1 )
+                || !isset($event_settings['view_count'])
+            );
+            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+            if( isset($pack_details['available_data_mb'])){
+                if ($pack_details['available_data_mb'] <= 0){
+                    $show_viewer_count = false;
+                }
             }
-            
+
+            echo '<div id="wpestream_live_counting" class="wpestream_live_counting" data-showviewercount="' . ($show_viewer_count ? '1' : '0') . '"></div>';
+
             $show_wpstream_not_live_mess=' style="display:none;" ';
             if(trim($hls_playback_url) ==''){
 

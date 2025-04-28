@@ -238,8 +238,12 @@ class WpstreamPlayer {
 
   updateViewerCount(count) {
     console.log("updateViewerCount: ", count);
-    this.counter.show();
     this.counter.setCount(count);
+  }
+
+  updatePending(place){
+    console.log("updatePending: ", place);
+    this.counter.showPending(place);
   }
 
   showTitleOverlay(show = true) {
@@ -501,7 +505,7 @@ class WpstreamPlayback {
         //     type: "application/x-mpegURL",
         //     llhls: isLlHls(src)
         // });
-        owner.playContent(force);
+        // owner.playContent(force);
       },
       force ? 1 : 2000
     );
@@ -935,6 +939,11 @@ class LiveCounter {
     console.log("[]LiveCounter: ", wrapper, id);
     this.element = wrapper.find(".wpestream_live_counting");
     this.element.css("background-color", "rgb(174 69 69 / 90%)");
+
+    console.log("showviewercount: ", this.element.data().showviewercount);
+    this.showCounter = this.element.data().showviewercount.toString() === "1";
+    console.log("showCounter: ", this.showCounter);
+
     //var playerElement = wrapper.find('.wpstream-video' + id);
     var playerElement = jQuery("#wpstream-video" + id);
     console.log("playerElement: ", playerElement);
@@ -949,8 +958,19 @@ class LiveCounter {
   hide() {
     this.element.hide();
   }
+
   setCount(count) {
-    this.element.html(count + " Viewers");
+    if (this.showCounter){
+      this.element.html(count + " Viewers");
+      this.show();
+    }
+    else {
+      this.hide();
+    }
+  }
+  showPending(place){
+    this.element.html(`Max viewers reached. Please wait for ${place} to leave.`);
+    this.show();
   }
 }
 
@@ -1035,6 +1055,9 @@ class LiveConnect {
       switch (json.type) {
         case "viewerCount":
           this.master.updateViewerCount(json.data);
+          break;
+        case "pending":
+          this.master.updatePending(json.data);
           break;
         case "onair":
           if (json.info) {
