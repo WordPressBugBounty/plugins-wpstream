@@ -54,7 +54,16 @@ if (!defined('ABSPATH')) exit;
 			        'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/live-shoping/preview.png' ,
 			        'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
 			        'preview_url'                 =>  'https://liveshopping.wpstream.net/',
-		        )
+		        ),
+	            'believe-demo' => array(
+		            'import_file_name'            =>  'Believe Demo',
+		            'import_file_url'             =>  'https://wpstream.net/downloads/demos/believe/believe-demo.xml',
+		            'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/believe/widgets.wie',
+		            'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/believe/customizer.dat',
+		            'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/believe/preview.png' ,
+		            'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+		            'preview_url'                 =>  'https://believe.wpstream.net/',
+	            )
         );
 
         return $demo_array;
