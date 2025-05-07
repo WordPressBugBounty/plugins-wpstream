@@ -173,16 +173,16 @@ class Wpstream {
 		 * side of the site.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-wpstream-public.php';
-                
-                /**
+
+		/**
 		 * The class responsible for custom post type
 		
-                 */
-                require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream_product.php';
-                if(  class_exists( 'WooCommerce' ) ){
-                    require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_live_stream.php';
-                    require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_video_on_demand.php';
-                }
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream_product.php';
+		if(  class_exists( 'WooCommerce' ) ){
+			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_live_stream.php';
+			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_video_on_demand.php';
+		}
 
 		$this->loader = new Wpstream_Loader();
 
@@ -293,8 +293,10 @@ class Wpstream {
           
                        
                 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-              
+
+                    $this->loader->add_action( 'init',                          $plugin_admin, 'wpstream_add_custom_wc_products' );
                     $this->loader->add_filter( 'product_type_selector',         $plugin_admin, 'wpstream_add_products' );
+                    $this->loader->add_filter( 'woocommerce_product_class',     $plugin_admin, 'wpstream_add_products_class', 10, 2 );
                     $this->loader->add_action( 'admin_footer',                  $plugin_admin, 'wpstream_products_custom_js' );
                     $this->loader->add_filter( 'woocommerce_product_data_tabs', $plugin_admin, 'wpstream_hide_attributes_data_panel',10,1 );
                     $this->loader->add_filter( 'woocommerce_is_purchasable',    $plugin_admin, 'wpstream_hide_buy_now_subscription_mode',10,2);

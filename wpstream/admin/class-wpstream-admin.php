@@ -2234,9 +2234,24 @@ class Wpstream_Admin {
             
             return $types;
         }
-        
-        
-        
+
+		public function wpstream_add_products_class( $classname, $product_type ) {
+			if ( 'live_stream' === $product_type ) {
+				$classname = 'WC_Product_Live_Stream';
+			}
+			if ( 'video_on_demand' === $product_type ) {
+				$classname = 'WC_Product_Video_On_Demand';
+			}
+			return $classname;
+		}
+
+		public function wpstream_add_custom_wc_products() {
+			if(  class_exists( 'WooCommerce' ) ){
+					require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_live_stream.php';
+					require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_video_on_demand.php';
+				}
+		}
+
          /**
         * Js action to do when user pick live stream or video on demand
         *

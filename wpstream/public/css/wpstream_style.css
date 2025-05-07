@@ -193,12 +193,15 @@
 }
 
 .wpstream_player_container .video-js .vjs-big-play-button .vjs-icon-placeholder:before{
-    top: 30% !important;
     left: 2px;
 }
 
 .wpstream_player_container .video-js .vjs-big-play-button .vjs-control-text {
     width: max-content !important;
+}
+
+.wpstream_player_container .video-js .vjs-big-play-button {
+    width: 1.63332em;
 }
 
 .video-js .vjs-big-play-button .vjs-icon-placeholder{

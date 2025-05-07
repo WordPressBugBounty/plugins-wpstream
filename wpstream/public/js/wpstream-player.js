@@ -940,9 +940,12 @@ class LiveCounter {
     this.element = wrapper.find(".wpestream_live_counting");
     this.element.css("background-color", "rgb(174 69 69 / 90%)");
 
-    console.log("showviewercount: ", this.element.data().showviewercount);
-    this.showCounter = this.element.data().showviewercount.toString() === "1";
-    console.log("showCounter: ", this.showCounter);
+    const data = this.element?.data?.() || {};
+    console.log("showviewercount:", data.showviewercount);
+    this.showCounter = (data.showviewercount !== undefined && data.showviewercount !== null)
+        ? data.showviewercount.toString() === "1"
+        : false;
+    console.log("showCounter:", this.showCounter);
 
     //var playerElement = wrapper.find('.wpstream-video' + id);
     var playerElement = jQuery("#wpstream-video" + id);
