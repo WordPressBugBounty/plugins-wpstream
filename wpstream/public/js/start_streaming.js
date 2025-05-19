@@ -746,7 +746,6 @@ function wpstream_save_options_actions(){
 
         wpstream_adjust_settings(jQuery(this));
 
-        
         var holder  =   jQuery(this).parents('.wpstream_event_streaming_local');
         var show_id =   jQuery(this).parents('.event_list_unit').find('.start_event').attr('data-show-id');
         var optionarray ={};
@@ -780,7 +779,6 @@ function wpstream_save_options_actions(){
     });
     
 }
-
 
 /*
 *

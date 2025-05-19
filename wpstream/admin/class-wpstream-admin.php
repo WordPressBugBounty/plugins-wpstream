@@ -262,6 +262,11 @@ class Wpstream_Admin {
                         )
                     ));
 
+                wp_enqueue_script('wpstream-settings',   plugin_dir_url( __DIR__  ) .'/admin/js/wpstream_settings.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
+                wp_localize_script('wpstream-settings', 'wpstream_settings_vars', array(
+                        'error_message' => esc_html__( 'Failed to save settings. Please try again.', 'wpstream'),
+                ));
+
 
                     wp_enqueue_script('wpstream-on-boarding-js',   plugin_dir_url( __DIR__  ) .'/admin/js/wpstream-onboarding2.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true); 
                     wp_localize_script('wpstream-on-boarding-js', 'wpstreamonboarding_js_vars', 
@@ -1261,8 +1266,8 @@ class Wpstream_Admin {
                 if( isset($_POST['user_streaming_channel_type_hidden']) && intval($_POST['user_streaming_channel_type_hidden'])==1  && !isset($_POST['stream_role'])    ){
                      update_option( sanitize_key('wpstream_stream_role'), '' );
                 }
-                
-                foreach($_POST as $variable=>$value){   
+
+                foreach($_POST as $variable=>$value){
                     if ($variable!='submit'){
                         if (!in_array($variable, $exclude_array) ){
                             update_option( sanitize_key('wpstream_'.$variable), sanitize_text_field ($value) );
@@ -1295,9 +1300,9 @@ class Wpstream_Admin {
                 
                 
                 // reset permalinkgs
-                global $wp_rewrite; 
-            
-                update_option( "rewrite_rules", FALSE ); 
+                global $wp_rewrite;
+
+                update_option( "rewrite_rules", FALSE );
                 $wp_rewrite->flush_rules( true );
                 
             }
@@ -1511,7 +1516,13 @@ class Wpstream_Admin {
                                    if($option['tab']!=$active_tab){
                                        continue;
                                    }
-                                   
+
+                                   if ( $option['type']=='user_streaming_global_channel_options' ) {
+                                       print '<div class="default-channel-settings-info">';
+                                       print esc_html__( 'These settings will apply to newly created channels; existing channels will not change settings if you change them here', 'wpstream');
+                                       print '</div>';
+
+                                   }
                                    print '<div class="wpstream_option">';
                                             $options_value =   get_option('wpstream_'.$option['name']) ;
                                       
@@ -1538,7 +1549,7 @@ class Wpstream_Admin {
                                                 }
                                                 
                                                 print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
-                                                print '<input id="'.$option['name'].'" type="'.$option['type'].'" size="36"  name="'.$option['name'].'" value="'.esc_attr($options_value).'" />';
+                                                print '<input class="wpstream-text-input-setting" id="'.$option['name'].'" type="'.$option['type'].'" size="36"  name="'.$option['name'].'" value="'.esc_attr($options_value).'" />';
                                                 print '<div class="settings_details">'.$option['details'].'</div>';
                                                 
                                             }  else if($option['type']=='select'){
@@ -1561,25 +1572,24 @@ class Wpstream_Admin {
                                                 print '<label class="wpstream_switch">
                                                       <input type="hidden" class="wpstream_event_option_itemc" value="0" name="'.$option['name'].'" >
                                                       <input type="checkbox" class="wpstream_event_option_itemc" value="1" name="'.$option['name'].'" ';
-                                                      
-                                                            if( intval($options_value) !==0 ){
-                                                                print ' checked ';
-                                                            }
-                                                      
-
-
-                                                    print '> <span class="wpstream_slider round"></span>';
-                                                    print '</label>';
-                                                    print '<div class="settings_details">'.$option['details'].'</div>';
+                                                if( intval($options_value) !==0 ){
+                                                    print ' checked ';
+                                                }
+                                                print '> <span class="wpstream_slider round"></span>';
+                                                print '</label>';
+                                                print '<div class="settings_details">'.$option['details'].'</div>';
                                             }
                                    print '</div>';
                                }
                            print '</div>';
 
 
+                        print '<div class="wpstream-save-settings">';
                        print '<input type="submit" name="submit"  class="wpstream_button wpstream_button_action" value="'.__('Save Changes','wpstream').'" />';
+                       print '<div class="spinner"></div>';
+                       print '</div>';
 
-                    print  '<input name="wpstream-settings-nonce" type="hidden" value="'.wp_create_nonce('wpstream-settings-nonce').'" /> ';     
+                    print  '<input id="wpstream-settings-nonce" name="wpstream-settings-nonce" type="hidden" value="'.wp_create_nonce('wpstream-settings-nonce').'" /> ';
             print   '</form>';
         print '</div>';
          
@@ -1677,11 +1687,18 @@ class Wpstream_Admin {
                 $exclude_array  =   array();
                 $allowed_html   =   array();
 
-                foreach($_POST as $variable=>$value){   
+                foreach($_POST as $variable=>$value){
                     if ($variable!='submit'){
                         if (!in_array($variable, $exclude_array) ){
-                            update_option( sanitize_key('wpstream_'.$variable), wp_kses ($value,$allowed_html) );
-                        }   
+                            switch ( $variable ) {
+                                case 'api_username':
+                                    update_option( sanitize_key('wpstream_api_username'), sanitize_text_field($value) );
+                                    break;
+                                case 'api_password':
+                                    update_option( sanitize_key('wpstream_api_password'), $value );
+                                    break;
+                            }
+                        }
                     }   
                 }
                 
@@ -1943,7 +1960,7 @@ class Wpstream_Admin {
                 $to_return='';
 
                 // show pending items
-                if ( is_array( $video_list_raw['pending'] ) ) {
+                if ( key_exists( 'pending', $video_list_raw ) && is_array( $video_list_raw['pending'] ) ) {
                     foreach ( $video_list_raw['pending'] as $key => $video ) {
                         $video_size = intval($video['size']/1048576);
                         $video_name = esc_html($video['name']);
@@ -1993,7 +2010,7 @@ class Wpstream_Admin {
 				}
 
                 // no items to show
-                if ( !is_array( $video_list_raw['items'] ) || !is_array( $video_list_raw['pending'] ) ) {
+                if ( !is_array( $video_list_raw['items'] ) || ( key_exists( 'pending', $video_list_raw ) && !is_array( $video_list_raw['pending'] ) ) ) {
                     $to_return.= '<div class="wpstream_video_wrapper">'.esc_html__('You don\'t have any videos.','wpstream').'</div>';
                }
                return $to_return;
@@ -3417,7 +3434,7 @@ class Wpstream_Admin {
 
             if(current_user_can('administrator')){
                 $username       = sanitize_text_field($_POST['api_username']);
-                $password       = sanitize_text_field($_POST['api_password']);
+                $password       = $_POST['api_password'];
                 update_option('wpstream_api_username',$username);
                 update_option('wpstream_api_password',$password);
 

@@ -9,7 +9,9 @@ class Wpstream_Live_Api_Connection  {
         add_action( 'wp_ajax_wpstream_give_me_live_uri', array($this,'wpstream_give_me_live_uri') );  
         add_action( 'wp_ajax_wpstream_turn_of_channel',  array($this,'wpstream_turn_of_channel') );  
         add_action( 'wp_ajax_wpstream_update_local_event_settings',array($this,'wpstream_update_local_event_settings'));
-        
+		add_action( 'wp_ajax_wpstream_update_default_channel_settings', array( $this, 'wpstream_update_default_channel_settings' ) );
+		add_action( 'wp_ajax_wpstream_update_settings', array( $this, 'wpstream_update_settings' ) );
+
         add_action( 'wp_ajax_wpstream_check_dns_sync', array($this,'wpstream_check_dns_sync') );
         add_action( 'wp_ajax_wpstream_check_event_status', array($this,'wpstream_check_event_status') );
         
@@ -413,8 +415,83 @@ class Wpstream_Live_Api_Connection  {
         $this->wpstream_update_chanel_on_baker($show_id,$to_save_option);
      
     }
-    
-  
+
+	public function wpstream_update_default_channel_settings() {
+		check_ajax_referer( 'wpstream-settings-nonce', 'security' );
+
+		$options_array= $_POST['option'];
+		$sanitized_options = array();
+		foreach( $options_array as $key => $value ) {
+			$sanitized_options[ sanitize_key( $key ) ] = sanitize_text_field( $value );
+		}
+
+		if ( $sanitized_options['low_latency'] == 1 || $sanitized_options['adaptive_bitrate'] == 1 ) {
+			$sanitized_options['encrypt'] = 0;
+		}
+
+		if ( $sanitized_options['encrypt'] == 1 ) {
+			$sanitized_options['low_latency'] = 0;
+			$sanitized_options['adaptive_bitrate'] = 0;
+		}
+
+		$successful_update = update_option( 'wpstream_user_streaming_global_channel_options', $sanitized_options );
+
+		if ( $successful_update ) {
+			wp_send_json(
+				array(
+					'success' => true,
+				)
+			);
+		} else {
+			wp_send_json_error(
+				array(
+					'success' => false,
+				)
+			);
+		}
+
+		wp_die();
+	}
+
+	public function wpstream_update_settings() {
+		check_ajax_referer( 'wpstream-settings-nonce', 'security' );
+
+		$option_name    = sanitize_key( $_POST['option_name'] );
+		$option_type    = sanitize_key( $_POST['option_type'] );
+
+		switch( $option_type ) {
+			case 'checkbox':
+				$option_value = filter_var( $_POST['option_value'], FILTER_VALIDATE_INT );
+				break;
+			case 'text':
+			case 'select':
+				$option_value = sanitize_text_field( $_POST['option_value'] );
+				break;
+			case 'multiple-select':
+				$option_value = array_map( 'sanitize_text_field', $_POST['option_value'] );
+				break;
+			default:
+				$option_value = sanitize_text_field( $_POST['option_value'] );
+		}
+
+		$successful_update = update_option( 'wpstream_' . $option_name, $option_value );
+
+		if( $successful_update ) {
+			wp_send_json(
+				array(
+					'success' => true,
+				)
+			);
+		} else {
+			wp_send_json_error(
+				array(
+					'success' => false,
+				)
+			);
+		}
+
+		wp_die();
+	}
 
  /**
      * Update channel settings on baker
@@ -863,8 +940,8 @@ class Wpstream_Live_Api_Connection  {
      * returns token fron wpstream
      */
     protected function wpstream_club_get_token(){
-        $username       = esc_html ( get_option('wpstream_api_username','') );
-        $password       = esc_html ( get_option('wpstream_api_password','') );
+        $username       = get_option('wpstream_api_username','');
+        $password       = get_option('wpstream_api_password','');
 
         if ( $username=='' || $password==''){
             return;
@@ -874,7 +951,7 @@ class Wpstream_Live_Api_Connection  {
         $curl_post_fields=array(
             'grant_type'    =>  'password',
             'username'      =>  $username,
-            'password'      =>  $password          
+            'password'      =>  $password
         );
         
     

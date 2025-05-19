@@ -471,6 +471,22 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     padding: 12px 25px;
 }
 
+.default-channel-settings-info {
+    width: 40%;
+    padding-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.4rem;;
+}
+
+.wpstream-save-settings {
+    display: flex;
+    align-items: center;
+}
+
+.wpstream-save-settings-error {
+    color: #f00;
+}
+
 .start_event.wpstream_button{
     padding: 9px 20px;
     width: auto;

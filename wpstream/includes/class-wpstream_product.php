@@ -402,7 +402,7 @@ class Wpstream_Product {
      */
 
 
-    public   function wpstream_category_callback_function($tag){
+    public   function wpstream_category_callback_function($tag, $taxonomy){
             if(is_object ($tag)){
                 $t_id                       =   $tag->term_id;
                 $term_meta                  =   get_option( "taxonomy_$t_id");
@@ -446,7 +446,7 @@ class Wpstream_Product {
 
 
 
-                    <input id="category_tax" type="hidden" size="36" name="term_meta[category_tax]" value="'.$tag->taxonomy.'" />
+                    <input id="category_tax" type="hidden" size="36" name="term_meta[category_tax]" value="'.$taxonomy.'" />
 
 
                 </tr>
@@ -498,7 +498,7 @@ class Wpstream_Product {
         <label for="term_meta[category_tagline]">'. esc_html__( 'Category Tagline','wpstream').'</label>
             <input id="category_tagline" type="text" size="36" name="term_meta[category_tagline]" value="'.$category_tagline.'" />
         </div> 
-        <input id="category_tax" type="hidden" size="36" name="term_meta[category_tax]" value="'.$tag->taxonomy.'" />
+        <input id="category_tax" type="hidden" size="36" name="term_meta[category_tax]" value="'.$tag.'" />
         ';
     }
 
