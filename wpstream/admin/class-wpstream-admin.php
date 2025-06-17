@@ -147,7 +147,13 @@ class Wpstream_Admin {
          * class.
          */
         wp_enqueue_style( 'wpstream-roboto', "https://fonts.googleapis.com/css?family=Roboto:300,400,500,600,700,900&display=swap&subset=latin-ext" );  
-        wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/wpstream-admin.css', array(), WPSTREAM_PLUGIN_VERSION, 'all' );
+        wp_enqueue_style(
+                $this->plugin_name,
+                plugin_dir_url( __FILE__ ) . 'css/wpstream-admin.css',
+                array(),
+                filemtime(plugin_dir_path(__FILE__) . 'css/wpstream-admin.css' ),
+                'all'
+            );
     
         wp_enqueue_style(
 	'wpstream-on-boarding-css',
@@ -265,6 +271,8 @@ class Wpstream_Admin {
                 wp_enqueue_script('wpstream-settings',   plugin_dir_url( __DIR__  ) .'/admin/js/wpstream_settings.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
                 wp_localize_script('wpstream-settings', 'wpstream_settings_vars', array(
                         'error_message' => esc_html__( 'Failed to save settings. Please try again.', 'wpstream'),
+                        'choose_image_text' => esc_html__( 'Choose Logo Image', 'wpstream'),
+                        'select_image_text' => esc_html__( 'Select Image', 'wpstream'),
                 ));
 
 
@@ -1411,7 +1419,54 @@ class Wpstream_Admin {
                     'default'   =>  esc_html__('We are not live at this moment','wpstream'),
                 ),
 
-              
+                14 =>  array(
+                            'tab'       =>  'general_options',
+                            'label'     =>  esc_html__('Video player theme','wpstream'),
+                            'name'      =>  'video_player_theme',
+                            'type'      =>  'select',
+                            'select_values'=>array(
+                                'default'  =>  esc_html__('Default','wpstream'),
+                                'city'  =>  esc_html__('City','wpstream'),
+                                'forest'  =>  esc_html__('Forest','wpstream'),
+                                'fantasy'  =>  esc_html__('Fantasy','wpstream'),
+                                'sea' => esc_html__('Sea','wpstream'),
+                            ),
+                            'details'   =>  esc_html__('Choose the video player theme to have a different look.','wpstream'),
+                        ),
+                'wpstream_player_logo' => array(
+                        'tab' => 'general_options',
+                        'name' => 'player_logo',
+                        'label' => esc_html__('Logo for the video player','wpstream'),
+                        'type' => 'image',
+                        'details' => esc_html__('This logo will be displayed on the the video player.','wpstream'),
+                        'default' => '',
+                        'image_size' => 'thumbnail',
+                ),
+                // hide the video player logo opacity for now
+//                'wpstream_player_logo_opacity' => array(
+//                        'tab' => 'general_options',
+//                        'name' => 'player_logo_opacity',
+//                        'label' => esc_html__('Opacity of the player logo','wpstream'),
+//                        'type' => 'range',
+//                        'details' => esc_html__('Set the opacity of the logo','wpstream'),
+//                        'default' => '',
+//                        'image_size' => 'thumbnail',
+//                ),
+                'wpsteram_player_logo_position' => array(
+                        'tab' => 'general_options',
+                        'name' => 'player_logo_position',
+                        'label' => esc_html__('Position of the video player logo','wpstream'),
+                        'type' => 'select',
+                        'select_values'=>array(
+                            'top-left'     =>  esc_html__('Top Left','wpstream'),
+                            'top-right'    =>  esc_html__('Top Right','wpstream'),
+                            'bottom-left'  =>  esc_html__('Bottom Left','wpstream'),
+                            'bottom-right' =>  esc_html__('Bottom Right','wpstream'),
+                        ),
+                        'details' => esc_html__('Choose the position of the logo on the video player.','wpstream'),
+                        'default' => '',
+                ),
+
 
                 
                 99  =>  array(
@@ -1527,33 +1582,29 @@ class Wpstream_Admin {
                                             $options_value =   get_option('wpstream_'.$option['name']) ;
                                       
                                         
-                                            if($option['type']=='user_roles'){
-                                           
+                                           switch( $option['type'] ) {
+                                            case 'user_roles':
                                                 print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
                                                 print $this->wpstream_select_user_roles($option['name'],$options_value);
                                                 print '<div class="settings_details">'.$option['details'].'</div>';
-
-                                            }else if($option['type']=='user_streaming_global_channel_options'){
-                                             
+                                                break;
+                                            case 'user_streaming_global_channel_options':
                                                 $exclude_array=array();
                                                 $this->user_streaming_global_channel_options($option['name'],$options_value,$exclude_array);
-                                             
-                                                
-                                            }else if($option['type']=='text'){
-
+                                                break;
+                                            case 'text':
                                                 if($options_value==''){
                                                     $options_value='';
                                                     if(isset($option['default'])){
                                                         $options_value=$option['default'];
                                                     }
                                                 }
-                                                
+
                                                 print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
                                                 print '<input class="wpstream-text-input-setting" id="'.$option['name'].'" type="'.$option['type'].'" size="36"  name="'.$option['name'].'" value="'.esc_attr($options_value).'" />';
                                                 print '<div class="settings_details">'.$option['details'].'</div>';
-                                                
-                                            }  else if($option['type']=='select'){
-                                                
+                                                break;
+                                            case 'select':
                                                 print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
                                                 print '<select id="'.$option['name'].'"  name="'.$option['name'].'"  >';
                                                     foreach($option['select_values'] as $key=>$value){
@@ -1566,8 +1617,8 @@ class Wpstream_Admin {
                                                 print '</select>';
                                                 print '<input type="hidden" name="'.$option['name'].'_hidden" value="1" >';
                                                 print '<div class="settings_details">'.$option['details'].'</div>';
-                                                
-                                            } else if($option['type']=='slidertoogle'){
+                                                break;
+                                            case 'slidertoogle':
                                                 print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
                                                 print '<label class="wpstream_switch">
                                                       <input type="hidden" class="wpstream_event_option_itemc" value="0" name="'.$option['name'].'" >
@@ -1578,7 +1629,35 @@ class Wpstream_Admin {
                                                 print '> <span class="wpstream_slider round"></span>';
                                                 print '</label>';
                                                 print '<div class="settings_details">'.$option['details'].'</div>';
-                                            }
+                                                break;
+                                            case 'image':
+                                                $image_url = $options_value ? esc_url($options_value) : '';
+                                                $has_image = !empty($image_url);
+
+                                                print '<label for="' . $option['name'] . '">' . $option['label'] . '</label>';
+                                                print '<div class="wpstream-image-upload-wrapper">';
+                                                print '<input type="hidden" id="' . $option['name'] . '" name="' . $option['name'] . '" value="' . $image_url . '" />';
+
+                                                // Preview area
+                                                print '<div class="wpstream-image-preview" style="' . (!$has_image ? 'display:none;' : '') . '">';
+                                                print '<img src="' . $image_url . '" alt="Preview" />';
+                                                print '</div>';
+
+                                                // Upload/remove buttons
+                                                print '<div class="wpstream-image-upload-buttons">';
+                                                print '<button type="button" class="wpstream-upload-image button">' . esc_html__('Upload Image', 'wpstream') . '</button>';
+                                                print '<button type="button" class="wpstream-remove-image button" style="' . (!$has_image ? 'display:none;' : '') . '">' . esc_html__('Remove Image', 'wpstream') . '</button>';
+                                                print '</div>';
+
+                                                print '</div>';
+                                                print '<div class="settings_details">' . $option['details'] . '</div>';
+                                                break;
+                                            case 'range':
+                                                print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
+                                                print '<input class="wpstream-range-input" type="range" id="'.$option['name'].'" name="'.$option['name'].'" min="0" max="100" step="10" value="'.esc_attr($options_value).'" />';
+                                                print '<div class="settings_details">'.$option['details'].'</div>';
+                                                break;
+                                        }
                                    print '</div>';
                                }
                            print '</div>';
@@ -1749,7 +1828,7 @@ class Wpstream_Admin {
                                     echo '</div>';
 
                                 }else if($token==''){
-                                    $text = get_option('wpstream_curl_failed') === false ?
+                                    $text = get_option('wpstream_curl_failed') === "0" ?
                                         ' Incorrect username or password. Please check your credentials or go <a href="https://wpstream.net/my-account/edit-account/" target="_blank">here</a> to reset your password.' :
                                         'Not connected to WpStream. Please note the errors above and contact support.';
                                     echo '<div class="api_not_conected">'.__($text,'wpstream').'</div>';
@@ -1948,6 +2027,10 @@ class Wpstream_Admin {
          */  
         public function wpstream_present_file_management(){
                 $video_list_raw = $this->main->wpstream_live_connection->wpstream_get_videos_from_api();
+
+                if ( $video_list_raw === false ) {
+                    return '<div class="wpstream_upload_container">'.esc_html__('Not connected. Please connect to WpStream to upload videos.','wpstream').'</div>';
+                }
 
                 $video_list_raw_array = [];
                 if( isset( $video_list_raw['items'] ) ){
@@ -3449,7 +3532,7 @@ class Wpstream_Admin {
                     ));
                 }
                 else {
-                    $text = get_option('wpstream_curl_failed') ? 
+                    $text = get_option('wpstream_curl_failed') ?
                         'Login failed with critical error: ' . get_option('wpstream_curl_failed') : 
                         'Wrong username or password!';
                     echo json_encode( array(
@@ -3485,7 +3568,7 @@ class Wpstream_Admin {
             
             if(current_user_can('administrator')){
                 $wpstream_register_email            = sanitize_text_field($_POST['wpstream_register_email']);
-                $wpstream_register_password         = sanitize_text_field($_POST['wpstream_register_password']);
+                $wpstream_register_password         = $_POST['wpstream_register_password'];
                 $wpstream_register_captcha          = sanitize_text_field($_POST['wpstream_register_captcha']);
                 $wpstream_register_captcha_id       = sanitize_text_field($_POST['wpstream_register_captcha_id']);
                 
@@ -3603,7 +3686,7 @@ class Wpstream_Admin {
             if(filter_var($wpstream_register_email,FILTER_VALIDATE_EMAIL) === false) {
                 $return= array(
                     'success'=>  false, 
-                    'message'  =>  esc_html('The email doesn\'t look right !','wpstream') 
+                    'message'  =>  esc_html__("The email doesn't look right !",'wpstream')
                 );
                 return $return;die();
             }
@@ -3613,7 +3696,7 @@ class Wpstream_Admin {
             if( $domain!='' && !checkdnsrr ($domain) ){
                 $return= array(
                     'success'=>  false, 
-                    'message'  =>  esc_html('The email doesn\'t look right !','wpstream') 
+                    'message'  =>  esc_html__("The email doesn't look right !",'wpstream')
                 );
                 return $return;die();
             }

@@ -14,6 +14,8 @@ jQuery(document).ready(function ($) {
     WpStreamUtils.generate_delete_link();
     wpstream_handle_video_selection();    
     wpstream_upload_images_in_wpadmin();
+
+    wpstream_upload_player_logo();
  
     
     function social_media_toggle(social_class){
@@ -611,3 +613,55 @@ function wpstream_admin_return_uploaded_image(){
     });
 }
 
+function wpstream_upload_player_logo(){
+    var mediaUploader;
+
+    // Handle upload button click
+    jQuery('.wpstream-upload-image').on('click', function(e) {
+        e.preventDefault();
+
+        var button = jQuery(this);
+        var wrapper = button.closest('.wpstream-image-upload-wrapper');
+        var inputField = wrapper.find('input[type="hidden"]');
+        var previewArea = wrapper.find('.wpstream-image-preview');
+        var removeButton = wrapper.find('.wpstream-remove-image');
+
+        // Create media uploader instance if not already created
+        if (!mediaUploader) {
+            mediaUploader = wp.media({
+                title: wpstream_settings_vars.choose_image_text || 'Choose Image',
+                button: {
+                    text: wpstream_settings_vars.select_image_text || 'Select Image'
+                },
+                multiple: false
+            });
+
+            // When image is selected in the media uploader
+            mediaUploader.on('select', function() {
+                var attachment = mediaUploader.state().get('selection').first().toJSON();
+                inputField.val(attachment.url);
+
+                previewArea.find('img').attr('src', attachment.url);
+                previewArea.show();
+                removeButton.show();
+            });
+        }
+
+        // Open the media uploader
+        mediaUploader.open();
+    });
+
+    // Handle remove button click
+    jQuery('.wpstream-remove-image').on('click', function(e) {
+        e.preventDefault();
+
+        var button = jQuery(this);
+        var wrapper = button.closest('.wpstream-image-upload-wrapper');
+        var inputField = wrapper.find('input[type="hidden"]');
+        var previewArea = wrapper.find('.wpstream-image-preview');
+
+        inputField.val('');
+        previewArea.hide();
+        button.hide();
+    });
+}

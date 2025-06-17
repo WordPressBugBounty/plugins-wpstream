@@ -60,7 +60,7 @@ class Wpstream_Live_Api_Connection  {
         $token          =   $this->wpstream_get_token();  
         if($token=='' and $page!='wpstream_plugin_options'){
             // echo 'wpstream_curl_failed: ' . get_option('wpstream_curl_failed');
-            $text = get_option('wpstream_curl_failed') == false ?
+            $text = get_option('wpstream_curl_failed') === "0" ?
                 'Not connected to WpStream. Please check your credentials <a href="/wp-admin/admin.php?page=wpstream_credentials">here</a>.' :
                 'Not connected to WpStream. Please note the errors above and contact support.';
 
@@ -101,7 +101,7 @@ class Wpstream_Live_Api_Connection  {
         $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
 
-        $curl_failed = false;
+        $curl_failed = 0;
 
         if ($err) {
             // do not echo every time, some operations must return JSON
@@ -141,20 +141,20 @@ class Wpstream_Live_Api_Connection  {
         else if ($expect_json){
             $curl_response_decoded  =   json_decode($response,JSON_OBJECT_AS_ARRAY);
             if (JSON_ERROR_NONE !== json_last_error()) {
-                if (!$quiet){
-                    echo '<div class="api_not_conected wpstream_error_curl">Critical: Malformed API response #: ' . json_last_error() . '</div>';
-                }
+	            if (!$quiet) {
+		            echo '<div class="api_not_conected wpstream_error_curl">Critical: Malformed API response #: ' . json_last_error() . '</div>';
+	            }
 
-                $curl_failed = json_last_error();
+	            $curl_failed = json_last_error();
 
-                $response = json_encode(   array(
-                    'success'      =>  false,
-                    'error'        =>  json_last_error(),
-                ));
+	            $response = json_encode(array(
+		            'success' => false,
+		            'error' => json_last_error(),
+	            ));
             }
         }
 
-        update_option("wpstream_curl_failed", $curl_failed);
+		update_option( "wpstream_curl_failed", $curl_failed );
 
         return $response;
     }

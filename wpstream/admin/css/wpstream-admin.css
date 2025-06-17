@@ -88,6 +88,27 @@
     max-width: 365px;
 }
 
+.wpstream_option .wpstream-image-upload-wrapper {
+    margin-bottom: 10px;
+}
+
+.wpstream_option .wpstream-image-upload-wrapper .wpstream-image-preview {
+    margin: 10px 0;
+    max-width: 300px;
+}
+
+.wpstream_option .wpstream-image-upload-wrapper .wpstream-image-preview img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    padding: 5px;
+    background: #fff;
+}
+
+.wpstream_option .wpstream-image-upload-wrapper .wpstream-image-upload-buttons .button {
+    margin-right: 5px;
+}
+
 
 .event_list_unit_notification{
     float:left;

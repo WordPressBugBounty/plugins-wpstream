@@ -1,8 +1,9 @@
-.vjs-wpstream .vjs-control-bar {
+.vjs-wpstream.vjs-theme-default .vjs-control-bar {
     background-color: hsl(0 0% 100% / 0);
     padding: 0px 12px;
     height: auto;
     height: 4em;
+    align-items: center;
 }
 
 .vjs-wpstream .vjs-control{
@@ -40,11 +41,17 @@
 .vjs-wpstream  .vjs-live-control {
     font-size: 1.1em;
     line-height: 3em;
+    height: 4em;
 }
 
 
 .vjs-wpstream .vjs-volume-panel .vjs-volume-control {
     margin: 0px 0px 0px 0px;
+}
+
+.vjs-wpstream .vjs-volume-panel .vjs-volume-control .vjs-volume-tooltip {
+    position: static;
+    margin-top: -20px;
 }
 
 .vjs-wpstream .vjs-button{

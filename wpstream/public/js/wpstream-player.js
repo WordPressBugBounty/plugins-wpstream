@@ -296,6 +296,19 @@ class WpstreamPlayback {
       // muted    : true
     });
 
+    this.applyTheme(wpstream_player_vars.wpstream_player_theme)
+
+      if ( typeof this.player.logo === 'function' && wpstream_player_vars.playerLogoSettings ) {
+          this.player.logo({
+              image: wpstream_player_vars.playerLogoSettings.imageUrl,
+              position: wpstream_player_vars.playerLogoSettings.position,
+              width: 100,
+              height: 'auto',
+              opacity: parseFloat(wpstream_player_vars.playerLogoSettings.opacity)/100,
+              padding: 10,
+          });
+      }
+
     if (this.master.settings.theaterModeButtons) {
       const Button = videojs.getComponent("Button");
       const owner = this;
@@ -450,6 +463,21 @@ class WpstreamPlayback {
     this.player.on("error", () => {
       if (!this.playingTrailer) this.qoe.error();
     });
+  }
+
+  applyTheme(themeName) {
+    const themes = ['vjs-theme-city', 'vjs-theme-forest', 'vjs-theme-sunset', 'vjs-theme-sea'];
+    themes.forEach(theme => {
+      this.player.removeClass(theme);
+    })
+
+    this.player.addClass(`vjs-theme-${themeName}`);
+  }
+
+  initThemeSelector() {
+    const Button = videojs.getComponent('Button');
+    const owner = this;
+
   }
 
   playTrailer(src, click) {
@@ -1238,6 +1266,10 @@ function wpstream_player_initialize_vod(settings) {
   player.controls(!settings.trailerUrl);
   player.autoplay(settings.autoplay);
   player.muted(settings.muted);
+
+  if ( typeof player.logo === 'function' && settings.playerLogoSettings ) {
+    player.logo(settings.playerLogoSettings);
+  }
 
   const originalPoster = player.poster();
 

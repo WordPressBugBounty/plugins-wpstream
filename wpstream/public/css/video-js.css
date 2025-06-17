@@ -593,7 +593,234 @@ body.vjs-full-window {
   right: 0;
   height: 3.0em;
   background-color: #2B333F;
-  background-color: rgba(43, 51, 63, 0.7); }
+  background-color: rgba(43, 51, 63, 0.7);
+}
+
+.video-js:not(.vjs-theme-default) .vjs-control-bar {
+  height: 54px;
+}
+
+/* Fantasy theme */
+.video-js.vjs-theme-fantasy .vjs-control {
+  height: 100%;
+  align-items: center;
+}
+
+.video-js.vjs-theme-fantasy .vjs-control-bar .vjs-play-control {
+  width: 4em;
+}
+
+.video-js.vjs-theme-fantasy .vjs-play-progress:before {
+  content: '';
+}
+
+.vjs-wpstream.vjs-theme-fantasy .vjs-play-control.vjs-button>.vjs-icon-placeholder:before {
+  font-size: 1.8em;
+}
+
+.vjs-wpstream.vjs-theme-fantasy .vjs-button > .vjs-icon-placeholder:before {
+  display: flex;
+  align-items: center;
+  width: 1.2em;
+}
+
+.wp-theme-hello-wpstream .vjs-wpstream.vjs-theme-fantasy .vjs-button > .vjs-icon-placeholder:before {
+  line-height: 1.9 !important;
+}
+
+.video-js.vjs-theme-fantasy .vjs-play-progress:before {
+  top: -.25em;
+}
+
+.video-js.vjs-theme-fantasy .vjs-play-progress {
+  background-color: var(--vjs-theme-fantasy--primary);
+}
+
+.vjs-wpstream.vjs-theme-fantasy .vjs-volume-panel .vjs-button > .vjs-icon-placeholder:before {
+  display: block;
+  line-height: 54px;
+}
+
+.wpstream-featured-player-wrapper .video-js.vjs-theme-fantasy .vjs-live-display {
+  margin: 0;
+}
+/* End of Fantasy theme */
+
+/* City theme */
+.video-js.vjs-theme-city .vjs-control-bar {
+  height: 60px;
+}
+
+.video-js.vjs-theme-city .vjs-control-bar .vjs-remaining-time {
+  display: flex;
+  align-content: center;
+  flex-wrap: wrap;
+
+  flex: 3 1;
+  line-height: 50px;
+  order: 1;
+  text-align: left;
+  height: 100%;
+  left: 20px;
+}
+
+.function_wpstream_live_event_player .video-js.vjs-theme-city .vjs-control-bar .vjs-remaining-time {
+  display: none;
+}
+
+.function_wpstream_live_event_player .video-js.vjs-theme-city .vjs-live-control {
+  flex: 3 1;
+  left: 20px;
+}
+
+.function_wpstream_live_event_player .video-js.vjs-theme-city .vjs-live-control .vjs-live-display {
+  background-color: #670000;
+  margin-top: 11px;
+}
+
+.video-js.vjs-theme-city .vjs-progress-control {
+  width: 100%;
+  position: absolute;
+  height: 20px;
+}
+
+.video-js.vjs-theme-city > .vjs-control-bar {
+  background-color: initial;
+}
+
+.video-js.vjs-theme-city > .vjs-control-bar > .vjs-play-control {
+  flex: 8 1;
+}
+
+.video-js.vjs-theme-city .vjs-progress-control .vjs-progress-holder {
+  margin: 0;
+}
+
+.video-js.vjs-theme-city .vjs-progress-control .vjs-volume-panel .vjs-volume-bar {
+  background-color: initial;
+}
+
+.video-js.vjs-theme-city .vjs-volume-panel .vjs-volume-bar {
+  background-color: initial;
+}
+
+.video-js.vjs-theme-city .vjs-volume-panel.vjs-volume-panel-horizontal:hover {
+  width: 3em;
+}
+
+.video-js.vjs-theme-city .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal {
+  width: 3em !important;
+  height: 100%;
+  opacity: 1;
+}
+
+.video-js.vjs-theme-city .vjs-volume-panel:hover .vjs-volume-control.vjs-volume-horizontal {
+  height: 100%;
+}
+
+.video-js.vjs-theme-city .vjs-volume-panel > *,
+.video-js.vjs-theme-forest .vjs-volume-panel > * {
+  transition: none !important;
+}
+
+.video-js.vjs-theme-city .vjs-volume-level,
+.video-js.vjs-theme-forest .vjs-volume-level {
+  background-color: transparent !important;
+}
+
+.video-js.vjs-theme-city .vjs-volume-level:before {
+    position: relative;
+}
+
+.video-js.vjs-theme-city .vjs-volume-panel {
+  width: 34px !important;
+  flex: 1 !important;
+  padding-top: 0;
+}
+
+.video-js.vjs-theme-city .vjs-volume-bar:before {
+  position: relative;
+}
+
+.video-js.vjs-theme-city .vjs-volume-panel:not(:hover) .vjs-volume-control .vjs-mouse-display {
+  visibility: hidden;
+}
+
+.vjs-wpstream.vjs-theme-city .vjs-picture-in-picture-control,
+.vjs-wpstream.vjs-theme-city .vjs-fullscreen-control,
+.vjs-wpstream.vjs-theme-city .vjs-fullscreen-control:hover {
+  background-size: auto !important;
+  background-position: 50% 54% !important;
+}
+/* End of City theme */
+
+/* Forest theme */
+.video-js.vjs-theme-forest .vjs-control-bar {
+  height: 3em;
+  background-color: transparent;
+}
+.video-js.vjs-theme-forest .vjs-control-bar button .vjs-icon-placeholder:before, .vjs-wpstream .vjs-live-control {
+  line-height: 1.6;
+}
+.video-js.vjs-theme-forest .vjs-control-bar .vjs-picture-in-picture-control,
+.video-js.vjs-theme-forest .vjs-control-bar .vjs-fullscreen-control {
+  width: 3em;
+  height: 3em;
+}
+.video-js.vjs-theme-forest .vjs-volume-panel.vjs-volume-panel-horizontal:hover {
+  width: 34px;
+  transition: none;
+}
+.video-js.vjs-theme-forest .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal {
+  transition: none;
+}
+.video-js.vjs-theme-forest .vjs-volume-panel .vjs-slider {
+  background-color: transparent;
+}
+.video-js.vjs-theme-forest .vjs-volume-panel:not(:hover) .vjs-volume-control .vjs-mouse-display {
+  visibility: hidden;
+}
+.video-js.vjs-theme-forest .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal {
+  width: 5em;
+  height: 3em;
+  opacity: 1;
+}
+
+.video-js.vjs-theme-forest .vjs-big-play-button .vjs-icon-placeholder {
+  display: block;
+}
+
+.video-js.vjs-theme-forest .vjs-progress-control:hover .vjs-time-tooltip,
+.video-js.vjs-theme-forest .vjs-progress-control:hover .vjs-progress-holder:focus .vjs-time-tooltip {
+  font-size: 1em;
+}
+
+/* End of Forest theme */
+
+/* Sea theme */
+.video-js.vjs-theme-sea .vjs-control-bar {
+  height: 4em;
+}
+.video-js.vjs-theme-sea .vjs-progress-control {
+  height: 4em;
+}
+.vjs-wpstream.vjs-theme-sea .vjs-time-control {
+    height: 4em;
+    line-height: 4em;
+}
+.video-js.vjs-theme-sea .vjs-volume-panel {
+  height: 4em;
+}
+
+.theme-hello-wpstream .function_wpstream_live_event_player .video-js.vjs-theme-sea .vjs-live-control .vjs-live-display {
+  background-color: #670000;
+  margin-top: 11px;
+}
+/* End of Sea theme */
+
+.video-js .vjs-poster img {
+  width: 100%;
+}
 
 .vjs-has-started .vjs-control-bar {
   display: flex;

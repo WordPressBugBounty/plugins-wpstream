@@ -341,7 +341,15 @@ function wpstreamify_unschedule_cleanup_event() {
 register_deactivation_hook(WP_PLUGIN_DIR . '/' . WPSTREAM_PLUGIN_BASE, 'wpstreamify_unschedule_cleanup_event');
 
 function wpstreamify_add_rewrite_rules() {
-    add_rewrite_rule('^wpstreamify/(.+)$', 'index.php?wpstreamify_path=$matches[1]', 'top');
+	$rewrite_rules = get_option('rewrite_rules');
+	$rule_pattern = '^wpstreamify/(.+)$';
+	$rule_target = 'index.php?wpstreamify_path=$matches[1]';
+
+	// Check if the rewrite rule already exists
+	if (!isset($rewrite_rules[$rule_pattern]) || $rewrite_rules[$rule_pattern] !== $rule_target) {
+		add_rewrite_rule($rule_pattern, $rule_target, 'top');
+		flush_rewrite_rules();
+	}
 }
 add_action('init', 'wpstreamify_add_rewrite_rules');
 

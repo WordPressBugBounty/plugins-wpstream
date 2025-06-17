@@ -71,8 +71,14 @@ class Wpstream_Public {
     public function enqueue_styles() {
 
             wp_enqueue_style('wpstream-style',          plugin_dir_url( __FILE__ ) .'/css/wpstream_style.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
-            wp_enqueue_style('video-js.min',            plugin_dir_url( __FILE__ ).'/css/video-js.min.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
-            wp_enqueue_style('videojs-wpstream-player', plugin_dir_url( __FILE__ ).'/css/videojs-wpstream.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
+            wp_enqueue_style('video-js.min',            plugin_dir_url( __FILE__ ).'/css/video-js.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
+            wp_enqueue_style(
+				'videojs-wpstream-player',
+				plugin_dir_url( __FILE__ ).'/css/videojs-wpstream.css',
+				array(),
+				WPSTREAM_PLUGIN_VERSION . '.' . filemtime( plugin_dir_path(__FILE__) . 'css/videojs-wpstream.css' ),
+				'all'
+			);
             wp_enqueue_style('wpstream-integrations',   plugin_dir_url( __DIR__ ) .'integrations/css/integrations.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
     }
 
@@ -83,19 +89,32 @@ class Wpstream_Public {
      */
     public function enqueue_scripts() {
 
-              
-                wp_register_script('video.min',              'https://vjs.zencdn.net/8.20.0/video.min.js', WPSTREAM_PLUGIN_VERSION, true);
+		// Register the VideoJS script
+        // Enqueuing is happing directly wherever is used
+        wp_register_script('video.min',              'https://vjs.zencdn.net/8.20.0/video.min.js', WPSTREAM_PLUGIN_VERSION, true);
+
+		// Enqueue the VideoJS Logo plugin script
+	    wp_enqueue_script(
+			'videojs-logo',
+		    'https://cdn.jsdelivr.net/npm/videojs-logo@latest/dist/videojs-logo.min.js',
+			array('video.min'),
+			'3.0.0',
+			true
+	    );
                 wp_register_script('youtube.min',          
                                   plugin_dir_url( __FILE__ ).'js/youtube.min.js',
                                   array('video.min'), 
                                   WPSTREAM_PLUGIN_VERSION, true);
               
-                wp_register_script('wpstream-player',      
-                                    plugin_dir_url( __FILE__ ).'js/wpstream-player.js', 
-                                    array('video.min'), 
-                                    WPSTREAM_PLUGIN_VERSION,true);
+                wp_register_script(
+					'wpstream-player',
+					plugin_dir_url( __FILE__ ).'js/wpstream-player.js',
+                    array('video.min'),
+                    WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/wpstream-player.js'),
+	                true
+                );
 
-                wp_localize_script('wpstream-player', 'wpstream_player_vars', 
+                wp_localize_script('wpstream-player', 'wpstream_player_vars',
                     array( 
                         'admin_url'             =>  get_admin_url(),
                         'chat_not_connected'    =>  esc_html__('Inactive Channel - Chat is disabled.','wpstream'),
@@ -105,6 +124,12 @@ class Wpstream_Public {
                         'wpstream_player_state_startup_msg'             =>  esc_html__('The live stream is starting...','wpstream'),
                         'wpstream_player_state_paused_msg'             =>  esc_html__('The live stream is paused','wpstream'),
                         'wpstream_player_state_ended_msg'             =>  esc_html__('The live stream has ended','wpstream'),
+	                    'wpstream_player_theme' => get_option('wpstream_video_player_theme'),
+	                    'playerLogoSettings'  => array(
+		                    'imageUrl'     => $this->main->wpstream_player->wpstream_get_video_player_logo(),
+		                    'position'  => get_option( 'wpstream_player_logo_position', 'top-left' ),
+		                    'opacity'   => get_option('wpstream_player_logo_opacity', '100'),
+	                    ),
                     )
                 );
                 
@@ -180,6 +205,7 @@ class Wpstream_Public {
                 wp_enqueue_style( 'wpstream_front_style', plugin_dir_url( __DIR__ ) . 'admin/css/wpstream-admin.css', array(), WPSTREAM_PLUGIN_VERSION, 'all' );
                        
     }
+
         
         
       

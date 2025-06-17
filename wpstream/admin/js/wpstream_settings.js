@@ -132,6 +132,32 @@ function wpstream_save_settings() {
             }
         })
     })
+
+    jQuery('.wpstream_option_wrapper .wpstream-range-input').on('change',function(e){
+        var option_name = jQuery(this).attr('id');
+        var option_value = jQuery(this).val();
+        var option_type = jQuery(this).attr('type');
+
+        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','visible');
+        jQuery.ajax({
+            type: 'POST',
+            url: ajaxurl,
+            timeout: 300000,
+            data: {
+                'action'        : 'wpstream_update_settings',
+                'option_name'   : option_name,
+                'option_type'   : option_type,
+                'option_value'  : option_value,
+                'security'      : nonce
+            },
+            success: function (data) {
+                jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','hidden');
+            },
+            error: function (jqXHR,textStatus,errorThrown) {
+                wpstream_show_error_message(jQuery('.theme_options_tab_wpstream .wpstream-save-settings'));
+            }
+        })
+    })
 }
 
 /*

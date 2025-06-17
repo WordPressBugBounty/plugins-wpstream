@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.1
-Stable tag: 4.6.7.3
+Stable tag: 4.6.7.4
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,11 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+
+= 4.6.7.4 =
+* Feature - Give the video player a different look using the theme option
+* Feature - Display a logo over the video player
+* Enhancement - Fix issue regarding the basic streaming functionality when the video doesn't start
 
 = 4.6.7.3 =
 * Fix - Broken WpStream login functionality

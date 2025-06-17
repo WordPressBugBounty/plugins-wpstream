@@ -214,6 +214,27 @@
     opacity: 1;
 }
 
+.video-js.vjs-logo.logo-top .vjs-logo-content {
+    top: 30px !important;
+}
+
+.video-js.vjs-logo.logo-bottom .vjs-logo-content {
+    bottom: 40px !important;
+}
+
+.video-js .vjs-logo-content {
+    position: absolute;
+}
+
+.video-js.vjs-has-started .vjs-logo-content img {
+    height: auto;
+}
+
+.video-js .vjs-volume-level:before {
+    font-size: 10px !important;
+    /*top: 0 !important;*/
+}
+
 
 
 .wpstream_get_download_link{
