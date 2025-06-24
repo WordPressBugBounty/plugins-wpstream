@@ -3,7 +3,7 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.6.7.4
+ * Version:           4.6.7.5
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
@@ -14,7 +14,7 @@
 if ( ! defined( 'WPINC' ) ) {
 	die;
 }
-define('WPSTREAM_PLUGIN_VERSION', '4.6.7.4');
+define('WPSTREAM_PLUGIN_VERSION', '4.6.7.5');
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 define('WPSTREAM_CLUBLINKSSL', 'https');
 define('WPSTREAM_PLUGIN_URL',  plugins_url() );
@@ -23,7 +23,11 @@ define('WPSTREAM_PLUGIN_PATH',  plugin_dir_path(__FILE__) );
 define('WPSTREAM_PLUGIN_BASE',  plugin_basename(__FILE__) );
 define('WPSTREAM_API', 'https://baker.wpstream.net');
 
-
+function wpstream_cleanup_logs_handler() {
+    $logger = new WpStream_Logger();
+    $logger->clear_old_logs();
+}
+add_action('wpstream_log_cleanup', 'wpstream_cleanup_logs_handler');
 
 /**
  * The code that runs during plugin activation.
@@ -32,6 +36,10 @@ define('WPSTREAM_API', 'https://baker.wpstream.net');
 function activate_wpstream() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-wpstream-activator.php';
 	Wpstream_Activator::activate();
+
+	if( !wp_next_scheduled( 'wpstream_log_cleanup' ) ) {
+		wp_schedule_event( time(), 'daily', 'wpstream_log_cleanup' );
+	}
 }
 
 /**
@@ -41,6 +49,8 @@ function activate_wpstream() {
 function deactivate_wpstream() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-wpstream-deactivator.php';
 	Wpstream_Deactivator::deactivate();
+
+	wp_clear_scheduled_hook( 'wpstream_log_cleanup' );
 }
 
 register_activation_hook( __FILE__, 'activate_wpstream' );
@@ -175,5 +185,3 @@ if ( function_exists( 'wpstream_get_author_id' ) ) {
         }
     }
 }
-
-

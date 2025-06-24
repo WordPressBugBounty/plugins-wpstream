@@ -103,6 +103,8 @@ class Wpstream_Live_Api_Connection  {
 
         $curl_failed = 0;
 
+		$logger = new WpStream_Logger();
+
         if ($err) {
             // do not echo every time, some operations must return JSON
             if (!$quiet){
@@ -111,12 +113,24 @@ class Wpstream_Live_Api_Connection  {
 
             $curl_failed = $err;
 
+			$log_entry = new WpStream_Log_Entry([
+				'type'        => 'error',
+				'description' => 'CURL error: ' . $err . ' on endpoint ' . $url,
+			]);
+			$logger->add( $log_entry );
+
             $response = json_encode(   array(
                 'success'      =>  false,
                 'error'        =>  $err,
             ));
         }
         else if ($http_code != 200) {
+			$log_entry = new WpStream_Log_Entry([
+				'type'        => 'error',
+				'description' => 'HTTP error: ' . $http_code . ' on endpoint ' . $url,
+			]);
+			$logger->add( $log_entry );
+
             if (!$quiet){
                 switch ($http_code) {
                     case 0:
@@ -141,6 +155,12 @@ class Wpstream_Live_Api_Connection  {
         else if ($expect_json){
             $curl_response_decoded  =   json_decode($response,JSON_OBJECT_AS_ARRAY);
             if (JSON_ERROR_NONE !== json_last_error()) {
+	            $log_entry = new WpStream_Log_Entry([
+		            'type'        => 'error',
+		            'description' => 'Malformed JSON response: ' . json_last_error_msg() . ' on endpoint ' . $url,
+	            ]);
+	            $logger->add( $log_entry );
+
 	            if (!$quiet) {
 		            echo '<div class="api_not_conected wpstream_error_curl">Critical: Malformed API response #: ' . json_last_error() . '</div>';
 	            }

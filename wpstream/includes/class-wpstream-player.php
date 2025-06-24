@@ -1544,10 +1544,31 @@ class Wpstream_Player{
 		}
 	}
 
+	/**
+	 * Get cached pack data or request fresh pack data
+	 *
+	 * @param bool $force_refresh Force a refresh of the cached data
+	 * @return array Pack data
+	 */
+	private function wpstream_get_cached_pack_data( $force_refresh = false ) {
+		$cached_data = get_transient( 'wpstream_user_pack_data' );
+
+		if ( $force_refresh || $cached_data === false ) {
+			$fresh_data = $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+			set_transient( 'wpstream_user_pack_data', $fresh_data, 60);
+
+			return $fresh_data;
+		}
+
+		return $cached_data;
+	}
+
 	public function wpstream_is_streamify_user() {
-		$pack_details = $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
-		if ( isset( $pack_details['total_data_mb'] ) && $pack_details['total_data_mb'] === 500 &&
-			isset( $pack_details['total_storage_mb'] ) && $pack_details['total_storage_mb'] === 100
+		$pack_details = $this->wpstream_get_cached_pack_data();
+
+		if ( isset( $pack_details['total_data'] ) && $pack_details['total_data'] === 500 &&
+			isset( $pack_details['total_storage_mb'] ) && $pack_details['total_storage_mb'] === 100 &&
+			isset( $pack_details['available_data'] ) && $pack_details['available_data'] <= 0
 		) {
 			return true;
 		}

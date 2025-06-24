@@ -6,6 +6,8 @@ jQuery(document).ready(function($) {
 
     // Save settings
     wpstream_save_settings();
+
+    wpstream_update_plugin_support_tab();
 });
 
 /**
@@ -167,8 +169,35 @@ function wpstream_save_settings() {
 */
 function wpstream_show_error_message(container) {
     container.find('.spinner').css('visibility', 'hidden');
-    container.append('<div class="wpstream-error-message">Failed to save settings. Please try again.</div>');
+    container.append('<div class="wpstream-error-message">' + wpstream_settings_vars.error_message + '</div>');
     container.find('.wpstream-error-message').hide().fadeIn(400).delay(3000).fadeOut(400, function() {
         jQuery(this).remove();
+    });
+}
+
+function wpstream_update_plugin_support_tab() {
+    var nonce = jQuery('#wpstream-settings-nonce').val();
+    jQuery('.wpstream-update-plugin-button').on('click', function(e) {
+        e.preventDefault();
+        jQuery(this).parents('.update-button-wrapper').html('Updating... <span class="spinner" style="visibility: visible;"></span>');
+        jQuery.ajax({
+            type: 'POST',
+            url: ajaxurl,
+            timeout: 300000,
+            data: {
+                'action'    : 'wpstream_settings_tab_update_plugin',
+                'security'  : nonce
+            },
+            success: function (data) {
+                if (data.success) {
+                    jQuery('.update-button-wrapper').html(wpstream_settings_vars.update_successful);
+                } else {
+                    jQuery('.update-button-wrapper').html(wpstream_settings_vars.update_failed);
+                }
+            },
+            error: function (jqXHR,textStatus,errorThrown) {
+                jQuery('.update-button-wrapper').html(wpstream_settings_vars.update_failed);
+            }
+        })
     });
 }

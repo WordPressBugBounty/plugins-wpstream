@@ -1,5 +1,4 @@
 <?php
-
 /**
  * The file that defines the core plugin class
  *
@@ -173,7 +172,6 @@ class Wpstream {
 		 * side of the site.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-wpstream-public.php';
-
 		/**
 		 * The class responsible for custom post type
 		
@@ -183,6 +181,9 @@ class Wpstream {
 			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_live_stream.php';
 			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_video_on_demand.php';
 		}
+
+		require_once plugin_dir_path(__FILE__) . 'Helpers/class-wpstream-log-entry.php';
+		require_once plugin_dir_path(__FILE__) . 'Logger/class-wpstream-logger.php';
 
 		$this->loader = new Wpstream_Loader();
 
@@ -260,6 +261,7 @@ class Wpstream {
 //		        $this->loader->add_action( 'wp_ajax_wpstream_get_videos_list',  $plugin_admin,'wpstream_get_videos_list' );
 
 
+        $this->loader->add_action( 'wp_ajax_wpstream_settings_tab_update_plugin', $plugin_admin, 'wpstream_settings_tab_update_plugin' );
                  
                 // add and save category extra fields
                 $this->loader->add_action( 'category_edit_form_fields',  $plugin_post_types,   'wpstream_category_callback_function', 10, 2);
@@ -288,8 +290,6 @@ class Wpstream {
                 $this->loader->add_action( 'wpstream_movie_rating_add_form_fields',   $plugin_post_types,   'wpstream_category_callback_add_function' );
                 $this->loader->add_action( 'created_wpstream_movie_rating',           $plugin_post_types,   'wpstream_category_save_extra_fields_callback', 10, 2);
                 $this->loader->add_action( 'edited_wpstream_movie_rating',            $plugin_post_types,   'wpstream_category_save_extra_fields_callback', 10, 2);
-                
-         
           
                        
                 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
@@ -307,12 +307,6 @@ class Wpstream {
                     $this->loader->add_action( 'woocommerce_video_on_demand_add_to_cart', $plugin_admin, 'wpstream_add_to_cart',10,1);
                     $this->loader->add_filter( 'woocommerce_loop_add_to_cart_link', $plugin_admin,'replacing_add_to_cart_button', 10, 2 );
                 }
-                
-                
-                
-                
-
-
 	}
 
 
@@ -332,36 +326,31 @@ class Wpstream {
 
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
-                
-                $this->loader->add_action( 'init', $plugin_public,'wpstream_my_custom_endpoints' );
-                $this->loader->add_filter( 'query_vars',$plugin_public, 'wpstream_my_custom_query_vars', 0 );
-              
-                //live stream action                
-                $this->loader->add_action('init',$plugin_public,'wpstream_set_cookies',0);
-                $this->loader->add_action('init',$plugin_public,'wpstream_live_streaming_key');
-                $this->loader->add_action('init',$plugin_public,'wpstream_live_streaming_key_for_3rdparty');
-                $this->loader->add_action('init',$plugin_public,'wpstream_live_streaming_key_vod',10);
-                // woo action
-                
-                $this->loader->add_action( 'woocommerce_before_single_product', $plugin_public,'wpstream_non_image_content_wrapper_start', 20 );
-                $this->loader->add_action( 'woocommerce_after_single_product', $plugin_public,'wpstream_non_image_content_wrapper_end', 20 );
-                $this->loader->add_action( 'woocommerce_thankyou_order_received_text', $plugin_public,'wpstream_thankyou_extra', 20,2 );
-                $this->loader->add_action( 'woocommerce_email_order_details', $plugin_public,'wpstream_email_order_details', 20,4 );
-                 
-                $this->loader->add_filter( 'woocommerce_account_menu_items', $plugin_public,'wpstream_custom_my_account_menu_items' );
-                $this->loader->add_action( 'woocommerce_account_event-list_endpoint', $plugin_public,'wpstream_custom_endpoint_content_event_list' );
-                $this->loader->add_action( 'woocommerce_account_video-list_endpoint', $plugin_public,'wpstream_custom_endpoint_video_list' );
-                
 
-                $this->loader->add_action( 'after_switch_theme', $plugin_public,'wpstream_custom_flush_rewrite_rules' );
-                $this->loader->add_action('init', $plugin_public,'wpstream_shortcodes');
-                $this->loader->add_action('vc_before_init', $plugin_public,'wpstream_bakery_shortcodes');
-                
-   
-                $this->loader->add_action('wo_before_api', 'wpstream_cors_check_and_response',10,1);
-                
-              
-                
+		$this->loader->add_action( 'init', $plugin_public,'wpstream_my_custom_endpoints' );
+		$this->loader->add_filter( 'query_vars',$plugin_public, 'wpstream_my_custom_query_vars', 0 );
+
+		//live stream action
+		$this->loader->add_action('init',$plugin_public,'wpstream_set_cookies',0);
+		$this->loader->add_action('init',$plugin_public,'wpstream_live_streaming_key');
+		$this->loader->add_action('init',$plugin_public,'wpstream_live_streaming_key_for_3rdparty');
+		$this->loader->add_action('init',$plugin_public,'wpstream_live_streaming_key_vod',10);
+
+		// woo action
+		$this->loader->add_action( 'woocommerce_before_single_product', $plugin_public,'wpstream_non_image_content_wrapper_start', 20 );
+		$this->loader->add_action( 'woocommerce_after_single_product', $plugin_public,'wpstream_non_image_content_wrapper_end', 20 );
+		$this->loader->add_action( 'woocommerce_thankyou_order_received_text', $plugin_public,'wpstream_thankyou_extra', 20,2 );
+		$this->loader->add_action( 'woocommerce_email_order_details', $plugin_public,'wpstream_email_order_details', 20,4 );
+
+		$this->loader->add_filter( 'woocommerce_account_menu_items', $plugin_public,'wpstream_custom_my_account_menu_items' );
+		$this->loader->add_action( 'woocommerce_account_event-list_endpoint', $plugin_public,'wpstream_custom_endpoint_content_event_list' );
+		$this->loader->add_action( 'woocommerce_account_video-list_endpoint', $plugin_public,'wpstream_custom_endpoint_video_list' );
+
+		$this->loader->add_action( 'after_switch_theme', $plugin_public,'wpstream_custom_flush_rewrite_rules' );
+		$this->loader->add_action('init', $plugin_public,'wpstream_shortcodes');
+		$this->loader->add_action('vc_before_init', $plugin_public,'wpstream_bakery_shortcodes');
+
+		$this->loader->add_action('wo_before_api', 'wpstream_cors_check_and_response',10,1);
 	}
 
 	/**
@@ -403,8 +392,19 @@ class Wpstream {
 	public function get_version() {
             return $this->version;
 	}
-        
-        
+
+    public function is_plugin_outdated(){
+	    $update_data = get_site_transient('update_plugins');
+	    $plugin_path = 'wpstream/wpstream.php';
+
+	    if (isset($update_data->response[$plugin_path])) {
+		    return true;
+	    }
+
+	    return false;
+    }
+
+
       
         public function show_user_data($pack_details){
             if( isset($pack_details['available_data_mb']) && isset( $pack_details['available_storage_mb']) ){
@@ -976,5 +976,12 @@ class Wpstream {
             wp_reset_postdata();
             return $the_id;
         }
-    
+
+		/**
+		 * Cleanup old logs
+		 */
+		public function cleanup_logs() {
+			$logger = new WPStream_Logger();
+			$logger->clear_old_logs();
+		}
 }

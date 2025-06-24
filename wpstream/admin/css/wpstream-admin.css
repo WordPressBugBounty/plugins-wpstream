@@ -1059,6 +1059,15 @@ stop_server wpstream_button:hover,
     background-color: #5a9544;
 }
 
+.wpstream-tooltip {
+    cursor: pointer;
+    color: #0073aa;
+    vertical-align: middle;
+}
+
+.wpstream-tooltip:hover {
+    opacity: 0.8;
+}
 
 .wpstream_setting_event_unit_wrapper{
     position:relative;

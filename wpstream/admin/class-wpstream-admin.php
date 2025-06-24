@@ -270,9 +270,11 @@ class Wpstream_Admin {
 
                 wp_enqueue_script('wpstream-settings',   plugin_dir_url( __DIR__  ) .'/admin/js/wpstream_settings.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
                 wp_localize_script('wpstream-settings', 'wpstream_settings_vars', array(
-                        'error_message' => esc_html__( 'Failed to save settings. Please try again.', 'wpstream'),
+                        'error_message'     => esc_html__( 'Failed to save settings. Please try again.', 'wpstream'),
                         'choose_image_text' => esc_html__( 'Choose Logo Image', 'wpstream'),
                         'select_image_text' => esc_html__( 'Select Image', 'wpstream'),
+                        'update_successful' => esc_html__( 'Update Successful.', 'wpstream'),
+                        'update_failed'     => esc_html__( 'Something went wrong. Try again.', 'wpstream'),
                 ));
 
 
@@ -1304,9 +1306,7 @@ class Wpstream_Admin {
                 
 
 
-                
-                
-                
+
                 // reset permalinkgs
                 global $wp_rewrite;
 
@@ -1520,7 +1520,14 @@ class Wpstream_Admin {
                     'details'   =>  esc_html__('If enabled, video data will be encrypted. Enabling encryption may lead to reduced website performance under certain configurations. Encrypted video may not display in all browsers.','wpstream'),
                     'defaults'  =>  'no',
                 ),*/
-                        
+
+                104 => array(
+                        'tab' => 'support_tab',
+                        'label' => esc_html__('Logs','wpstream'),
+                        'name' => 'logs',
+                        'type' => 'logs_table',
+                        'details' => esc_html__('This is the error log of the plugin.','wpstream'),
+                )
                         
             );
               
@@ -1540,7 +1547,7 @@ class Wpstream_Admin {
                     <a href="?page=wpstream_settings&tab=default_options_vod"   class="nav-tab '; echo $active_tab == 'default_options_vod' ? 'nav-tab-active' : ''; echo '">'.esc_html__('VOD Settings','wpstream').'</a>
                     <a href="?page=wpstream_settings&tab=subscription_options"  class="nav-tab '; echo $active_tab == 'subscription_options' ? 'nav-tab-active' : '';echo '">'.esc_html__('Subscription Options','wpstream').'</a>
                     <a href="?page=wpstream_settings&tab=messages_options"      class="nav-tab '; echo $active_tab == 'messages_options' ? 'nav-tab-active' : '';    echo '">'.esc_html__('Customize Messages','wpstream').'</a>
-           
+                    <a href="?page=wpstream_settings&tab=support_tab"           class="nav-tab '; echo $active_tab == 'support_tab' ? 'nav-tab-active' : '';         echo '">'.esc_html__('Support','wpstream').'</a>
                 </h2>';
                 $help_link='';
                 print '<div class="wpstream_option_wrapper">';
@@ -1657,23 +1664,311 @@ class Wpstream_Admin {
                                                 print '<input class="wpstream-range-input" type="range" id="'.$option['name'].'" name="'.$option['name'].'" min="0" max="100" step="10" value="'.esc_attr($options_value).'" />';
                                                 print '<div class="settings_details">'.$option['details'].'</div>';
                                                 break;
+                                            case 'logs_table':
+                                                $this->wpstream_support_tab();
+                                                break;
                                         }
                                    print '</div>';
                                }
                            print '</div>';
 
 
+                                if ( $active_tab != 'support_tab') {
                         print '<div class="wpstream-save-settings">';
                        print '<input type="submit" name="submit"  class="wpstream_button wpstream_button_action" value="'.__('Save Changes','wpstream').'" />';
                        print '<div class="spinner"></div>';
                        print '</div>';
+                       }
 
                     print  '<input id="wpstream-settings-nonce" name="wpstream-settings-nonce" type="hidden" value="'.wp_create_nonce('wpstream-settings-nonce').'" /> ';
             print   '</form>';
         print '</div>';
          
          }
-        
+
+    /**
+     * Get system information for support tab
+     *
+     * @return array System information
+     */
+    private function get_system_info() {
+        global $wp_version;
+
+        $php_version = phpversion();
+        $wp_version_info = $wp_version;
+        $site_debug_mode = (defined('WP_DEBUG') && WP_DEBUG);
+        $wp_memory_limit = WP_MEMORY_LIMIT;
+
+        $wpstream_version = WPSTREAM_PLUGIN_VERSION;
+        $wpstream_plugin_outdated = false;
+
+        // Check if plugin is outdated
+        $update_plugins = get_site_transient('update_plugins');
+        if (isset($update_plugins->response['plugin/wpstream.php'])) {
+            $wpstream_plugin_outdated = true;
+        }
+
+        // Check API status
+        $api_status = false;
+        if (method_exists($this->main->wpstream_live_connection, 'wpstream_get_token')) {
+            $token = $this->main->wpstream_live_connection->wpstream_get_token();
+            $api_status = !empty($token);
+        }
+
+        return array(
+            'php_version' => $php_version,
+            'wp_version' => $wp_version_info,
+            'site_debug_mode' => $site_debug_mode,
+            'wp_memory_limit' => $wp_memory_limit,
+            'wpstream_version' => $wpstream_version,
+            'wpstream_plugin_outdated' => $wpstream_plugin_outdated,
+            'api_status' => $api_status
+        );
+    }
+
+    /**
+     * Render system information HTML
+     */
+    private function render_system_info() {
+        $system_info = $this->get_system_info();
+        ?>
+
+        <div class="wpstream-system-info">
+            <h3><?php esc_html_e('System Information', 'wpstream'); ?></h3>
+            <table class="widefat">
+                <tbody>
+                    <tr>
+                        <td><strong><?php esc_html_e('PHP Version', 'wpstream'); ?></strong></td>
+                        <td><?php echo esc_html($system_info['php_version']); ?></td>
+                        <td>
+                            <?php if (version_compare($system_info['php_version'], '7.4', '<')): ?>
+                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <?php esc_html_e('We recommend PHP 7.4 or higher', 'wpstream'); ?>
+                            <?php else: ?>
+                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong><?php esc_html_e('WordPress Version', 'wpstream'); ?></strong></td>
+                        <td><?php echo esc_html($system_info['wp_version']); ?></td>
+                        <td>
+                            <?php if (version_compare($system_info['wp_version'], '5.6', '<')): ?>
+                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <?php esc_html_e('We recommend WordPress 5.6 or higher', 'wpstream'); ?>
+                            <?php else: ?>
+                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong><?php esc_html_e('WP Debug Mode', 'wpstream'); ?></strong></td>
+                        <td><?php echo $system_info['site_debug_mode'] ? esc_html__('Enabled', 'wpstream') : esc_html__('Disabled', 'wpstream'); ?></td>
+                        <td>
+                            <?php if ($system_info['site_debug_mode']): ?>
+                                <span class="dashicons dashicons-info" style="color: #00a0d2;"></span>
+                                <?php esc_html_e('Debug mode should be disabled on production sites', 'wpstream'); ?>
+                            <?php else: ?>
+                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong><?php esc_html_e('WP Memory Limit', 'wpstream'); ?></strong></td>
+                        <td><?php echo esc_html($system_info['wp_memory_limit']); ?></td>
+                        <td>
+                            <?php
+                            $memory_limit = wp_convert_hr_to_bytes($system_info['wp_memory_limit']);
+                            if ($memory_limit < 64 * 1024 * 1024): // 64MB
+                            ?>
+                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <?php esc_html_e('We recommend at least 64MB', 'wpstream'); ?>
+                            <?php else: ?>
+                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong><?php esc_html_e('WpStream Version', 'wpstream'); ?></strong></td>
+                        <td><?php echo esc_html($system_info['wpstream_version']); ?></td>
+                        <td style="display: flex; align-items: center; gap: 5px;">
+                            <?php if ($system_info['wpstream_plugin_outdated']): ?>
+                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <?php esc_html_e('Update available', 'wpstream'); ?>
+                                <div class="update-button-wrapper">
+                                    <button class="wpstream-update-plugin-button button button-primary" data-plugin="wpstream/wpstream.php">
+                                        <?php esc_html_e('Update Now', 'wpstream'); ?>
+                                    </button>
+                                </div>
+                            <?php else: ?>
+                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong><?php esc_html_e('API Connection', 'wpstream'); ?></strong></td>
+                        <td><?php echo $system_info['api_status'] ? esc_html__('Connected', 'wpstream') : esc_html__('Disconnected', 'wpstream'); ?></td>
+                        <td>
+                            <?php if (!$system_info['api_status']): ?>
+                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <?php esc_html_e('API connection issue', 'wpstream'); ?>
+                            <?php else: ?>
+                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render support tab content
+     */
+    public function wpstream_support_tab() {
+        ?>
+        <div class="wrap">
+            <div class="wpstream-support-tab-root">
+                <?php $this->render_system_info(); ?>
+
+                <div class="wpstream-plugins-table-container">
+                    <h3><?php esc_html_e('Active Plugins', 'wpstream'); ?></h3>
+                    <table class="widefat wpstream-plugins-table">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e('Plugin', 'wpstream'); ?></th>
+                                <th><?php esc_html_e('Version', 'wpstream'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $plugins_data = $this->wpstream_get_plugins_data();
+                            if (empty($plugins_data)) {
+                                echo '<tr><td colspan="3">' . esc_html__('No WPStream plugins found.', 'wpstream') . '</td></tr>';
+                            } else {
+                                foreach ($plugins_data as $plugin) {
+                                    echo '<tr>';
+                                    echo '<td>' . esc_html($plugin['name']) . '</td>';
+                                    echo '<td>';
+                                    echo esc_html($plugin['version']);
+                                    if ( isset($plugin['new_version']) ) {
+                                        echo '<div class="wpstream-tooltip-container">';
+                                        echo '<span class="dashicons dashicons-info wpstream-tooltip" title="' . esc_attr($plugin['new_version']) . '">';
+                                        echo '</span>';
+                                        echo '<div class="wpstream-custom-tooltip">' . sprintf(
+                                            esc_html__('A new version is available: %s', 'wpstream'),
+                                            esc_html($plugin['new_version'])
+                                        ) . '</div>';
+                                        echo '</div>';
+                                    }
+                                    echo  '</td>';
+                                    echo '</tr>';
+                                }
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="wpstream-logs-table-container">
+                    <h3><?php esc_html_e('Recent Logs', 'wpstream'); ?></h3>
+                    <table class="widefat wpstream-logs-table">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e('Time', 'wpstream'); ?></th>
+                                <th><?php esc_html_e('Type', 'wpstream'); ?></th>
+                                <th><?php esc_html_e('Description', 'wpstream'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $logs = get_option('wpstream_logs');
+                            if ( !is_array($logs) || empty($logs) ) {
+                                echo '<tr><td colspan="3">' . esc_html__('No logs found.', 'wpstream') . '</td></tr>';
+                            } else {
+                                foreach ($logs as $log) {
+                                    echo '<tr>';
+                                    echo '<td>' . esc_html(date('Y-m-d H:i:s', $log['timestamp'] ) ) . '</td>';
+                                    echo '<td>' . esc_html($log['type']) . '</td>';
+                                    echo '<td>' . esc_html($log['description']) . '</td>';
+                                    echo '</tr>';
+                                }
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+	 * Get plugins data.
+	 *
+	 * @return array
+	 */
+	public function wpstream_get_plugins_data() {
+		if (!function_exists('get_plugins')) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		// Get all installed plugins
+		$all_plugins = get_plugins();
+		$update_data = get_site_transient('update_plugins');
+		$all_plugins_info = [];
+
+		// We want to get data only for the WpStream plugins
+		$wpstream_plugins = array(
+			'WpStream'      => array(
+				'path' => 'wpstream/wpstream.php',
+			),
+			'WooCommerce' => array(
+				'path' => 'woocommerce/woocommerce.php',
+			),
+			'Meta Box' => array(
+				'path' => 'meta-box/meta-box.php',
+			),
+			'One Click Demo Import' => array(
+				'path' => 'one-click-demo-import/one-click-demo-import.php',
+			),
+			'Better Messages' => array(
+				'path' => 'bp-better-messages/bp-better-messages.php',
+			),
+
+		);
+
+		foreach ($all_plugins as $plugin_path => $plugin_data) {
+			$is_active = is_plugin_active( $plugin_path );
+			$has_update = isset( $update_data->response[$plugin_path] );
+
+			$plugin_info = [
+				'name' => $plugin_data['Name'],
+				'version' => $plugin_data['Version'],
+				'path' => $plugin_path,
+				'active' => $is_active ? 'Yes' : 'No',
+				'needs_update' => $has_update ? 'Yes' : 'No'
+			];
+
+			if ($has_update) {
+				$plugin_info['new_version'] = $update_data->response[$plugin_path]->new_version;
+			}
+
+			$all_plugins_info[] = $plugin_info;
+		}
+
+		// Filter out the elements from $all_plugins_info that are not in $wpstream_plugins
+		foreach ( $all_plugins_info as $key => $plugin_info ) {
+			// compare $plugin_info['path'] against the path property on each $wpstream_plugins element item
+			// if the path is not in $wpstream_plugins, unset the element
+			if ( !in_array( $plugin_info['path'], array_column( $wpstream_plugins, 'path' ) ) ) {
+				unset( $all_plugins_info[$key] );
+			}
+		}
+
+		return $all_plugins_info;
+	}
          
          
         /**
@@ -2677,7 +2972,14 @@ class Wpstream_Admin {
                 global $post;
                 $term_list                          =   wp_get_post_terms($post->ID, 'product_type');
                
-                add_meta_box('wpstream-sidebar-meta',       esc_html__('Live Streaming',  'wpstream'), array($this,'wpstream_start_stream_meta'), 'wpstream_product', 'side', 'high');
+                add_meta_box(
+                    'wpstream-sidebar-meta',
+                    esc_html__('Live Streaming',  'wpstream'),
+                    array($this,'wpstream_start_stream_meta'),
+                    'wpstream_product',
+                    'side',
+                    'high'
+                );
                 
                 $is_subscription_live_event =   esc_html(get_post_meta($post->ID,'_subscript_live_event',true));
                 if(!is_wp_error( $term_list )){     
@@ -2706,7 +3008,7 @@ class Wpstream_Admin {
            
 
 
-            if( get_post_status($post->ID)!='auto-draft' ){
+            if( get_post_status( $post->ID ) === 'publish' ) {
                 $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
                 print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
                 $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
@@ -2721,7 +3023,7 @@ class Wpstream_Admin {
                 print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er1</div>
                 <div class="wpstream_error_ok wpstream_button" type="button">'.esc_html__('Close','wpstream').'</div>
                 </div>';
-            }else{
+            } else {
                 esc_html_e('To Go Live, please publish your channel first !','wpstream');
             }
         }
@@ -3325,7 +3627,13 @@ class Wpstream_Admin {
                 $post_id = wp_insert_post( $my_post );
 
                 if(is_wp_error($post_id)){
-                    echo json_encode( array('succes'=>false) );        
+                    $logger = new WPStream_Logger();
+                    $log_entry = new WpStream_Log_Entry([
+                        'type'          => 'error',
+                        'description'   => 'Couldn\'t create channel during onboarding because of error: ' . $post_id->get_error_message(),
+                    ]);
+                    $logger->add( $log_entry );
+                    echo json_encode( array('succes'=>false) );
                 }else{
                 
                     $product    =   wc_get_product($post_id);
@@ -3381,9 +3689,15 @@ class Wpstream_Admin {
                   // Insert the post into the database
                 $post_id = wp_insert_post( $my_post );
 
-                if(is_wp_error($post_id)){
+                if( is_wp_error( $post_id ) ) {
+                    $logger = new WPStream_Logger();
+                    $log_entry = new WpStream_Log_Entry([
+                        'type'          => 'error',
+                        'description'   => 'Couldn\'t create channel during onboarding because of error: ' . $post_id->get_error_message(),
+                    ]);
+                    $logger->add( $log_entry );
                     echo json_encode( array('succes'=>false) );
-                }else{
+                } else {
                     $permalink = get_edit_post_link($post_id);
 
                     $permalink= add_query_arg( 'onboard', 'yes', $permalink );
@@ -3421,7 +3735,13 @@ class Wpstream_Admin {
                 $post_id = wp_insert_post( $my_post );
 
                 if(is_wp_error($post_id)){
-                    echo json_encode( array('succes'=>false) );        
+                    $logger = new WPStream_Logger();
+                    $log_entry = new WpStream_Log_Entry([
+                        'type'          => 'error',
+                        'description'   => 'Couldn\'t create free VOD during onboarding because of error: ' . $post_id->get_error_message(),
+                    ]);
+                    $logger->add( $log_entry );
+                    echo json_encode( array('succes'=>false) );
                 }else{
                     update_post_meta($post_id, 'wpstream_product_type', 2);
                     update_post_meta($post_id, 'wpstream_free_video', $file_name);
@@ -3472,6 +3792,12 @@ class Wpstream_Admin {
                 $post_id = wp_insert_post( $my_post );
 
                 if( is_wp_error( $post_id ) ) {
+                    $logger = new WPStream_Logger();
+                    $log_entry = new WpStream_Log_Entry([
+                        'type'          => 'error',
+                        'description'   => 'Couldn\'t create PPV VOD during onboarding because of error: ' . $post_id->get_error_message(),
+                    ]);
+                    $logger->add( $log_entry );
                     echo json_encode( array('succes'=>false) );
                 } else {
                 
@@ -3826,4 +4152,30 @@ class Wpstream_Admin {
         // Return success
         wp_send_json_success();
     }
+
+    public function wpstream_settings_tab_update_plugin() {
+        if ( !current_user_can( 'update_plugins' ) ) {
+			wp_send_json_error( __( 'Not enough permissions to make this change', 'wpstream' ) );
+		}
+
+		include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+		include_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		include_once ABSPATH . 'wp-admin/includes/file.php';
+
+		$credentials = request_filesystem_credentials('');
+		if ( !WP_Filesystem( $credentials ) ) {
+			wp_send_json_error( __( 'Failed to connect to the filesystem', 'wpstream' ) );
+		}
+
+		$upgrader = new Plugin_Upgrader(new Automatic_Upgrader_Skin());
+		$plugin_path = plugin_basename( WPSTREAM_PLUGIN_PATH . 'wpstream.php' );
+		$result = $upgrader->upgrade( $plugin_path );
+		activate_plugin( $plugin_path );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( __( 'Update failed due to', 'wpstream' ) . $result->get_error_message() );
+		}
+
+		wp_send_json_success();
+	}
 }
