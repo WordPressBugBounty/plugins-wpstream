@@ -3,7 +3,7 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.6.7.5
+ * Version:           4.6.7.6
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
@@ -14,7 +14,7 @@
 if ( ! defined( 'WPINC' ) ) {
 	die;
 }
-define('WPSTREAM_PLUGIN_VERSION', '4.6.7.5');
+define('WPSTREAM_PLUGIN_VERSION', '4.6.7.6');
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 define('WPSTREAM_CLUBLINKSSL', 'https');
 define('WPSTREAM_PLUGIN_URL',  plugins_url() );
@@ -57,6 +57,17 @@ register_activation_hook( __FILE__, 'activate_wpstream' );
 register_deactivation_hook( __FILE__, 'deactivate_wpstream' );
 
 /**
+ * Wrapper function for wpstream_dashboard_save_channel_data to be called from theme
+ * This provides backward compatibility for the theme
+ */
+function wpstream_dashboard_save_channel_data_plugin() {
+    global $wpstream_plugin;
+    if (isset($wpstream_plugin) && isset($wpstream_plugin->wpstream_ajax)) {
+        $wpstream_plugin->wpstream_ajax->wpstream_dashboard_save_channel_data();
+    }
+}
+
+/**
  * The core plugin class that is used to define internationalization,
  * admin-specific hooks, and public-facing site hooks.
  */
@@ -65,6 +76,78 @@ require plugin_dir_path( __FILE__ ) . 'wpstream-elementor.php';
 require plugin_dir_path( __FILE__ ) . 'streamify/streamify.php';
 
 require plugin_dir_path( __FILE__ ) . 'integrations/integrations.php';
+
+function wpstream_load_theme_functionality() {
+	define ('WPSTREAM_FRAMEWORK_BASE', plugin_dir_path(__FILE__) . 'hello-wpstream' );
+
+	$core_files = array(
+		'/framework/metaboxes.php',
+        '/framework/query-functions.php',
+		'/framework/wpstream-video-functions.php',
+		'/framework/ajax-functions.php',
+		'/framework/dashboard-functions.php',
+        '/framework/wpstream-help-functions.php',
+		'/framework/video-pages-functions.php',
+		'/framework/comments-functions.php',
+		'/framework/gallery-functions.php',
+		'/framework/shortcodes-functions.php',
+		'/framework/post-types/main.php',
+		'/framework/woocommerce-functions.php',
+		'/framework/ajax-upload.php',
+		'/framework/class-tgm-plugin-activation.php',
+		'/framework/email-functions.php',
+		'/framework/widgets/class-wpstream-widget-manager.php',
+		'/framework/classes/class-wpstream-login-register.php',
+		'/framework/classes/class-wpstream_theme-social-login.php',
+	);
+
+	// Load core files
+	foreach ( $core_files as $file ) {
+		$file_path = WPSTREAM_FRAMEWORK_BASE . $file;
+		if ( file_exists( $file_path ) ) {
+			require_once $file_path;
+		} else {
+			error_log( 'Missing required file: ' . $file_path );
+		}
+	}
+
+	// Load Elementor integration if the plugin is active
+	if ( defined( 'ELEMENTOR_VERSION' ) ) {
+
+		$elementor_files = array(
+			'/elementor/functions/blog_functions.php',
+			'/elementor/wpstream-elementor.php'
+		);
+
+		foreach ( $elementor_files as $file ) {
+			$file_path = WPSTREAM_FRAMEWORK_BASE . $file;
+			if ( file_exists( $file_path ) ) {
+				require_once $file_path;
+			} else {
+				error_log( 'Missing required file: ' . $file_path );
+			}
+		}
+	}
+}
+
+add_action( 'after_setup_theme', 'wpstream_load_theme_functionality' );
+
+/**
+ * Load js for players
+ *
+ * @return void
+ */
+if ( ! function_exists( 'wpstream_load_player_js_on_demand' ) ) {
+	function wpstream_load_player_js_on_demand()
+	{
+		$wpstream_unit_card_use_video = get_theme_mod('wpstream_unit_card_use_video');
+		if ($wpstream_unit_card_use_video) {
+			wp_enqueue_script('video.min');
+			wp_enqueue_script('wpstream-player');
+		}
+
+	}
+}
 
 /**
  * Begins execution of the plugin.

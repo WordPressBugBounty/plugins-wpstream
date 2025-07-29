@@ -46,5 +46,23 @@ function wpestream_integrations_get_current_user_live_events($with_exit = 'yes')
     return $live_event_for_user;
 }
 
+if ( ! function_exists('wpstream_get_live_tag_html' ) ) {
+	/**
+	 * Check if a product is live and return the live tag HTML if applicable.
+	 *
+	 * @param int $post_id The ID of the post.
+	 * @return string The HTML for the live tag or an empty string.
+	 */
+	function wpstream_get_live_tag_html($post_id)
+	{
+		if ((get_post_type($post_id) === 'product' && has_term('live_stream', 'product_type', $post_id)) || get_post_type($post_id) === 'wpstream_product') {
+			$live_events = wpestream_integrations_get_current_user_live_events('no');
+			if (is_array($live_events) && array_key_exists($post_id, $live_events)) {
+				return '<div class="wpstream_featured_image_live_tag">' . esc_html_x('LIVE', 'Card tag', 'hello-wpstream') . '</div>';
+			}
+		}
+		return '';
+	}
+}
 
 ?>

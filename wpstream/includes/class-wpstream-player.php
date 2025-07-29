@@ -23,7 +23,7 @@ class Wpstream_Player{
         
         add_action( 'wp_ajax_wpstream_player_check_status', array($this,'wpstream_player_check_status') );  
         add_action('wp_ajax_nopriv_wpstream_player_check_status', array($this,'wpstream_player_check_status'));
-     
+
     }
     
     
@@ -106,7 +106,7 @@ class Wpstream_Player{
     * @author cretu
     */
     public function wpstream_filter_the_title( $content   ) {
-            if(function_exists('remove_wpstream_filter')){
+            if(function_exists('wpstream_remove_wpstream_filter')){
                 return $content;
             }
 
@@ -836,7 +836,7 @@ class Wpstream_Player{
             wp_enqueue_script('wpstream-player');
 
 			$player_theme = $this->wpstream_get_player_theme();
-            
+
             $uri_details        =   $this->wpstream_video_on_demand_player_uri_request($product_id);
             $video_path_final   =   $uri_details['video_path_final'];
             $wpstream_data_setup =  $uri_details['wpstream_data_setup'];
@@ -869,7 +869,9 @@ class Wpstream_Player{
             if($trailer_attachment_id!=0) {
                 $video_trailer                 =   wp_get_attachment_url( $trailer_attachment_id );
                 $attachment_metadata           =   wp_get_attachment_metadata($trailer_attachment_id);
-                $video_trailer_type            =   $attachment_metadata['mime_type'];
+	            if( isset ($attachment_metadata['mime_type']) ) {
+		            $video_trailer_type            =   $attachment_metadata['mime_type'];
+	            }
             }
 
             // override trailer setup here (for testing)
@@ -1340,7 +1342,7 @@ class Wpstream_Player{
          * 
     */
           public function wpstream_user_logged_in_product_already_bought($from_sh_id='') {
-            if(function_exists('remove_wpstream_filter')){
+            if(function_exists('wpstream_remove_wpstream_filter')){
                 return;
             }
             global $product;
@@ -1570,7 +1572,7 @@ class Wpstream_Player{
 			isset( $pack_details['total_storage_mb'] ) && $pack_details['total_storage_mb'] === 100 &&
 			isset( $pack_details['available_data'] ) && $pack_details['available_data'] <= 0
 		) {
-			return true;
+			return false;
 		}
 		return false;
 	}

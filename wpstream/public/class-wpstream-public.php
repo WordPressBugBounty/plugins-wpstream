@@ -57,9 +57,9 @@ class Wpstream_Public {
      * @param      string    $version    The version of this plugin.
      */
     public function __construct( $plugin_name, $version ,$plugin_main) {
-                $this->main = $plugin_main;
-        $this->plugin_name = $plugin_name;
-        $this->version = $version;
+        $this->main         = $plugin_main;
+        $this->plugin_name  = $plugin_name;
+        $this->version      = $version;
 
     }
 
@@ -203,7 +203,24 @@ class Wpstream_Public {
 
 
                 wp_enqueue_style( 'wpstream_front_style', plugin_dir_url( __DIR__ ) . 'admin/css/wpstream-admin.css', array(), WPSTREAM_PLUGIN_VERSION, 'all' );
-                       
+
+	    wp_enqueue_script( 'wpstream-plugin-scripts', WPSTREAM_PLUGIN_DIR_URL . '/hello-wpstream/js/wpstream-plugin-script.js', array( 'jquery' ), '1.0', true );
+
+	    wp_localize_script(
+		    'wpstream-plugin-scripts',
+		    'wpstreamPluginScriptsVars',
+		    array(
+			    'ajaxurl' 				=> 	admin_url( 'admin-ajax.php' ), // WordPress AJAX URL.
+			    'processing'			=>	esc_html('sending...','hello-wpstream'),
+			    'send_mess' 			=>  esc_html__('Send Message','hello-wpstream'),
+			    'is_user_logged_in' 	=> 	is_user_logged_in() ? '1' : '0',
+			    'comment_text_empty' 	=>  esc_html__('Please type your comment.','hello-wpstream'),
+			    'comment_author_empty' 	=> 	esc_html__('Please enter your name.', 'hello-wpstream'),
+			    'comment_email_empty' 	=> 	esc_html__('Please enter your email.', 'hello-wpstream'),
+			    'comment_email_invalid' => esc_html__('Please enter a valid email address.', 'hello-wpstream'),
+			    'gdpr_agree' 			=> esc_html__('You need to agree with GDPR terms.', 'hello-wpstream'),
+		    )
+	    );
     }
 
         
@@ -219,6 +236,21 @@ class Wpstream_Public {
             add_rewrite_endpoint( 'video-list', EP_ROOT | EP_PAGES );
             add_rewrite_endpoint( 'event-list', EP_ROOT | EP_PAGES );
         }
+
+	/**
+	 * Remove specific wpstream filters.
+	 */
+	function wpstream_remove_wpstream_filter() {
+		global $wpstream_plugin;
+
+		if ( class_exists( 'Wpstream_Player' ) ) {
+			// Instantiate the Wpstream_Player class if it exists.
+			$pstream_player = new Wpstream_Player( $wpstream_plugin->main );
+			// Remove filters applied by wpstream.
+			remove_filter( 'the_content', 'wpstream_filter_the_title' );
+			remove_filter( 'woocommerce_before_single_product', array( $pstream_player, 'wpstream_user_logged_in_product_already_bought' ) );
+		}
+	}
 
         /**
      * add custom query vars
@@ -301,8 +333,225 @@ class Wpstream_Public {
 }
 
 
-    
-    
+	/**
+	 * Function that adds additional post types for the search template
+	 *
+	 * @param $post_types_array
+	 * @return array
+	 */
+	public function wpstream_search_template_add_item_post_type( $post_types_array ) {
+		return array_merge( $post_types_array, array( 'wpstream_product_vod', 'wpstream_product', 'product', 'wpstream_bundles' ) );
+	}
+
+	/**
+	 * Function that changes the sidebar id based on the post type
+	 *
+	 * @param $sidebar_id
+	 * @return mixed|string
+	 */
+	public function wpstream_sidebar_id_by_post_type( $sidebar_id ) {
+		$current_post_type = get_post_type( get_the_ID() );
+
+		if( $current_post_type == 'wpstream_product_vod' ) {
+			return 'sidebar-vod';
+		}
+		if( $current_post_type == 'product' ) {
+			return 'sidebar-products';
+		}
+		if( $current_post_type == 'wpstream_product' ) {
+			return 'sidebar-live';
+		}
+		return $sidebar_id;
+	}
+
+	/**
+	 * Function to add new items to the header search dropdown post type list
+	 *
+	 * @param $search_list_values
+	 * @return array
+	 */
+	public function wpstream_header_search_values( $search_list_values ) {
+		return array_merge($search_list_values, [
+			'wpstream_product'     => esc_html__( 'Live Events', 'hello-wpstream' ),
+			'wpstream_product_vod' => esc_html__( 'Video on Demand', 'hello-wpstream' ),
+			'wpstream_bundles'     => esc_html__( 'Video Bundles', 'hello-wpstream' ),
+		]);
+	}
+
+	/**
+	 * Function to add new items to the category archive query
+	 *
+	 * @param $post_types
+	 * @return array
+	 */
+	public function wpstream_extend_category_archive_query_filter_callback( $post_types ) {
+		return array_merge( $post_types, array( 'product', 'wpstream_bundles', 'wpstream_product_vod', 'wpstream_product' ) );
+	}
+
+	/**
+	 * Function to add new labels to the list of taxonomies
+	 *
+	 * @param $taxonomy_labels
+	 * @return mixed
+	 */
+	public function wpstream_archives_lists_taxonomy_labels_callback( $taxonomy_labels ) {
+		$taxonomy_labels['product'] = esc_html__( 'Video Products', 'hello-wpstream' );
+		$taxonomy_labels['wpstream_bundles'] = esc_html__( 'Bundles', 'hello-wpstream' );
+		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'hello-wpstream' );
+		$taxonomy_labels['wpstream_product'] = esc_html__( 'Free Events', 'hello-wpstream' );
+		return $taxonomy_labels;
+	}
+
+	/**
+	 * Function to add new labels to the list of taxonomies for author archive
+	 *
+	 * @param $taxonomy_labels
+	 * @return mixed
+	 */
+	public function wpstream_author_archive_list_taxonomy_labels_callback( $taxonomy_labels ) {
+		$taxonomy_labels['product'] = esc_html__( 'Video Products', 'hello-wpstream' );
+		$taxonomy_labels['wpstream_bundles'] = esc_html__( 'Bundles', 'hello-wpstream' );
+		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'hello-wpstream' );
+		$taxonomy_labels['wpstream_product'] = esc_html__( 'Free Events', 'hello-wpstream' );
+		return $taxonomy_labels;
+	}
+
+	/**
+	 * Function to add new post type to the vod attached to the channel
+	 *
+	 * @param $post_type_array
+	 * @return array
+	 */
+	public function wpstream_vod_attached_to_channel( $post_type_array ) {
+		return array_merge( $post_type_array, array( 'wpstream_product_vod' ) );
+	}
+
+	/**
+	 * Function to add new post type to the additional post type content
+	 *
+	 * @param $post_type_list
+	 * @return array
+	 */
+	public function wpstream_additional_content_post_type_callback( $post_type_list ) {
+		return array_merge( $post_type_list, array( 'wpstream_product_vod', 'wpstream_product', 'wpstream_bundle_bcks' ) );
+	}
+
+	/**
+	 * @param $post_type_list
+	 * @return array
+	 */
+	public function wpstream_post_author_content_post_type_list_callback( $post_type_list ) {
+		return array_merge( $post_type_list, array( 'wpstream_product_vod', 'wpstream_product', 'wpstream_bundles' ) );
+	}
+
+		/**
+	 * Add new endpoint
+	 *
+	 * @since     3.0.1
+	*/
+		public function wpstream_custom_endpoint_start_streaming() {
+			include plugin_dir_path( __DIR__ ).'woocommerce/myaccount/start_streaming.php';
+	}
+
+	/**
+	 * @param $message
+	 * @param $post_type
+	 * @return mixed|string
+	 */
+	public function wpstream_author_content_simple_post_type_message_callback( $message, $post_type ) {
+		switch ( $post_type ) {
+			case 'wpstream_product_vod':
+				$message = esc_html__( 'Published ', 'hello-wpstream' );
+				break;
+			case 'wpstream_product':
+				$message = esc_html__( 'Started streaming ', 'hello-wpstream' );
+				break;
+			case 'wpstream_bundles':
+				$message = esc_html__( 'Added ', 'hello-wpstream' );
+				break;
+		}
+		return $message;
+	}
+
+	/**
+	 * @param $message
+	 * @param $post_type
+	 * @return mixed|string
+	 */
+	public function wpstream_author_content_post_type_message_callback( $message, $post_type ) {
+		switch ( $post_type ) {
+			case 'wpstream_product_vod':
+				$message = esc_html__( 'Published ', 'hello-wpstream' );
+				break;
+			case 'wpstream_product':
+				$message = esc_html__( 'Started streaming ', 'hello-wpstream' );
+				break;
+			case 'wpstream_bundles':
+				$message = esc_html__( 'Added ', 'hello-wpstream' );
+				break;
+		}
+		return $message;
+	}
+
+	/**
+	 * Function to show the sidebar for the post type
+	 *
+	 * @param $default
+	 * @param $post_type
+	 * @return bool|mixed
+	 */
+	public function wpstream_show_sidebar_for_post_type_callback( $default, $post_type ) {
+		switch ( $post_type ) {
+			case 'page':
+				return get_theme_mod( 'wpstream_page_sidebar', true );
+			case 'wpstream_product_vod':
+				return get_theme_mod( 'wpstream_video_on_demand_sidebar', true );
+			case 'wpstream_product':
+			case 'wpstream_bundles':
+				return get_theme_mod( 'wpstream_free_to_view_live_sidebar', true );
+			case 'product':
+				return get_theme_mod( 'wpstream_product_details_page_sidebar', true );
+			default:
+				return $default;
+		}
+	}
+
+	/**
+	 * Function to add new post types to the video episodes
+	 *
+	 * @param $post_type
+	 * @return array
+	 */
+	public function wpstream_video_episodes_post_type_callback( $post_type ) {
+		return array_merge( $post_type, array( 'wpstream_product', 'wpstream_product_vod', 'product' ) );
+	}
+
+	/**
+	 * Function to add new post types to the vod episodes
+	 *
+	 * @param $post_type
+	 * @return array
+	 */
+	public function wpstream_video_past_broadcast_post_type_callback( $post_type ) {
+		return array_merge( $post_type, array( 'wpstream_product_vod' ) );
+	}
+
+	/**
+	 * Function to return the label for the additional content based on the post type
+	 *
+	 * @param $post_type
+	 * @return array
+	 */
+	public function wpstream_additional_content_post_type_label_callback( $label, $post_type ) {
+		if ( 'post' === $post_type ) {
+			return $label;
+		} elseif ( 'wpstream_product' === $post_type ) {
+			return __( 'watching', 'hello-wpstream' );
+		} else {
+			return __( 'views', 'hello-wpstream' );
+		}
+	}
+
         /**
      * Add new endpoint
      *

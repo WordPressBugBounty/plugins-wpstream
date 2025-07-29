@@ -103,7 +103,7 @@ class Plugin_Base {
             $elements_manager->add_category(
 		'wpstream',
 		[
-			'title' => __( 'WpStream Widgets', 'wpstream' ),
+			'title' => __( 'WpStream Widgets', 'hello-wpstream' ),
 			'icon'  => 'fa fa-home',
 		]
             );

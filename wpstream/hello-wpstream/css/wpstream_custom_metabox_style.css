@@ -1,0 +1,84 @@
+.wpstream_full_label{
+    width: 100%;
+    display: inline-block;
+}
+
+.wpstream_sortable_list{
+    width: 400px;
+    display: inline-block;
+    float: left;
+    min-height: 400px;
+    max-height: 500px;
+    margin-right: 20px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    overflow-y: scroll;
+     border-radius: 2px;
+}
+
+.wpstream_sortable_list li{
+    padding: 7px;
+    position: relative;
+}
+
+.wpstream_sortable_list_initial{
+    
+}
+
+.wpstream_sortable_list_final{
+    background-color: #dedede;
+    margin-top: 60px;
+}
+
+
+
+.wpstream_sortable_list_initial li:hover{
+    background-color: #f0f0f1;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.wpstream_sortable_list_final li:hover{
+    background-color: #e7fcdb;
+    cursor: pointer;
+    border-radius: 2px;
+}
+.wpstream_product_list_type_wrapper{
+    position: absolute;
+    right: 7px;
+    top: 6px;
+}
+
+.wpstream_product_list_type,
+.wpstream_product_list_free{
+    border-radius: 4px;
+    margin: 0px 2px;
+    padding: 3px 10px;
+    font-size: 11px;
+    width: 30px;
+    float: left;
+    text-align: center;
+}
+
+.wpstream_product_list_free{
+    background-color: #1d2327;
+    color: #fff;
+}
+
+.wpstream_product_list_type{
+    background-color: #45a73f;
+    color:#fff;
+}
+.wpstream_selection_wrapper{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+.wpstream_selection_col_1{
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+}
+
+.wpstream_item_autocomplete_search{
+    margin-right: 20px;
+}

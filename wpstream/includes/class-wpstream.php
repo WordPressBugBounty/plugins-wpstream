@@ -95,6 +95,8 @@ class Wpstream {
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
         $this->define_ajax_hooks();
+		$this->wpstream_load_page_templates();
+        $this->wpstream_load_theme_notice();
 
         $this->wpstream_conection();
         $this->wpstream_player();
@@ -112,9 +114,11 @@ class Wpstream {
         }
 
 
+        public $wpstream_ajax;
+
         private function define_ajax_hooks() {
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-wpstream-ajax.php';
-            $ajax = new WpStream_Ajax( $this->main );
+            $this->wpstream_ajax = new WpStream_Ajax( $this->main );
         }
         
         
@@ -128,8 +132,17 @@ class Wpstream {
             require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-player.php';
             $this->wpstream_player = new Wpstream_Player($this->main);
         }
-        
-        
+
+
+        private function wpstream_load_page_templates() {
+	        require_once WPSTREAM_PLUGIN_PATH . 'includes/class-wpstream-templates.php';
+	        new WpStream_Template_Loader();
+        }
+
+        private function wpstream_load_theme_notice() {
+            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-theme-notice.php';
+            new WPStream_Theme_Notice();
+        }
         
         
 	/**
@@ -262,7 +275,7 @@ class Wpstream {
 
 
         $this->loader->add_action( 'wp_ajax_wpstream_settings_tab_update_plugin', $plugin_admin, 'wpstream_settings_tab_update_plugin' );
-                 
+
                 // add and save category extra fields
                 $this->loader->add_action( 'category_edit_form_fields',  $plugin_post_types,   'wpstream_category_callback_function', 10, 2);
                 $this->loader->add_action( 'category_add_form_fields',   $plugin_post_types,   'wpstream_category_callback_add_function' );
@@ -351,6 +364,22 @@ class Wpstream {
 		$this->loader->add_action('vc_before_init', $plugin_public,'wpstream_bakery_shortcodes');
 
 		$this->loader->add_action('wo_before_api', 'wpstream_cors_check_and_response',10,1);
+
+		$this->loader->add_filter( 'wpstream_search_template_item_post_type', $plugin_public, 'wpstream_search_template_add_item_post_type' );
+		$this->loader->add_filter( 'wpstream_sidebar_id_by_post_type', $plugin_public, 'wpstream_sidebar_id_by_post_type' );
+		$this->loader->add_filter( 'wpstream_header_search_values', $plugin_public, 'wpstream_header_search_values' );
+		$this->loader->add_filter( 'wpstream_extend_category_archive_query_filter', $plugin_public, 'wpstream_extend_category_archive_query_filter_callback' );
+		$this->loader->add_filter( 'wpstream_archives_lists_taxonomy_labels', $plugin_public, 'wpstream_archives_lists_taxonomy_labels_callback' );
+		$this->loader->add_filter( 'wpstream_author_archive_list_taxonomy_labels', $plugin_public, 'wpstream_author_archive_list_taxonomy_labels_callback' );
+		$this->loader->add_action( 'wpstream_vod_attached_to_channel', $plugin_public, 'wpstream_vod_attached_to_channel' );
+		$this->loader->add_action( 'wpstream_additional_content_post_type', $plugin_public, 'wpstream_additional_content_post_type_callback' );
+		$this->loader->add_action( 'wpstream_post_author_content_post_type_list', $plugin_public, 'wpstream_post_author_content_post_type_list_callback' );
+		$this->loader->add_action( 'wpstream_author_content_simple_post_type_message', $plugin_public, 'wpstream_author_content_simple_post_type_message_callback', 10, 2 );
+		$this->loader->add_action( 'wpstream_author_content_post_type_message', $plugin_public, 'wpstream_author_content_post_type_message_callback', 10, 2 );
+		$this->loader->add_action( 'wpstream_show_sidebar_for_post_type', $plugin_public, 'wpstream_show_sidebar_for_post_type_callback', 10, 2 );
+		$this->loader->add_action( 'wpstream_video_episodes_post_type', $plugin_public, 'wpstream_video_episodes_post_type_callback' );
+		$this->loader->add_action( 'wpstream_video_past_broadcast_post_type', $plugin_public, 'wpstream_video_past_broadcast_post_type_callback' );
+		$this->loader->add_action( 'wpstream_additional_content_post_type_label', $plugin_public, 'wpstream_additional_content_post_type_label_callback', 10, 2 );
 	}
 
 	/**
@@ -878,7 +907,7 @@ class Wpstream {
                 //retrive or  create channel for front end streamers
                 $item_id=$this->wpstream_retrive_front_end_channel();
             }
-            print'<div class="wpstream_modal_background"></div>';    
+            print'<div class="wpstream_modal_background"></div>';
             print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er2</div>
             <div class="wpstream_error_ok wpstream_button" type="button">'.esc_html__('Close','wpstream').'</div>
             </div>';

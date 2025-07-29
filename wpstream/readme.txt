@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.1
-Stable tag: 4.6.7.5
+Stable tag: 4.6.7.6
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,9 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+
+= 4.6.7.6 =
+* Enhancement - Moved functionality from the Hello WpStream theme to the plugin
 
 = 4.6.7.5 =
 * Enhancement - Added the support tab in the settings area for environment status and logs

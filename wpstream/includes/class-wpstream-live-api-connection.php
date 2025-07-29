@@ -23,7 +23,7 @@ class Wpstream_Live_Api_Connection  {
 
 		add_action( 'wp_ajax_wpstream_check_pending_videos', array($this,'wpstream_check_pending_videos') );
 
-      
+
     }
 
 
@@ -1304,9 +1304,13 @@ class Wpstream_Live_Api_Connection  {
         
         $video_options          =   array();
         $video_array            =   $this->wpstream_get_videos_from_api();
-        
-        if( is_array($video_array) && isset($video_array['items']) && is_array($video_array['items'])){
-	        $video_list_raw_array = $video_array['items'];
+	    $video_list_raw_array = false;
+
+	    if ( is_array($video_array) && isset($video_array['items']) && is_array($video_array['items']) ) {
+		    $video_list_raw_array = $video_array['items'];
+	    }
+
+	    if(is_array($video_list_raw_array)){
             $keys = array_column($video_list_raw_array, 'time');
             array_multisort($keys, SORT_DESC , $video_list_raw_array);
 

@@ -202,7 +202,7 @@ class Wpstream_Admin {
                         'upload_failed_part_retry' => esc_html__('Failed to upload part {part}. Retrying...','wpstream'),
                         'choose_recording'         => esc_html__( 'Choose Recording', 'wpstream' ),
                         'select_recording'         => esc_html__( 'Please select a recording from the list', 'wpstream' ),
-                        'invalid_response'         => esc_html__('Invalid response from server. Missing required upload data.', 'wpsteram'),
+                        'invalid_response'         => esc_html__('Invalid response from server. Missing required upload data.', 'wpstream'),
                         'video_processing'         => esc_html__( 'The video is still processing', 'wpstream' ),
                         'file_name_text'           => esc_html__('File Name:','wpstream'),
                         'channel_create_error'     => esc_html__('Something did not work. Please try again.', 'wpstream'),
