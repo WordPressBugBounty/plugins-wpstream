@@ -406,12 +406,6 @@ class Wpstream_Player{
                 ( isset($event_settings['view_count']) && intval($event_settings['view_count']) == 1 )
                 || !isset($event_settings['view_count'])
             );
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
-            if( isset($pack_details['available_data_mb'])){
-                if ($pack_details['available_data_mb'] <= 0){
-                    $show_viewer_count = false;
-                }
-            }
 
             echo '<div id="wpestream_live_counting" class="wpestream_live_counting" data-showviewercount="' . ($show_viewer_count ? '1' : '0') . '"></div>';
 
