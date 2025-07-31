@@ -1566,14 +1566,15 @@ class Wpstream_Player{
 	}
 
 	public function wpstream_is_streamify_user() {
-		$pack_details = $this->wpstream_get_cached_pack_data();
-
-		if ( isset( $pack_details['total_data'] ) && $pack_details['total_data'] === 500 &&
-			isset( $pack_details['total_storage_mb'] ) && $pack_details['total_storage_mb'] === 100 &&
-			isset( $pack_details['available_data'] ) && $pack_details['available_data'] <= 0
-		) {
-			return false;
-		}
 		return false;
+//		$pack_details = $this->wpstream_get_cached_pack_data();
+//
+//		if ( isset( $pack_details['total_data'] ) && $pack_details['total_data'] === 500 &&
+//			isset( $pack_details['total_storage_mb'] ) && $pack_details['total_storage_mb'] === 100 &&
+//			isset( $pack_details['available_data'] ) && $pack_details['available_data'] <= 0
+//		) {
+//			return true;
+//		}
+//		return false;
 	}
 }
