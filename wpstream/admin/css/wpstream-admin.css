@@ -1112,6 +1112,11 @@ label.wpstream_switch {
   background-color: #ccc;
   -webkit-transition: .4s;
   transition: .4s;
+    text-align: center;
+    line-height: 25px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #666;
 }
 
 .wpstream_slider:before {
@@ -1124,10 +1129,31 @@ label.wpstream_switch {
     background-color: white;
     -webkit-transition: .4s;
     transition: .4s;
+    z-index: 1;
+}
+
+.wpstream_slider:after {
+    content: "OFF";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    line-height: 25px;
+    z-index: 0;
+    text-align: right;
+    margin-right: 8px;
 }
 
 input:checked + .wpstream_slider {
   background-color: #2196F3;
+    color: #fff;
+}
+
+input:checked + .wpstream_slider:after {
+    content: "ON";
+    text-align: left;
+    margin-left: 8px;
 }
 
 input:focus + .wpstream_slider {

@@ -330,11 +330,14 @@ function wpstream_video_cards_column_class( $per_row ) {
  * @return string The HTML markup for the non-live section.
  */
 function wpstream_theme_not_live_section( $channel_id ) {
+    $transient_name = 'event_data_to_return_'.   $channel_id;
+    $event_data = get_transient( $transient_name );
+
 	$return_string  = '<div class="wpstream_not_live_mess wpstream_theme_not_live_section "><div class="wpstream_not_live_mess_back"></div>';
 	$return_string .= '<div class="wpstream_not_live_mess_mess">';
-	$message_show   = esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );
-
-	$return_string  .= $message_show;
+    if ( isset($event_data['status']) && $event_data['status'] === 'stopped' ) {
+	    $return_string  .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );;
+    }
 
 	$return_string .= '</div>';
 	$return_string .= '</div>';

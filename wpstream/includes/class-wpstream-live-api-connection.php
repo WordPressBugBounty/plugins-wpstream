@@ -733,57 +733,65 @@ class Wpstream_Live_Api_Connection  {
             $local_event_options =   get_option('wpstream_user_streaming_global_channel_options') ;
         }
 
+	    $is_autostart="false";
+	    $is_encrypt="false";
+	    $low_latency="false";
+	    $adaptive_bitrate="false";
+	    $is_record="false";
+	    $corsorigin='*';
 
-        // set encrypt option
-        $is_autostart="false";
-        if( intval( $local_event_options['autostart']) ==1 ){
-            $is_autostart="true";
-        }
+	    if ( is_array($local_event_options) ) {
+		    if ( isset($local_event_options['autostart']) &&
+		         intval( $local_event_options['autostart']) == 1 ) {
+			    $is_autostart = "true";
+		    }
 
+		    if ( isset($local_event_options['encrypt']) &&
+		         intval( $local_event_options['encrypt']) == 1 ) {
+			    $is_encrypt = "true";
+		    }
 
-        // set encrypt option
-        $is_encrypt="false";
-        if( intval( $local_event_options['encrypt']) ==1 ){
-            $is_encrypt="true";
-        }
+		    if ( isset($local_event_options['low_latency']) &&
+		         intval( $local_event_options['low_latency']) == 1 ) {
+			    $low_latency = "true";
+		    }
 
-        $low_latency="false";
-        if( intval( $local_event_options['low_latency']) ==1 ){
-            $low_latency="true";
-        }
+		    if ( isset($local_event_options['adaptive_bitrate']) &&
+		         intval( $local_event_options['adaptive_bitrate']) == 1 ) {
+			    $adaptive_bitrate = "true";
+		    }
 
-        $adaptive_bitrate="false";
-        if( intval( $local_event_options['adaptive_bitrate']) ==1 ){
-            $adaptive_bitrate="true";
-        }
+		    if ( isset($local_event_options['record']) &&
+		         intval( $local_event_options['record']) == 1 ) {
+			    $is_record = "true";
+		    }
 
-        if($adaptive_bitrate=="true" ||   $low_latency=="true"  ){
-            $is_encrypt="false";
-        }
+		    if ( !isset($local_event_options['domain_lock']) || intval( $local_event_options['domain_lock']) == 0 ) {
+			    $corsorigin = '*';
+		    }
+	    }
 
-        if( $is_encrypt=="true"){
-            $adaptive_bitrate="false";  
-            $low_latency="false";
-        }
+	    if( $adaptive_bitrate=="true" || $low_latency=="true" ) {
+		    $is_encrypt="false";
+	    }
 
+	    if( $is_encrypt=="true" ) {
+		    $adaptive_bitrate="false";
+		    $low_latency="false";
+	    }
 
-
-        // set record option
-        $is_record="false";
-        if( intval( $local_event_options['record']) ==1 ){
-            $is_record="true";
-        }
-
-        $corsorigin='';
-        if( !isset($local_event_options['domain_lock'])){
-            $corsorigin='*';
-        }
-        else if(intval( $local_event_options['domain_lock']) ==0 ){
-            $corsorigin='*';
-        }
-            
-        
-        $event_data         =   $this->wpstream_request_live_stream_uri($channel_id,$is_autostart,$is_record,$is_encrypt,$low_latency,$adaptive_bitrate,$userID,$corsorigin,$on_boarding, $basic_streaming);
+	    $event_data = $this->wpstream_request_live_stream_uri(
+		    $channel_id,
+		    $is_autostart,
+		    $is_record,
+		    $is_encrypt,
+		    $low_latency,
+		    $adaptive_bitrate,
+		    $userID,
+		    $corsorigin,
+		    $on_boarding,
+		    $basic_streaming
+	    );
        
         
         

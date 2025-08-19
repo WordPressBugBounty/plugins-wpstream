@@ -42,8 +42,16 @@
     font-size: 1.1em;
     line-height: 3em;
     height: 4em;
+    align-items: center;
 }
 
+.vjs-wpstream  .vjs-live-control .vjs-live-display {
+    width: 4em;
+}
+
+.wpstream-featured-player-wrapper .vjs-live-display {
+    margin-top: 0;
+}
 
 .vjs-wpstream .vjs-volume-panel .vjs-volume-control {
     margin: 0px 0px 0px 0px;
