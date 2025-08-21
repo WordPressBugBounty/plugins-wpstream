@@ -335,7 +335,10 @@ function wpstream_theme_not_live_section( $channel_id ) {
 
 	$return_string  = '<div class="wpstream_not_live_mess wpstream_theme_not_live_section "><div class="wpstream_not_live_mess_back"></div>';
 	$return_string .= '<div class="wpstream_not_live_mess_mess">';
-    if ( isset($event_data['status']) && $event_data['status'] === 'stopped' ) {
+
+    if ( ( isset( $event_data['status']) &&
+           in_array( $event_data['status'], array( 'stopped', 'stopping', 'starting' ) ) ) ||
+         ( isset($event_data['error']) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ){
 	    $return_string  .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );;
     }
 

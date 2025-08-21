@@ -8,6 +8,8 @@ jQuery(document).ready(function($) {
     wpstream_save_settings();
 
     wpstream_update_plugin_support_tab();
+
+    // wpstream_broadcaster_bind();
 });
 
 /**
@@ -200,4 +202,26 @@ function wpstream_update_plugin_support_tab() {
             }
         })
     });
+}
+
+function wpstream_broadcaster_bind() {
+    jQuery('.start_webcaster').on('click', function(e) {
+        if (jQuery(this).hasClass('wpstream_inactive_icon')) {
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Get the channel ID from the data attribute
+        var channelId = jQuery(this).closest('.event_list_unit').data('show-id');
+
+        if (!channelId) {
+            return;
+        }
+
+        // Open the broadcaster in a new window
+        var broadcasterUrl = wpstream_settings_vars.broadcaster_url + channelId;
+        window.open(broadcasterUrl, 'wpstream_broadcaster_' + channelId, 'fullscreen=yes');
+    });
+
 }

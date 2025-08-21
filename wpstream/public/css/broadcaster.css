@@ -1,0 +1,298 @@
+/* Additional styles for the broadcaster */
+html {
+    margin-top: 0 !important;
+}
+
+body.wpstream-broadcaster-page {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    background-color: #f0f0f1;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+body.wpstream-broadcaster-page #wpadminbar {
+    display: none;
+}
+
+/* Style for the header */
+.broadcaster-header {
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 10px 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.header-logo img {
+    height: 40px;
+    width: auto;
+}
+
+.header-nav {
+    display: flex;
+    align-items: center;
+}
+
+.nav-item {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+}
+
+/* Adjust the main container to account for the fixed header */
+.broadcaster-container {
+    margin-top: 70px;
+}
+
+/* Style for the main broadcaster container */
+.broadcaster-container {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.video-container {
+    flex: 2;
+    position: relative;
+    width: 100%;
+    height: auto;
+    background-color: #000;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#localVideo {
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+}
+
+.controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.button {
+    background-color: #2271b1;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.button:hover {
+    background-color: #135e96;
+}
+
+.button.start-broadcast {
+    background-color: #066AA6;
+    width: 100%;
+}
+
+.button.stop-broadcast {
+    background-color: #2c3338;
+    width: 100%;
+}
+
+.status-container {
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.wrapper {
+    display: flex;
+    gap: 15px;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background-color: #ccc;
+}
+
+.status-indicator.connected {
+    background-color: #00a32a;
+}
+
+.status-indicator.disconnected {
+    background-color: #d63638;
+}
+
+.status-indicator.connecting {
+    background-color: #f0c33c;
+}
+
+.settings-panel {
+    flex: 1;
+    background-color: #fff;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.settings-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.settings-row .settings-group .input-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.settings-row .settings-group .input-group #audioBitrate {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.settings-row .settings-group .input-group input {
+    flex: 1;
+    font-size: 1rem;
+}
+
+.settings-row.media-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings-row .settings-group .input-group .input-suffix {
+    background-color: #e9ecef;
+    padding: .375rem .75rem;
+    border: 1px solid #ced4da;
+    border-radius: .25rem;
+    font-size: 1rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 0;
+}
+
+.settings-group {
+    flex: 1;
+    /*min-width: 250px;*/
+}
+
+.settings-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.settings-group .controls-group {
+    display: flex;
+    gap: 10px;
+}
+
+.settings-group .controls-group button {
+    background: #FFFFFF;
+    border: 1px solid #B2B3B5;
+    box-sizing: border-box;
+    border-radius: 6px;
+}
+
+select, input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.hidden {
+    display: none;
+}
+
+.info-message {
+    color: #0056b3;
+    background-color: #e9f5ff;
+    padding: 10px;
+    border-left: 4px solid #0056b3;
+    margin-bottom: 15px;
+}
+
+.error-message {
+    color: #d63638;
+    background-color: #fcf0f1;
+    padding: 10px;
+    border-left: 4px solid #d63638;
+    margin-bottom: 15px;
+}
+
+.success-message {
+    color: #00a32a;
+    background-color: #edfaef;
+    padding: 10px;
+    border-left: 4px solid #00a32a;
+    margin-bottom: 15px;
+}
+
+.stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.stat-item {
+    background-color: #f0f0f1;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.settings-group select {
+    color: #495057;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    font-size: 1rem;
+    appearance: menulist;
+    background-image: none;
+    -webkit-appearance: menulist;
+}
+
+.settings-group select:focus {
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.settings-group select:disabled {
+    background-color: #f0f0f1;
+    cursor: not-allowed;
+    opacity: 0.7;
+}

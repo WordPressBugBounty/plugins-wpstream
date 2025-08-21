@@ -71,10 +71,10 @@ class Wpstream_Public {
     public function enqueue_styles() {
 
             wp_enqueue_style('wpstream-style',          plugin_dir_url( __FILE__ ) .'/css/wpstream_style.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
-            wp_enqueue_style('video-js.min',            plugin_dir_url( __FILE__ ).'/css/video-js.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
+            wp_enqueue_style('video-js.min',            plugin_dir_url( __FILE__ ).'css/video-js.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
             wp_enqueue_style(
 				'videojs-wpstream-player',
-				plugin_dir_url( __FILE__ ).'/css/videojs-wpstream.css',
+				plugin_dir_url( __FILE__ ).'css/videojs-wpstream.css',
 				array(),
 				WPSTREAM_PLUGIN_VERSION . '.' . filemtime( plugin_dir_path(__FILE__) . 'css/videojs-wpstream.css' ),
 				'all'
@@ -198,7 +198,7 @@ class Wpstream_Public {
                         $integrations_array['is_buddyboss']='yes';
                     }
                 
-                    wp_enqueue_script('wpstream-integrations',   plugin_dir_url( __DIR__  ) .'/integrations/js/integrations.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true); 
+                    wp_enqueue_script('wpstream-integrations',   plugin_dir_url( __DIR__  ) .'integrations/js/integrations.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
                     wp_localize_script('wpstream-integrations', 'wpstream_integrations_vars', $integrations_array );
 
 
@@ -221,9 +221,32 @@ class Wpstream_Public {
 			    'gdpr_agree' 			=> esc_html__('You need to agree with GDPR terms.', 'hello-wpstream'),
 		    )
 	    );
+
+	    wp_enqueue_style(
+		    'wpstream-broadcaster-css',
+		    WPSTREAM_PLUGIN_DIR_URL . 'public/css/broadcaster.css',
+		    array(),
+		    filemtime( WPSTREAM_PLUGIN_PATH . 'public/css/broadcaster.css' ) ,
+	    );
+
+//	    wp_enqueue_script(
+//		    'wpstream-broadcaster',
+//		    WPSTREAM_PLUGIN_DIR_URL . 'public/js/broadcaster.js',
+//		    array('jquery'),
+//		    filemtime( WPSTREAM_PLUGIN_PATH . 'public/js/broadcaster.js' ),
+//		    true
+//	    );
+//
+//	    // Add localized variables for broadcaster
+//	    wp_localize_script('wpstream-broadcaster', 'wpstream_broadcaster_vars', array(
+//		    'ajax_url' => admin_url('admin-ajax.php'),
+//		    'nonce' => wp_create_nonce('wpstream_broadcaster_nonce'),
+//		    'plugin_url' => plugin_dir_url(__FILE__),
+//		    'obs_uri' => '',
+//	    ));
     }
 
-        
+
         
       
         /**

@@ -222,7 +222,7 @@ class Wpstream_Admin {
                     )
                 );
                 
-                wp_enqueue_script('wpstream-start-streaming_admin',   plugin_dir_url( __DIR__  ) .'/public/js/start_streaming.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true); 
+                wp_enqueue_script('wpstream-start-streaming_admin',   plugin_dir_url( __DIR__  ) .'public/js/start_streaming.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
                 wp_localize_script('wpstream-start-streaming_admin', 'wpstream_start_streaming_vars', 
                     array( 
                         'admin_url'             =>  get_admin_url(),
@@ -275,6 +275,7 @@ class Wpstream_Admin {
                         'select_image_text' => esc_html__( 'Select Image', 'wpstream'),
                         'update_successful' => esc_html__( 'Update Successful.', 'wpstream'),
                         'update_failed'     => esc_html__( 'Something went wrong. Try again.', 'wpstream'),
+                        'broadcaster_url' => esc_url( esc_url(home_url('/broadcaster-page/') ) ),
                 ));
 
 
@@ -285,7 +286,30 @@ class Wpstream_Admin {
                             'plugin_url'            =>  get_dashboard_url().'/plugins.php',
                             'upload_url'            =>  get_dashboard_url().'admin.php?page=wpstream_recordings'
                    
-                    ));     
+                    ));
+
+//        wp_enqueue_style(
+//		    'wpstream-broadcaster-css',
+//		    plugin_dir_url(__FILE__) . 'public/css/broadcaster.css',
+//		    array(),
+//		    filemtime(plugin_dir_path(__FILE__) . 'public/css/broadcaster.css' ),
+//	    );
+//
+//	    wp_enqueue_script(
+//		    'wpstream-broadcaster',
+//		    plugin_dir_url(__FILE__) . 'public/js/broadcaster.js',
+//		    array('jquery'),
+//		    WPSTREAM_PLUGIN_VERSION,
+//		    true
+//	    );
+
+	    // Add localized variables for broadcaster
+	    wp_localize_script('wpstream-broadcaster', 'wpstream_broadcaster_vars', array(
+		    'ajax_url' => admin_url('admin-ajax.php'),
+		    'nonce' => wp_create_nonce('wpstream_broadcaster_nonce'),
+		    'plugin_url' => plugin_dir_url(__FILE__),
+
+	    ));
                 
         }
          
@@ -801,7 +825,7 @@ class Wpstream_Admin {
                 print '<div class="wpstream_options_col1 wpstream_stream_browser_wrapper">';
                    
                     print '<div class="wpstream_inactive_icon start_webcaster wpstream_stream_browser wpstream-button-icon wpstream_tooltip_wrapper"  data-webcaster-url="'.$webcaster_url.'" data-show-id="'.$the_id.'"">';
-                       
+
                         print '<div class="wpstream_tooltip_disabled">'.esc_html__('Turn ON the channel to go live.','wpestream').'</div>'; 
                         print '<div class="wpstream_tooltip">'.esc_html__('Go live with your webcam','wpestream').'</div>'; 
 
@@ -1431,7 +1455,7 @@ class Wpstream_Admin {
                                 'fantasy'  =>  esc_html__('Fantasy','wpstream'),
                                 'sea' => esc_html__('Sea','wpstream'),
                             ),
-                            'details'   =>  esc_html__('Choose the video player theme to have a different look.','wpstream'),
+                            'details'   =>  esc_html__('Choose the video player theme to have a different look for the player.','wpstream'),
                         ),
                 'wpstream_player_logo' => array(
                         'tab' => 'general_options',
@@ -1446,7 +1470,7 @@ class Wpstream_Admin {
 //                'wpstream_player_logo_opacity' => array(
 //                        'tab' => 'general_options',
 //                        'name' => 'player_logo_opacity',
-//                        'label' => esc_html__('Opacity of the player logo','wpstream'),
+//                        'label' => esc_html__('Opacity of the video player logo','wpstream'),
 //                        'type' => 'range',
 //                        'details' => esc_html__('Set the opacity of the logo','wpstream'),
 //                        'default' => '',

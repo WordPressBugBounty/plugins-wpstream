@@ -50,7 +50,7 @@
 }
 
 .wpstream-featured-player-wrapper .vjs-live-display {
-    margin-top: 0;
+    margin-top: 0 !important;
 }
 
 .vjs-wpstream .vjs-volume-panel .vjs-volume-control {
@@ -70,7 +70,7 @@
     background-image: url(images/fullscreen_simple.svg)!important;
     background-position: 50%!important;
     background-repeat: no-repeat!important;
-    background-size: 47%!important;
+    background-size: 40%!important;
 }
 
 
@@ -78,20 +78,18 @@
     background-image: url(images/fullscreen_full.svg)!important;
     background-position: 50%!important;
     background-repeat: no-repeat!important;
-    background-size: 47%!important;
+    background-size: 40%!important;
 }
 
 .vjs-wpstream  .vjs-picture-in-picture-control{
     background-image: url(images/pip_player.svg)!important;
     background-position: 67% 54%!important;
     background-repeat: no-repeat!important;
-    background-size: 60%!important;
+    background-size: 50%!important;
 }
 
-
-
 .vjs-wpstream  .vjs-fullscreen-control:hover{
-    background-size: 47%!important; 
+    background-size: 40%!important;
 }
 
 .vjs-wpstream .vjs-fullscreen-control .vjs-icon-placeholder:before,
@@ -114,4 +112,13 @@
 
 .vjs-wpstream .vjs-big-play-button{
     border: .06666em solid #595656;
+}
+
+.video-js.vjs-default-skin .vjs-volume-panel {
+    transition: width 1s;
+    width: 4em;
+}
+
+.video-js.vjs-default-skin .vjs-volume-panel:hover .vjs-mute-control {
+    width: 4em;
 }

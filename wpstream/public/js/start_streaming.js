@@ -9,6 +9,7 @@ jQuery(document).ready(function ($) {
     wpestate_start_modal_error_actions();
     wpstream_tooltip();
     wpstream_copy_to_clipboard();
+    // Commenting the following line because we are using the new webcaster
     wpstream_webcaster_actions();
     wpstream_save_options_actions();
     wpstream_bind_start_and_stop();
@@ -673,14 +674,48 @@ function wpstream_copy_to_clipboard(){
 *
 */ 
 
-function wpstream_webcaster_actions(){   
-    jQuery('.start_webcaster').on('click',function(){    
+function wpstream_webcaster_actions(){
+    jQuery('.start_webcaster').on('click',function(event){
         if(jQuery(this).hasClass('wpstream_inactive_icon')){
             return;
         }
-        var caster_url = jQuery(this).attr('data-webcaster-url');
-        jQuery(this).parent().find('.external_software_streaming').slideUp()
-        window.open(caster_url, '_blank', 'location=yes,scrollbars=yes,status=yes');
+        var $this = jQuery(this);
+        var ajaxurl = wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
+        var channelId      = jQuery(this).closest('.event_list_unit').data('show-id');
+        var whipUrl = '';
+
+        jQuery.ajax({
+            type: 'POST',
+            dataType: 'json',
+            url: ajaxurl,
+            timeout: 3000000,
+            data: {
+                'action': 'wpstream_check_whipurl',
+                'channel_id': channelId,
+            },
+            success: function (data) {
+                if( data.success == true ){
+                    whipUrl = data.whip_url;
+
+	                if ( whipUrl !== '' ) {
+		                // Open the new broadcaster in a new window
+		                var broadcasterUrl = wpstream_settings_vars.broadcaster_url + channelId;
+		                window.open(broadcasterUrl, 'wpstream_broadcaster_' + channelId, 'fullscreen=yes');
+	                }
+                } else {
+	                var caster_url = $this.attr('data-webcaster-url');
+	                $this.parent().find('.external_software_streaming').slideUp()
+	                window.open(caster_url, '_blank', 'location=yes,scrollbars=yes,status=yes');
+                }
+            },
+            error: function() {
+				console.log('and here')
+                // fallback to the old broadcaster if the AJAX request fails
+                var caster_url = $this.attr('data-webcaster-url');
+                $this.parent().find('.external_software_streaming').slideUp()
+                window.open(caster_url, '_blank', 'location=yes,scrollbars=yes,status=yes');
+            }
+        });
     })
 }
 

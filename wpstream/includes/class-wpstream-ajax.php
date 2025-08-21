@@ -19,7 +19,8 @@ class WpStream_Ajax {
 		$this->main = $plugin_main;
 
 		add_action( 'wp_ajax_wpstream_get_videos_list',  [$this,'wpstream_get_videos_list'] );
-		
+		add_action('wp_ajax_wpstream_get_broadcaster_info', array($this, 'wpstream_get_broadcaster_info'));
+
 		// Add the dashboard AJAX actions
 		add_action( 'wp_ajax_wpstream_dashboard_save_channel_data', [$this, 'wpstream_dashboard_save_channel_data'] );
 		add_action( 'wp_ajax_wpstream_dashboard_save_user_address', [$this, 'wpstream_dashboard_save_user_address'] );
@@ -29,7 +30,7 @@ class WpStream_Ajax {
 		add_action( 'wp_ajax_wpstream_handle_channel_creation', [$this, 'wpstream_handle_channel_creation'] );
 		add_action( 'wp_ajax_wpstream_handle_channel_details_saving', [$this, 'wpstream_handle_channel_details_saving'] );
 		add_action( 'wp_ajax_wpstream_remove_post_id', [$this, 'wpstream_remove_post_id_callback'] );
-		
+
 		// Enqueue dashboard scripts
 		add_action( 'wp_enqueue_scripts', [$this, 'wpstream_enqueue_dashboard_scripts'] );
 	}
@@ -47,7 +48,7 @@ class WpStream_Ajax {
 				$this->main->get_version(),
 				true
 			);
-			
+
 			wp_localize_script( 'wpstream-dashboard-script', 'wpstream_dashboard_script_vars', array(
 				'ajaxurl' => admin_url( 'admin-ajax.php' ),
 				'currentPassEmpty' => esc_html__( 'Please enter your current password.', 'wpstream' ),
@@ -81,7 +82,42 @@ class WpStream_Ajax {
 		}
 		die();
 	}
-	
+
+	/**
+	 * AJAX handler to get broadcaster information
+	 */
+	public function wpstream_get_broadcaster_info() {
+		// Verify nonce
+		check_ajax_referer('wpstream_broadcaster_nonce', 'nonce');
+
+		// Check permissions
+		if (!current_user_can('publish_posts')) {
+			wp_send_json_error('Insufficient permissions');
+			return;
+		}
+
+		$channel_id = isset($_POST['channel_id']) ? intval($_POST['channel_id']) : 0;
+
+		if (empty($channel_id)) {
+			wp_send_json_error('Invalid channel ID');
+			return;
+		}
+
+		// Get RTMP URL from post meta
+		$obs_uri = get_post_meta($channel_id, 'obs_uri', true);
+		$obs_stream = get_post_meta($channel_id, 'obs_stream', true);
+
+		if (empty($obs_uri) || empty($obs_stream)) {
+			wp_send_json_error('RTMP information not available');
+			return;
+		}
+
+		wp_send_json_success([
+			'rtmp_url' => $obs_uri,
+			'stream_key' => $obs_stream
+		]);
+	}
+
 	/**
 	 * Saves channel data from the dashboard.
 	 *
@@ -128,7 +164,7 @@ class WpStream_Ajax {
 			wp_update_post( $post_data );
 			set_post_thumbnail( $postID, $thumb_id );
 
-		
+
 			/*
 			* Manage images
 			*/
@@ -137,7 +173,7 @@ class WpStream_Ajax {
 				wp_set_post_terms( $postID, 'live_stream', 'product_type' );
 				update_post_meta( $postID, '_product_image_gallery', $images );
 			} else {
-				
+
 				$images_array = explode( ',', $images );
 	                        delete_post_meta( $postID, 'wpstream_theme_gallery' );
 				foreach ( $images_array as $key => $value ) :
@@ -186,7 +222,7 @@ class WpStream_Ajax {
 			die();
 		}
 	}
-	
+
 	/**
 	 * Return the image gallery for a post.
 	 *
@@ -218,7 +254,7 @@ class WpStream_Ajax {
 
 		return array_filter( $gallery_images );
 	}
-	
+
 	/**
 	 * Returns information about taxonomies for the specified post.
 	 *
@@ -360,7 +396,7 @@ class WpStream_Ajax {
 
 		return $return_string;
 	}
-	
+
 	/**
 	 * Save user address data from dashboard.
 	 *
@@ -382,7 +418,7 @@ class WpStream_Ajax {
 	            update_user_meta($userID, sanitize_text_field( $item['id']) , sanitize_text_field( $item['value']) );
 	        }
 	    }
-	    
+
 
 		wp_send_json_success(
 			array(
@@ -393,7 +429,7 @@ class WpStream_Ajax {
 
 		die();
 	}
-	
+
 	/**
 	 * Delete profile attachment
 	 */
@@ -452,7 +488,7 @@ class WpStream_Ajax {
 
 		die();
 	}
-	
+
 	/**
 	 * Dashboard save user data
 	 */
@@ -628,7 +664,7 @@ class WpStream_Ajax {
 
 		wp_die();
 	}
-	
+
 	/**
 	 * Handle channel creation.
 	 */
@@ -642,7 +678,7 @@ class WpStream_Ajax {
 			$channel_type = sanitize_text_field( wp_unslash( $_POST['channel_type'] ) );
 		}
 		$current_user = wp_get_current_user();
-		
+
 		// These functions should be implemented in the plugin or be accessible
 		$maxim_channels_per_user = function_exists('wpstream_return_max_channels_per_user') ? wpstream_return_max_channels_per_user() : 100;
 		$allow_user_paid_channels = function_exists('wpstream_return_user_can_create_paid') ? wpstream_return_user_can_create_paid() : false;
@@ -808,7 +844,7 @@ class WpStream_Ajax {
 
 		wp_die();
 	}
-	
+
 	/**
 	 * Callback handler to remove a post ID from the "watch later" list.
 	 */

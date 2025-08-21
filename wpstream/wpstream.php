@@ -3,7 +3,7 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.6.7.9
+ * Version:           4.7
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
@@ -14,7 +14,7 @@
 if ( ! defined( 'WPINC' ) ) {
 	die;
 }
-define('WPSTREAM_PLUGIN_VERSION', '4.6.7.9');
+define('WPSTREAM_PLUGIN_VERSION', '4.7');
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 define('WPSTREAM_CLUBLINKSSL', 'https');
 define('WPSTREAM_PLUGIN_URL',  plugins_url() );
@@ -267,3 +267,39 @@ if ( function_exists( 'wpstream_get_author_id' ) ) {
         }
     }
 }
+
+/**
+ * Register broadcaster page endpoint
+ */
+function wpstream_register_broadcaster_endpoint() {
+	add_rewrite_rule(
+		'broadcaster-page/([0-9]+)/?$',
+		'index.php?broadcaster_page=1&channel_id=$matches[1]',
+		'top'
+	);
+
+	add_rewrite_tag('%broadcaster_page%', '([0-1]{1})');
+	add_rewrite_tag('%channel_id%', '([0-9]+)');
+}
+add_action('init', 'wpstream_register_broadcaster_endpoint');
+
+/**
+ * Load broadcaster template when the custom endpoint is accessed
+ */
+function wpstream_load_broadcaster_template($template) {
+	if (get_query_var('broadcaster_page') == 1) {
+		// Return the path to our broadcaster template
+		return plugin_dir_path(__FILE__) . 'templates/broadcaster-template.php';
+	}
+	return $template;
+}
+add_filter('template_include', 'wpstream_load_broadcaster_template');
+
+/**
+ * Flush rewrite rules on plugin activation to ensure our endpoint works
+ */
+function wpstream_flush_rewrite_rules() {
+	wpstream_register_broadcaster_endpoint();
+	flush_rewrite_rules();
+}
+register_activation_hook(__FILE__, 'wpstream_flush_rewrite_rules');

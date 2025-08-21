@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.1
-Stable tag: 4.6.7.9
+Stable tag: 4.7
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -136,6 +136,10 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+
+= 4.7 =
+* Feature - Improve broadcaster experience with the new browser broadcaster
+* Fix - Video Player styling fixes
 
 = 4.6.7.9 =
 * Fix - Fix default value for channel settings

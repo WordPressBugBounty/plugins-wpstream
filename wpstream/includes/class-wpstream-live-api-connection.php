@@ -14,7 +14,9 @@ class Wpstream_Live_Api_Connection  {
 
         add_action( 'wp_ajax_wpstream_check_dns_sync', array($this,'wpstream_check_dns_sync') );
         add_action( 'wp_ajax_wpstream_check_event_status', array($this,'wpstream_check_event_status') );
-        
+		add_action( 'wp_ajax_wpstream_check_whipurl', array($this, 'wpstream_check_whipurl') );
+		add_action( 'wp_ajax_wpstream_check_user_quota', array($this, 'wpstream_check_user_quota') );
+
         add_action( 'wp_ajax_wpstream_close_event', array($this,'wpstream_close_event') );
         add_action( 'wp_ajax_wpstream_get_download_link', array($this,'wpstream_get_download_link') );  
         add_action( 'wp_ajax_wpstream_get_delete_file', array($this,'wpstream_get_delete_file') ); 
@@ -307,6 +309,29 @@ class Wpstream_Live_Api_Connection  {
             die();
                   
     }
+
+	public function wpstream_check_whipurl() {
+		$channel_id = intval($_POST['channel_id']);
+
+		$whip_url = get_post_meta($channel_id, 'whipUrl', true);
+
+		if ( $whip_url ) {
+			print json_encode(
+				array(
+					'success' => true,
+					'whip_url' => $whip_url,
+				)
+			);
+		} else {
+			print json_encode(
+				array(
+					'success' => false,
+					'error' => esc_html__('WHIP URL not found for this channel.', 'wpstream'),
+				)
+			);
+		}
+		die();
+	}
     
     /**
      * edited 4.0
@@ -1109,6 +1134,20 @@ class Wpstream_Live_Api_Connection  {
     }
     
 
+	public function wpstream_check_user_quota() {
+		$pack_data = $this->wpstream_request_pack_data_per_user();
+		if ( ! $pack_data || ! isset( $pack_data['success'] ) || ! $pack_data['success'] ) {
+			print json_encode(
+				array(
+					'success' => false,
+					'error' => esc_html__('Couldn\'t get user quota.', 'wpstream'),
+				)
+			);
+		} else {
+			print json_encode($pack_data);
+		}
+		die();
+	}
 
 
     /**

@@ -51,7 +51,7 @@ class Wpstream_Player{
         $usefull_info =' get cache from transiet'; 
         if ( false ===  $event_data_for_transient || $event_data_for_transient=='' ) { //ws || $hls_to_return==''        
             $notes                      =   'wpstream_player_check_status_note_from_js';   
-            $event_status               =   $this->main->wpstream_live_connection-> wpstream_check_event_status_api_call($channel_id,$notes);
+            $event_status               =   $this->main->wpstream_live_connection->wpstream_check_event_status_api_call($channel_id,$notes);
             $event_data_for_transient   =   $event_status;
             $usefull_info =' no cache found';
             set_transient($transient_name,$event_data_for_transient,45);
