@@ -456,7 +456,7 @@ function wpstream_event_ready_make_actions_visible(parent){
     var webcasterUrl = parent.find('.start_webcaster').attr('data-webcaster-url');
     if (webcasterUrl === ""){
         parent.find('.start_webcaster').addClass('wpstream_inactive_icon');
-        parent.find('.wpstream_tooltip_disabled').text('Browser Broadcasting is not Available for your plan.');
+        parent.find('.start_webcaster .wpstream_tooltip_disabled').text('Browser Broadcasting is not Available for your plan.');
     }
 
     //for onboarding

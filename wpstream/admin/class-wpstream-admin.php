@@ -221,8 +221,9 @@ class Wpstream_Admin {
                         'create_ptv_vod'     => esc_html__( 'Create new Pay-Per-View VOD from this recording' , 'wpstream' ),
                     )
                 );
-                
-                wp_enqueue_script('wpstream-start-streaming_admin',   plugin_dir_url( __DIR__  ) .'public/js/start_streaming.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
+
+                $modified_start_streaming_file_time = gmdate( 'YmdHi', filemtime( WPSTREAM_PLUGIN_PATH . 'public/js/start_streaming.js' ) );
+                wp_enqueue_script('wpstream-start-streaming_admin',   plugin_dir_url( __DIR__  ) .'public/js/start_streaming.js', array(), $modified_start_streaming_file_time, true);
                 wp_localize_script('wpstream-start-streaming_admin', 'wpstream_start_streaming_vars', 
                     array( 
                         'admin_url'             =>  get_admin_url(),
@@ -279,7 +280,7 @@ class Wpstream_Admin {
                 ));
 
 
-                    wp_enqueue_script('wpstream-on-boarding-js',   plugin_dir_url( __DIR__  ) .'/admin/js/wpstream-onboarding2.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true); 
+                        wp_enqueue_script('wpstream-on-boarding-js',plugin_dir_url( __DIR__  ) .'/admin/js/wpstream-onboarding2.js',array(),  WPSTREAM_PLUGIN_VERSION, true);
                     wp_localize_script('wpstream-on-boarding-js', 'wpstreamonboarding_js_vars', 
                         array( 
                             'admin_url'             =>  get_admin_url(),
@@ -693,7 +694,8 @@ class Wpstream_Admin {
                     if($is_front==''){
                         print '<div class="wpstream_show_settings wpstream-button-icon wpstream-trigger-modal wpstream_tooltip_wrapper"   data-modal="wpestate_settings_modal" data-show-id="'.$the_id.'" value="'.esc_html__('Settings','wpstream').'">';
                             
-                            print '<div class="wpstream_tooltip_disabled">'.esc_html__('Turn OFF the channel to change its settings.','wpestream').'</div>'; 
+                            print '<div class="wpstream_tooltip_disabled">'.esc_html__('
+                            Turn OFF the channel to change its settings.','wpestream').'</div>';
                             print '<div class="wpstream_tooltip">'.esc_html__('Channel Settings','wpestream').'</div>'; 
 
                             print '<svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1581,10 +1583,10 @@ class Wpstream_Admin {
                                         $help_link='https://docs.wpstream.net/docs/general-settings/';
                                         break;
                                     case 'default_options':
-                                        $help_link='https://docs.wpstream.net/docs/default-settings/';
+                                        $help_link='https://docs.wpstream.net/docs/default-channel-settings/';
                                         break;
-                                    case 'default_options':
-                                        $help_link='';
+                                    case 'default_options_vod':
+                                        $help_link='https://docs.wpstream.net/docs/vod-settings/';
                                         break;
                                     case 'subscription_options':
                                         $help_link='https://docs.wpstream.net/docs/subscription-options/';
@@ -1594,10 +1596,7 @@ class Wpstream_Admin {
                                         break;
                                 }
 
-                                if($help_link!==''){
-                                    print '<div class="wpstream_options_help"><a href="'.esc_url($help_link).'" target="_blank" >'.esc_html__('Video Help','wpstream').'</a></div>';
-                                }
-
+                                print '<div class="options_wrapper">';
                                 foreach ($wpstream_settings_array as $key=>$option){
                                    if($option['tab']!=$active_tab){
                                        continue;
@@ -1651,6 +1650,8 @@ class Wpstream_Admin {
                                                 break;
                                             case 'slidertoogle':
                                                 print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
+                                                print '<div style="display: flex; gap: 25px; justify-content: space-between;">';
+                                                print '<div class="settings_details">'.$option['details'].'</div>';
                                                 print '<label class="wpstream_switch">
                                                       <input type="hidden" class="wpstream_event_option_itemc" value="0" name="'.$option['name'].'" >
                                                       <input type="checkbox" class="wpstream_event_option_itemc" value="1" name="'.$option['name'].'" ';
@@ -1659,7 +1660,7 @@ class Wpstream_Admin {
                                                 }
                                                 print '> <span class="wpstream_slider round"></span>';
                                                 print '</label>';
-                                                print '<div class="settings_details">'.$option['details'].'</div>';
+                                                print '</div>';
                                                 break;
                                             case 'image':
                                                 $image_url = $options_value ? esc_url($options_value) : '';
@@ -1694,6 +1695,10 @@ class Wpstream_Admin {
                                         }
                                    print '</div>';
                                }
+                                print '</div>'; // options wrapper
+                                if($help_link!==''){
+                                    print '<div class="wpstream_options_help"><a href="'.esc_url($help_link).'" target="_blank" >'.esc_html__('Video Help','wpstream').'</a></div>';
+                                }
                            print '</div>';
 
 
@@ -2010,6 +2015,8 @@ class Wpstream_Admin {
 
                     print '<label for="'.$option['name'].'">'.$option['name'].'</label>';
 
+                    print '<div style="display: flex; gap: 25px; justify-content: space-between;">';
+                    print '<div class="settings_details">'.$option['details'].'</div>';
                     print '
                     <label class="wpstream_switch">
                       <input type="checkbox" class="wpstream_event_option_item" data-attr-ajaxname="'.esc_attr($key).'" name="wpstream_event_set_'.esc_attr($key).'" ';
@@ -2026,7 +2033,7 @@ class Wpstream_Admin {
 
                     print '> <span class="wpstream_slider round"></span>';
                     print '</label>';
-                    print '<div class="settings_details">'.$option['details'].'</div>';
+                    print '</div>';
 
 
                 print '</div>';
@@ -3617,7 +3624,6 @@ class Wpstream_Admin {
         */
         public function onboarding_wizard_footer() {
             ?>
-                <div class="wpstream_modal_back"></div>
                 </div>
                 <div class="wpstream_modal_background_onboard"></div>
             <?php

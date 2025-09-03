@@ -154,8 +154,8 @@ class Wpstream_Public {
                 wp_register_style( 'emojione.min.css',plugin_dir_url( __FILE__ ).'/chat_lib/css/emojione.min.css', array(), '1.0', 'all');
 
                 
-                
-                wp_enqueue_script('wpstream-start-streaming',   plugin_dir_url( __FILE__ ) .'js/start_streaming.js',array(),  WPSTREAM_PLUGIN_VERSION, true); 
+                $modified_start_streaming_file_time = gmdate( 'YmdHi', filemtime( WPSTREAM_PLUGIN_PATH . 'public/js/start_streaming.js' ) );
+                wp_enqueue_script('wpstream-start-streaming',   plugin_dir_url( __FILE__ ) .'js/start_streaming.js',array(), $modified_start_streaming_file_time, true);
                 wp_localize_script('wpstream-start-streaming', 'wpstream_start_streaming_vars', 
                     array( 
                         'admin_url'             =>  get_admin_url(),

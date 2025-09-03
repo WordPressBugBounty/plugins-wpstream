@@ -284,49 +284,59 @@ const ONBOARD=(function(){
     *
     */
 
-    function wpstream_onboard_login(){
-        jQuery('.wpstream_onboard_login').on('click',function(){
+	function wpstream_onboard_login() {
+		jQuery('.wpstream_onboard_login').on('click',function(){
+			wpstream_onboard_actual_login();
+		});
 
-            var api_username    =   jQuery('#api_username').val();
-            var api_password    =   jQuery('#api_password').val();
-            var ajaxurl  =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
-            var nonce           =   jQuery('#wpstream_onboarding_nonce').val();
-         
-        
-            jQuery('.wpstream_onboarding_notification').removeClass('onboarding_error').text('Sending data. Please Stand by...').show();
-        
-            jQuery.ajax({
-                type: 'POST',
-                url: ajaxurl,
-                dataType: 'json',
-                data: {
-                    'action'                    :   'wpstream_on_board_login',
-                    'api_username'              :   api_username,
-                    'api_password'              :   api_password,
-                    'security'                  :   nonce
-                },
-                success: function (data) {     
-                    if(!data.success){
-                        jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text(data.error).show();
-                    }else{
-                        jQuery('.wpstream_onboarding_notification').text('Login successful, please stand by...').show();
-                        setTimeout(function() {
 
-                            var nextThing = 'wpstream_step_2';
-                            jQuery('.wpstream_onboarding_notification').empty().hide();
-                            jQuery('.wpstream_step_wrapper').hide();
-                            jQuery('#'+nextThing).show();    
-                        
-                        }, 2500);
-                    }
+		jQuery('.wpstream_on_board_login_wrapper #api_username,.wpstream_on_board_login_wrapper #api_password').keydown(function (e) {
+			if (e.keyCode === 13) {
+				e.preventDefault();
+				wpstream_onboard_actual_login();
+			}
+		});
+	}
 
-                
-                },
-                error: function (errorThrown) { 
-                
+    function wpstream_onboard_actual_login(){
+        var api_username    =   jQuery('#api_username').val();
+        var api_password    =   jQuery('#api_password').val();
+        var ajaxurl  =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+        var nonce           =   jQuery('#wpstream_onboarding_nonce').val();
+
+
+        jQuery('.wpstream_onboarding_notification').removeClass('onboarding_error').text('Sending data. Please Stand by...').show();
+
+        jQuery.ajax({
+            type: 'POST',
+            url: ajaxurl,
+            dataType: 'json',
+            data: {
+                'action'                    :   'wpstream_on_board_login',
+                'api_username'              :   api_username,
+                'api_password'              :   api_password,
+                'security'                  :   nonce
+            },
+            success: function (data) {
+                if(!data.success){
+                    jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text(data.error).show();
+                }else{
+                    jQuery('.wpstream_onboarding_notification').text('Login successful, please stand by...').show();
+                    setTimeout(function() {
+
+                        var nextThing = 'wpstream_step_2';
+                        jQuery('.wpstream_onboarding_notification').empty().hide();
+                        jQuery('.wpstream_step_wrapper').hide();
+                        jQuery('#'+nextThing).show();
+
+                    }, 2500);
                 }
-            });
-            
+
+
+            },
+            error: function (errorThrown) {
+
+            }
         });
     }
 
@@ -1100,21 +1110,31 @@ const ONBOARD=(function(){
     *
     */
     function wpstream_on_boarding_close(){
+		console.log('in here')
         jQuery('.wpstream_close_onboarding,.wpstream_onboard_bubble_finish').on('click',function(){
-
-            jQuery('.wpstream_onboard_bubble_finish').hide();
-            var parent_modal=jQuery(this).parent();
-            
-            parent_modal.find('.wpstream_close_onboarding').hide();
-            parent_modal.find('#wpstream_onboard_bubble_tile').html('You did it!');
-            parent_modal.find('.wpstream_onboard_bubble_prev,.wpstream_onboard_bubble_next').hide();
-    
-            parent_modal.find('#wpstream_onboard_bubble_content').html('You can run the wizard again at any time. </br>In the left menu navigate to WpStream -> WpStream Quick Start </br> <div id="wpstrean_close_modal_ack" class="wpstrean_close_modal_ack_action">Okay, Close it now!</div>');
-        // parent_modal.find('#wpstream_onboard_bubble_content').after('<div id="wpstrean_close_modal_ack" class="wpstrean_close_modal_ack_action">Okay, Close it now!</div>');
-            
-            wpstrean_close_modal_ack_function();
+			wpstream_onboarding_close_modal_logic();
         });
+		jQuery('.wpstream_on_boarding_wrapper').keydown(function(e) {
+			console.log('and here')
+			if ( e.keyCode === 27 ) { // ESC key
+				wpstream_onboarding_close_modal_logic();
+			}
+		});
     }
+
+	function wpstream_onboarding_close_modal_logic() {
+		jQuery('.wpstream_onboard_bubble_finish').hide();
+		var parent_modal=jQuery(this).parent();
+
+		parent_modal.find('.wpstream_close_onboarding').hide();
+		parent_modal.find('#wpstream_onboard_bubble_tile').html('You did it!');
+		parent_modal.find('.wpstream_onboard_bubble_prev,.wpstream_onboard_bubble_next').hide();
+
+		parent_modal.find('#wpstream_onboard_bubble_content').html('You can run the wizard again at any time. </br>In the left menu navigate to WpStream -> WpStream Quick Start </br> <div id="wpstrean_close_modal_ack" class="wpstrean_close_modal_ack_action">Okay, Close it now!</div>');
+		// parent_modal.find('#wpstream_onboard_bubble_content').after('<div id="wpstrean_close_modal_ack" class="wpstrean_close_modal_ack_action">Okay, Close it now!</div>');
+
+		wpstrean_close_modal_ack_function();
+	}
 
 
     /*

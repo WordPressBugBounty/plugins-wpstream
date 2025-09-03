@@ -435,7 +435,7 @@ function wpstream_theme_featured_video( $attributes ) { //phpcs:ignore Generic.C
 	$card_type = wpstream_featured_video_card_selector( $type, 0 );
 	ob_start();
 
-	include locate_template( $card_type );
+	include WPSTREAM_PLUGIN_PATH . 'hello-wpstream/' . $card_type;
 	$return_string = ob_get_contents();
 	ob_end_clean();
 

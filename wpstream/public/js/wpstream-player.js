@@ -178,11 +178,12 @@ class WpstreamPlayer {
       this.playback.playTrailer(this.trailerUrl);
     }
 
+	this.liveMessage.show();
     switch (state) {
       case "stopped":
       case "notstarted":
       case "starting":
-        this.liveMessage.showStoppedMessage();
+        this.liveMessage.showMessage('stopped');
         this.playback.pauseContent();
         break;
       case "started":

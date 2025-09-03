@@ -50,99 +50,101 @@ if ( empty( $preview[0] ) ) {
 	?>
 
 	<div class="wpstream_category_unit_item_cover"></div>
-	<div class="container">
-		<span class="wpstream_featured_video__badge mb-2 d-inline-block"><?php echo esc_html( $badge_text ); ?></span>
-	
-		<?php
-			$video_media_logo_id = intval( get_post_meta( $postId, 'media_logo', true) );
-			if ( $video_media_logo_id !=0 ) {
-				$video_media_logo = wp_get_attachment_url( $video_media_logo_id, 'full' );
-				?>
-				<img class="wpstream_theme_media_logo" src="<?php echo esc_url($video_media_logo); ?>" alt="media logo">
-				<?php
-			}
+    <div class="container">
+        <div class="container-wrapper">
+            <span class="wpstream_featured_video__badge mb-2 d-inline-block"><?php echo esc_html( $badge_text ); ?></span>
 
-		?>
+            <?php
+                $video_media_logo_id = intval( get_post_meta( $postId, 'media_logo', true) );
+                if ( $video_media_logo_id !=0 ) {
+                    $video_media_logo = wp_get_attachment_url( $video_media_logo_id, 'full' );
+                    ?>
+                    <img class="wpstream_theme_media_logo" src="<?php echo esc_url($video_media_logo); ?>" alt="media logo">
+                    <?php
+                }
 
-
-
-		<h1>
-			<a href="<?php echo esc_url( $link ); ?>"><?php echo esc_html( $title ); ?></a>
-		</h1>
-		
-		<?php 
-		
-		?>
-			<p class=" wpstream_featured_excerpt"><?php echo esc_html( $excerpt ); ?></p>
-		<?php
-		if( !isset($is_video_items_slider)){}
-		?>
+            ?>
 
 
-	
-		<?php
-		$terms    = array();
-		$category = get_the_terms( $postId, 'category' );
-		if ( is_array( $category ) ) {
-			$terms = array_merge( $terms, $category );
-		}
-		$wpstream_category = get_the_terms( $postId, 'wpstream_category' );
-		if ( is_array( $wpstream_category ) ) {
-			$terms = array_merge( $terms, $wpstream_category );
-		}
 
-		if ( ! empty( $terms ) &&  !isset($is_video_items_slider)  ) {
-			echo '<p class="mb-25 wpstream_featured_meta">';
-			echo implode(
-				'<span>&#183;</span>', //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				array_map(
-					function ( $term ) {
-						return '<a href="' . esc_url( get_term_link( $term ) ) . '">' . esc_html( $term->name ) . '</a>';
-					},
-					$terms
-				)
-			);
-			echo '</p>';
-		}
+            <h1>
+                <a href="<?php echo esc_url( $link ); ?>"><?php echo esc_html( $title ); ?></a>
+            </h1>
 
-		?>
-		<div class="d-flex flex-wrap wpstream_featured_action gap-2">
+            <?php
 
-			<a href="<?php echo esc_url( get_permalink( $postId ) ); ?>" class="d-flex flex-nowrap align-items-center  wpstream_video_on_demand_play_video_container align-self-center">
-				<span class="flex-shrink-0 d-flex align-items-center justify-content-center me-3 wpstream_video_on_demand_play_video rounded-circle">
-					<?php
-					//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					echo wpstream_theme_get_svg_icon( 'play_icon_white.svg' );
-					?>
-				</span>
-				<?php echo esc_html__( 'Play Video', 'hello-wpstream' ); ?>
-			</a>
+            ?>
+                <p class=" wpstream_featured_excerpt"><?php echo esc_html( $excerpt ); ?></p>
+            <?php
+            if( !isset($is_video_items_slider)){}
+            ?>
 
-			<div class="d-flex align-items-center gap-2">
-				<div class="wpstream-watch-later-btn align-self-center">
 
-					<?php echo wpstream_theme_show_watch_later( $postId );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
-				</div>
-				<div class="wp-stream-share-icon-section align-self-center">
-					<div class="wp-stream-share-icon btn-hover-white">
+            <?php
+            $terms    = array();
+            $category = get_the_terms( $postId, 'category' );
+            if ( is_array( $category ) ) {
+                $terms = array_merge( $terms, $category );
+            }
+            $wpstream_category = get_the_terms( $postId, 'wpstream_category' );
+            if ( is_array( $wpstream_category ) ) {
+                $terms = array_merge( $terms, $wpstream_category );
+            }
 
-						<?php
-						echo wpstream_theme_get_svg_icon( 'share.svg' );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						?>
+            if ( ! empty( $terms ) &&  !isset($is_video_items_slider)  ) {
+                echo '<p class="mb-25 wpstream_featured_meta">';
+                echo implode(
+                    '<span>&#183;</span>', //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                    array_map(
+                        function ( $term ) {
+                            return '<a href="' . esc_url( get_term_link( $term ) ) . '">' . esc_html( $term->name ) . '</a>';
+                        },
+                        $terms
+                    )
+                );
+                echo '</p>';
+            }
 
-						<span><?php esc_html_e( 'Share', 'hello-wpstream' ); ?></span>
+            ?>
+            <div class="d-flex flex-wrap wpstream_featured_action gap-2">
 
-					</div>
+                <a href="<?php echo esc_url( get_permalink( $postId ) ); ?>" class="d-flex flex-nowrap align-items-center  wpstream_video_on_demand_play_video_container align-self-center">
+                    <span class="flex-shrink-0 d-flex align-items-center justify-content-center me-3 wpstream_video_on_demand_play_video rounded-circle">
+                        <?php
+                        //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                        echo wpstream_theme_get_svg_icon( 'play_icon_white.svg' );
+                        ?>
+                    </span>
+                    <?php echo esc_html__( 'Play Video', 'hello-wpstream' ); ?>
+                </a>
 
-					<div class="wpstream-social-share-main">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="wpstream-watch-later-btn align-self-center">
 
-						<?php echo wpstream_theme_show_social_share_page( $postId );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                        <?php echo wpstream_theme_show_watch_later( $postId );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
-					</div>
-				</div>
-			</div>
+                    </div>
+                    <div class="wp-stream-share-icon-section align-self-center">
+                        <div class="wp-stream-share-icon btn-hover-white">
 
-		</div>
-	</div>
+                            <?php
+                            echo wpstream_theme_get_svg_icon( 'share.svg' );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                            ?>
+
+                            <span><?php esc_html_e( 'Share', 'hello-wpstream' ); ?></span>
+
+                        </div>
+
+                        <div class="wpstream-social-share-main">
+
+                            <?php echo wpstream_theme_show_social_share_page( $postId );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 </div>

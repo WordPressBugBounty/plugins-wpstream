@@ -58,12 +58,20 @@
     padding: 30px 0px 0px 0px;
 }
 
-.wpstream_option{
+.wpstream_page_wpstream_settings .wpstream_option_wrapper{
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    max-width: 40%;
+}
+
+.wpstream_option, .wpstream_setting_event_unit_wrapper {
+    display: flex;
+    flex-direction: column;
     clear: both;
-    width: 51%;
-    display: inline-block;
     margin-bottom: 20px;
     position: relative;
+    max-width: 443px;
 }
 
 .wpstream_option input{
@@ -493,7 +501,6 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 }
 
 .default-channel-settings-info {
-    width: 40%;
     padding-bottom: 20px;
     font-size: 14px;
     line-height: 1.4rem;;
@@ -1071,13 +1078,12 @@ stop_server wpstream_button:hover,
 
 .wpstream_setting_event_unit_wrapper{
     position:relative;
-    display: inline-block;
     margin-bottom: 10px;
     width: 100%;
 }
 
 .wpstream_setting_event_unit_wrapper .settings_details{
-    max-width: 385px;
+    max-width: 365px;
 }
 
 .wpstream_modal_form .wpstream_setting_event_unit_wrapper .settings_details{
@@ -1088,12 +1094,12 @@ stop_server wpstream_button:hover,
 
 
 label.wpstream_switch {
-    position: absolute;
+    position: relative;
     display: inline-block;
-    width: 53px!important;
+    width: 53px;
+    min-width: 53px;
     height: 25px;
     top: 12px;
-    left: 390px;
 }
 
 .wpstream_switch input { 
@@ -1524,24 +1530,23 @@ input:checked + .wpstream_slider:before {
     border-color: #FF3D00 transparent;
 }
 
-.wpstream_options_help{
-    clear: both;
-    width: 51%;
-    display: inline-block;
-    position: relative;
-}
+/*.wpstream_options_help{*/
+/*    clear: both;*/
+/*    width: 51%;*/
+/*    display: inline-block;*/
+/*    position: relative;*/
+/*}*/
 
 .wpstream_options_help a{
-    width: auto;
+    display: inline-block;
+    position: relative;
+    white-space: nowrap;
     background-color: green;
     color: #fff;
     border-radius: 3px;
     padding: 5px 10px;
     text-decoration: none;
     background-color: #2196F3;
-    position: absolute;
-    right: -51px;
-    top: 0px;
 }
 
 

@@ -35,6 +35,32 @@ class WpStream_Template_Loader {
 			}
 		}
 
+		// Single templates for custom post types
+		if ( get_template() === 'hello-wpstream' ) {
+			$single_template_path = WPSTREAM_PLUGIN_PATH . 'hello-wpstream/single-templates/';
+
+			if ( is_singular( 'wpstream_product' ) ) {
+				$template_file = $single_template_path . 'single-wpstream_product.php';
+				if ( file_exists( $template_file ) ) {
+					$template = $template_file;
+				}
+			}
+
+			if ( is_singular( 'wpstream_product_vod' ) ) {
+				$template_file = $single_template_path . 'single-wpstream_product_vod.php';
+				if ( file_exists( $template_file ) ) {
+					$template = $template_file;
+				}
+			}
+
+			if ( is_post_type_archive( 'wpstream_bundles' ) ) {
+				$template_file = $single_template_path . 'archive-wpstream_bundles.php';
+				if ( file_exists( $template_file ) ) {
+					$template = $template_file;
+				}
+			}
+		}
+
 		return $template;
 	}
 

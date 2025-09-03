@@ -494,7 +494,8 @@ class WpStreamTheme_Featured_Video_Items_Slider extends Widget_Base {
 				'type' => Controls_Manager::DIMENSIONS,
 				'size_units' => ['px', 'em', '%'],
 				'selectors' => [
-					'{{WRAPPER}} .wpstream-shortcode-wrapper .container' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+					'{{WRAPPER}} .wpstream-shortcode-wrapper .container .container-wrapper' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+					'{{WRAPPER}} .wpstream-shortcode-wrapper .container .container-wrapper .wpstream_featured_action' => 'width: calc(100% - {{LEFT}}{{UNIT}} - {{RIGHT}}{{UNIT}});',
 				],
 			]
 		);

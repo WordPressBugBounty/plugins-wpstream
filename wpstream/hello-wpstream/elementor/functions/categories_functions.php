@@ -404,8 +404,8 @@ if( !function_exists('wpstream_theme_show_tax_items') ):
             ob_start();
             foreach( $terms as $term ) {
                 $term_id                        =   intval($term->term_id);
-           
-                include( locate_template($card_type ) );
+
+				include WPSTREAM_PLUGIN_PATH . 'hello-wpstream/' . $card_type;
             }
 
             $return_string=ob_get_contents();

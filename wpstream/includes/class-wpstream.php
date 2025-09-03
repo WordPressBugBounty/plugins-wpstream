@@ -437,15 +437,19 @@ class Wpstream {
       
         public function show_user_data($pack_details){
             if( isset($pack_details['available_data_mb']) && isset( $pack_details['available_storage_mb']) ){
-                $wpstream_convert_band      =   $this->wpstream_convert_band($pack_details['available_data_mb']);
-                if($wpstream_convert_band<0)$wpstream_convert_band=0;
-            
-                $wpstream_convert_storage =   $this->wpstream_convert_band($pack_details['available_storage_mb']);
-                if($wpstream_convert_storage<0)$wpstream_convert_storage=0;
+                $wpstream_convert_band = $this->wpstream_convert_band($pack_details['available_data_mb']);
+                if( $wpstream_convert_band < 0 ) {
+                    $wpstream_convert_band = 0;
+                }
+
+                $wpstream_convert_storage = $this->wpstream_convert_band($pack_details['available_storage_mb']);
+                if( $wpstream_convert_storage < 0 ) {
+                    $wpstream_convert_storage = 0;
+                }
                 
                 print '<div class="pack_details_wrapper">'
 				    . '<strong>' . __('Your account information: ', 'wpstream') . '</strong> '
-				    . __('You have', 'wpstream') . '<strong> ' . $wpstream_convert_band . ' GB</strong> '
+				    . __('You have', 'wpstream') . '<strong> ' . abs( $wpstream_convert_band ) . ' GB</strong> '
 				    . __('available cloud data and', 'wpstream') . ' '
 				    . '<strong>' . $wpstream_convert_storage . ' GB</strong> '
 				    . __('available cloud storage', 'wpstream') . '.';

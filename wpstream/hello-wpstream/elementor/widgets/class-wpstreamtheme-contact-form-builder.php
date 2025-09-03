@@ -803,7 +803,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		);
 
 		$this->add_control(
-			'submit_button_border_color',
+			'submit_button_border_normal_color',
 			array(
 				'label' => esc_html__( 'Submit Button Border Color', 'hello-wpstream' ),
 				'type' => Controls_Manager::COLOR,

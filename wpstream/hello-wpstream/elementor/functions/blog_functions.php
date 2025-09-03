@@ -614,7 +614,7 @@ if ( ! function_exists( 'wpstream_theme_show_watch_later_icons' ) ) {
 		if($display_watch_later){
 
 			if ( is_user_logged_in() ) {
-				$return_string = '<div class="wpstream-watch-later-action meta-style ' . esc_attr( $extra_class ) . '" '
+				$return_string = '<div class="wpstream-watch-later-action ' . esc_attr( $extra_class ) . '" '
 					. 'data-postID="' . esc_attr( $post_id ) . '">'
 					. wpstream_theme_get_svg_icon( $icon_name ) . '<span>' . $wpstream_water_later_status . '</span>'
 					. '</div>';
