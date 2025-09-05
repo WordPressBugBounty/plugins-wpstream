@@ -1110,21 +1110,19 @@ const ONBOARD=(function(){
     *
     */
     function wpstream_on_boarding_close(){
-		console.log('in here')
         jQuery('.wpstream_close_onboarding,.wpstream_onboard_bubble_finish').on('click',function(){
-			wpstream_onboarding_close_modal_logic();
+			wpstream_onboarding_close_modal_logic(this);
         });
 		jQuery('.wpstream_on_boarding_wrapper').keydown(function(e) {
-			console.log('and here')
 			if ( e.keyCode === 27 ) { // ESC key
-				wpstream_onboarding_close_modal_logic();
+				wpstream_onboarding_close_modal_logic(this);
 			}
 		});
     }
 
-	function wpstream_onboarding_close_modal_logic() {
+	function wpstream_onboarding_close_modal_logic(context) {
 		jQuery('.wpstream_onboard_bubble_finish').hide();
-		var parent_modal=jQuery(this).parent();
+		var parent_modal=jQuery(context).parent();
 
 		parent_modal.find('.wpstream_close_onboarding').hide();
 		parent_modal.find('#wpstream_onboard_bubble_tile').html('You did it!');
