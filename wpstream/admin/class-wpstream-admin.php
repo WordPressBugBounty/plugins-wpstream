@@ -276,7 +276,7 @@ class Wpstream_Admin {
                         'select_image_text' => esc_html__( 'Select Image', 'wpstream'),
                         'update_successful' => esc_html__( 'Update Successful.', 'wpstream'),
                         'update_failed'     => esc_html__( 'Something went wrong. Try again.', 'wpstream'),
-                        'broadcaster_url' => esc_url( esc_url(home_url('/broadcaster-page/') ) ),
+                        'broadcaster_url'   => esc_url( esc_url(home_url('/broadcaster-page/') ) ),
                 ));
 
 
@@ -381,7 +381,7 @@ class Wpstream_Admin {
             $event_list = new WP_Query($args);
             global $live_event_for_user;
             $live_event_for_user    =    $this->main->wpstream_live_connection->wpstream_get_live_event_for_user();
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_new_general_set');
 
             $this->main->show_user_data($pack_details);
             if( $event_list->have_posts()){
@@ -421,7 +421,7 @@ class Wpstream_Admin {
 
             $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
             print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_new_general_set');
             if( isset($pack_details['available_data_mb'])){
                 if ($pack_details['available_data_mb'] <= 0){
                     print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
@@ -937,28 +937,58 @@ class Wpstream_Admin {
             print '<div class="wpstream_close_modal"></div>';
         }
 
+        public function wpstream_local_event_options_toggle() {
+            $use_global_event_options       = get_post_meta(get_the_ID(), 'use_global_event_options', true );
+            $local_event_options            = get_post_meta( get_the_ID(), 'local_event_options', true );
+            $use_local_event_options_enabled = ( is_array( $local_event_options ) && empty( $use_global_event_options ) ) ||
+                ( !empty($use_global_event_options) && intval( $use_global_event_options ) === 0 );
+
+            print '<div class="wpstream_local_event_options_toggle_wrapper">';
+                print '<div class="wpstream_local_event_options_toggle_info">';
+                    print '<label for="local_event_options_enabled" class="wpstream_local_event_options_label">'.esc_html__('Edit settings for this channel','wpstream').'</label>';
+                    print '<span>'.sprintf(esc_html__('When is OFF, the settings from %s will be applied','wpstream'), '<a href="' . admin_url('admin.php?page=wpstream_settings&tab=default_options') . '" target="_blank">'.esc_html__('Default Channel Settings','wpstream').'</a>').'</span>';
+                print '</div>';
+                print '<label class="wpstream_switch">';
+                    print '<input id="local_event_options_enabled" type="checkbox" class="wpstream_local_event_options_toggle" ' . ($use_local_event_options_enabled === true ? 'checked' : '') . '>';
+                    print '<span class="wpstream_slider round"></span>';
+                print '</label>';
+            print '</div>';
+        }
+
         /*
         *
         * Display modal settings
         *
         */
-        
+
         public function wpstream_display_modal_seetings($the_id){
-            print '<div class="wpstream_modal_form wpestate_settings_modal">';   
-                $this->wpstream_close_modal_button();    
-                print '<h3>'; 
+            print '<div class="wpstream_modal_form wpestate_settings_modal">';
+                $this->wpstream_close_modal_button();
+                print '<h3>';
                 printf( esc_html__('Channel Settings (#ID %s)','wpstream'),$the_id);
-                print '</h3>';                     
-                $local_event_options =   get_post_meta($the_id,'local_event_options',true);
-                if(!is_array($local_event_options)){
-                    $local_event_options =   get_option('wpstream_user_streaming_global_channel_options') ;
+                print '</h3>';
+
+                $this->wpstream_local_event_options_toggle();
+
+                $local_event_options            = get_post_meta($the_id,'local_event_options',true);
+                $use_global_event_options       = get_post_meta($the_id, 'use_global_event_options',true);
+                $is_local_event_options_enabled = ( is_array( $local_event_options ) && empty( $use_global_event_options ) ) ||
+                    ( !empty($use_global_event_options) && intval( $use_global_event_options ) === 0 );
+
+                if( !$is_local_event_options_enabled ) {
+                    $local_event_options = get_option('wpstream_user_streaming_global_channel_options') ;
                 }
 
                 $local_array_exclude=array('ses_encrypt','vod_domain_lock','vod_encrypt');
-                
+
                 print '<div class="wpstream_event_streaming_local">';
-                    $this->user_streaming_global_channel_options('',$local_event_options,  $local_array_exclude);
-                print '</div>';            
+					$this->user_streaming_global_channel_options(
+						'',
+						$local_event_options,
+						$local_array_exclude,
+						!$is_local_event_options_enabled,
+					);
+                print '</div>';
             print '</div>';
         }
 
@@ -2006,7 +2036,7 @@ class Wpstream_Admin {
          * @since    3.0.1
          */  
 
-        public function user_streaming_global_channel_options($name,$value,$local_array=''){
+        public function user_streaming_global_channel_options( $name, $value, $local_array='', $disabled = false ){
         
             foreach($this->global_event_options as $key=>$option){
                
@@ -2028,6 +2058,9 @@ class Wpstream_Admin {
                             if($option['defaults']=='yes') {
                                 print ' checked ';
                             }
+                        }
+                        if ($disabled) {
+                            print ' disabled ';
                         }
 
 
@@ -2138,7 +2171,7 @@ class Wpstream_Admin {
 
 
             $token          =   $this->main->wpstream_live_connection->wpstream_get_token();
-            $pack_details   =   $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+            $pack_details   =   $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_set_wpstream_credentials');
             
             $this->main->show_user_data($pack_details);
 
@@ -2213,7 +2246,7 @@ class Wpstream_Admin {
         */     
 
         public function wpstream_media_management(){
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_media_management');
 
             $this->main->show_user_data($pack_details);
 
@@ -3042,7 +3075,7 @@ class Wpstream_Admin {
             if( get_post_status( $post->ID ) === 'publish' ) {
                 $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
                 print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
-                $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+                $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_start_stream_meta');
                 if( isset($pack_details['available_data_mb'])){
                     if ($pack_details['available_data_mb'] <= 0){
                         print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
@@ -3118,7 +3151,7 @@ class Wpstream_Admin {
         */
         
         public function wpstream_pre_onboard_display(){
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user();
+            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_pre_onboard_display');
 
             $this->main->show_user_data($pack_details);
 

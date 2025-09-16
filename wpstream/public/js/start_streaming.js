@@ -12,6 +12,7 @@ jQuery(document).ready(function ($) {
     // Commenting the following line because we are using the new webcaster
     wpstream_webcaster_actions();
     wpstream_save_options_actions();
+	wpstream_save_use_global_event_options();
     wpstream_bind_start_and_stop();
 
     wpstream_bind_stats_link();
@@ -654,7 +655,34 @@ function wpstream_copy_to_clipboard(){
         jQuery(temp).val(value_uri).select();
         document.execCommand("copy");
         jQuery(temp).remove();
-        
+
+	    // Show "Copied" tooltip
+	    var tooltip = jQuery('<div class="wpstream_copy_tooltip">Copied</div>');
+	    tooltip.css({
+		    position: 'absolute',
+		    background: '#333',
+		    color: '#fff',
+		    padding: '5px 10px',
+		    borderRadius: '3px',
+		    fontSize: '12px',
+		    zIndex: 9999,
+		    pointerEvents: 'none'
+	    });
+
+	    var offset = jQuery(this).offset();
+	    tooltip.css({
+		    top: offset.top - 35,
+		    left: offset.left + (jQuery(this).outerWidth() / 2) - (tooltip.outerWidth() / 2)
+	    });
+
+	    jQuery('body').append(tooltip);
+	    tooltip.fadeIn(200);
+
+	    setTimeout(function() {
+		    tooltip.fadeOut(200, function() {
+			    tooltip.remove();
+		    });
+	    }, 1500);
     });
     
     jQuery('.copy_live_key').on('click',function(){
@@ -709,7 +737,6 @@ function wpstream_webcaster_actions(){
                 }
             },
             error: function() {
-				console.log('and here')
                 // fallback to the old broadcaster if the AJAX request fails
                 var caster_url = $this.attr('data-webcaster-url');
                 $this.parent().find('.external_software_streaming').slideUp()
@@ -789,7 +816,7 @@ function wpstream_save_options_actions(){
             holder.find('.wpstream_event_option_item').each(function(){
                 optionarray[jQuery(this).attr('data-attr-ajaxname')]=jQuery(this).prop("checked") ? 1 : 0 ;
             });
-       
+
 
             var myJSON = JSON.stringify(optionarray);
             jQuery.ajax({
@@ -813,6 +840,34 @@ function wpstream_save_options_actions(){
         
     });
     
+}
+
+function wpstream_save_use_global_event_options() {
+	jQuery('.wpestate_settings_modal #local_event_options_enabled').on('click',function(){
+		var nonce   = jQuery('#wpstream_start_event_nonce').val();
+		var show_id = jQuery(this).parents('.event_list_unit').find('.start_event').attr('data-show-id');
+
+		var use_global_settings = jQuery(this).prop("checked") ? 1 : 0 ;
+		jQuery.ajax({
+			type: 'POST',
+			url: ajaxurl,
+			timeout: 300000,
+			data: {
+				'action'     : 'wpstream_update_use_global_event_options',
+				'show_id'    : show_id,
+				'use_global' : jQuery(this).prop("checked") ? 0 : 1 ,
+				'security'   : nonce
+			},
+			success: function (data) {
+				jQuery('.wpestate_settings_modal .wpstream_event_option_item').each(function(){
+					jQuery(this).prop("disabled", !jQuery('#local_event_options_enabled').prop("checked"));
+				});
+			},
+			error: function (jqXHR,textStatus,errorThrown) {
+				console.log('error');
+			}
+		});
+	});
 }
 
 /*

@@ -354,6 +354,25 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     flex-wrap: nowrap;
 }
 
+.wpstream_local_event_options_toggle_wrapper {
+    display: flex;
+    gap: 25px;
+    padding-right: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e4e4e4;
+    margin-bottom: 10px;
+}
+
+.wpstream_local_event_options_toggle_wrapper .wpstream_local_event_options_toggle_info {
+    display: flex;
+    flex-direction: column;
+}
+
+input[type="checkbox"]:disabled + .wpstream_slider.round {
+    background: #e4e4e4;
+    cursor: not-allowed;
+}
+
 #wpstream-sidebar-meta .external_software_streaming{
     margin-top: 10px;
 }
@@ -1185,7 +1204,8 @@ input:checked + .wpstream_slider:before {
    margin-bottom: 10px;
 }
 
-.wpstream_event_streaming_local .wpstream_setting_event_unit_wrapper label{
+.wpstream_event_streaming_local .wpstream_setting_event_unit_wrapper label,
+.wpstream_local_event_options_toggle_wrapper .wpstream_local_event_options_toggle_info label {
     font-weight: 700;
     font-size: 14px;
     left: 395px;
@@ -1318,7 +1338,7 @@ input:checked + .wpstream_slider:before {
     border-radius: 5px;
 }
 .wpstream_modal_form.wpestate_settings_modal{
-    height: 525px;
+    height: 600px;
     margin-top: -257px;
 }
 

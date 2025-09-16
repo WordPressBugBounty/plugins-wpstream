@@ -9,6 +9,7 @@ class Wpstream_Live_Api_Connection  {
         add_action( 'wp_ajax_wpstream_give_me_live_uri', array($this,'wpstream_give_me_live_uri') );  
         add_action( 'wp_ajax_wpstream_turn_of_channel',  array($this,'wpstream_turn_of_channel') );  
         add_action( 'wp_ajax_wpstream_update_local_event_settings',array($this,'wpstream_update_local_event_settings'));
+        add_action( 'wp_ajax_wpstream_update_use_global_event_options',array($this,'wpstream_update_use_global_event_options'));
 		add_action( 'wp_ajax_wpstream_update_default_channel_settings', array( $this, 'wpstream_update_default_channel_settings' ) );
 		add_action( 'wp_ajax_wpstream_update_settings', array( $this, 'wpstream_update_settings' ) );
 
@@ -79,7 +80,7 @@ class Wpstream_Live_Api_Connection  {
      * 
      * */
 
-    function wpstream_baker_do_curl_base($url,$curl_post_fields, $expect_json = false, $quiet = false){
+    function wpstream_baker_do_curl_base($url,$curl_post_fields, $expect_json = false, $quiet = false, $timeout = 10){
         $curl       =   curl_init();
         $api_url    =   WPSTREAM_API.'/'.$url;
 
@@ -88,7 +89,7 @@ class Wpstream_Live_Api_Connection  {
           CURLOPT_RETURNTRANSFER => true,
           CURLOPT_ENCODING => "",
           CURLOPT_MAXREDIRS => 10,
-          CURLOPT_TIMEOUT => 10,
+          CURLOPT_TIMEOUT => $timeout,
           CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
           CURLOPT_CUSTOMREQUEST => "POST",
           CURLOPT_POSTFIELDS => http_build_query($curl_post_fields),
@@ -363,7 +364,7 @@ class Wpstream_Live_Api_Connection  {
        
             
           
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
+        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true, false,WPSTREAM_TIMEOUT_CONST);
     
         
         $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
@@ -460,6 +461,69 @@ class Wpstream_Live_Api_Connection  {
         $this->wpstream_update_chanel_on_baker($show_id,$to_save_option);
      
     }
+
+	public function wpstream_update_local_event_settings_with_global() {
+		check_ajax_referer( 'wpstream_start_event_nonce', 'security' );
+
+		check_ajax_referer( 'wpstream_start_event_nonce', 'security' );
+		if(!is_user_logged_in()){
+			wp_send_json_error(['success' => false, 'message' => __('Not logged in', 'wpstream')]);
+		}
+		if( !current_user_can('administrator') ){
+			wp_send_json_error(['success' => false, 'message' => __('Not admin', 'wpstream')]);
+		}
+
+		if ( !isset($_POST['show_id']) || !isset($_POST['use_global']) ) {
+			wp_send_json_error(['success' => false, 'message' => __('Missing parameters', 'wpstream')]);
+		}
+
+		$show_id = intval($_POST['show_id']);
+		$default_channel_settings = get_option('wpstream_user_streaming_global_channel_options') ;
+
+		$this->wpstream_update_chanel_on_baker($show_id, $default_channel_settings);
+	}
+
+	public function wpstream_update_use_global_event_options() {
+		check_ajax_referer( 'wpstream_start_event_nonce', 'security' );
+		if(!is_user_logged_in()){
+			wp_send_json_error(['success' => false, 'message' => __('Not logged in', 'wpstream')]);
+		}
+		if( !current_user_can('administrator') ){
+			wp_send_json_error(['success' => false, 'message' => __('Not admin', 'wpstream')]);
+		}
+
+		if ( !isset($_POST['show_id']) || !isset($_POST['use_global']) ) {
+			wp_send_json_error(['success' => false, 'message' => __('Missing parameters', 'wpstream')]);
+		}
+
+		$show_id                  = intval($_POST['show_id']);
+		$use_global_event_options = intval($_POST['use_global']);
+
+		$result = update_post_meta(
+			$show_id,
+			'use_global_event_options',
+			$use_global_event_options
+		);
+
+		if ( !$result ) {
+			wp_send_json_error(['success' => false, 'message' => __('Failed to update event', 'wpstream')]);
+		}
+
+		$local_event_options = get_post_meta($show_id,'local_event_options',true);
+
+		if( $use_global_event_options ) {
+			$global_event_options = get_option('wpstream_user_streaming_global_channel_options') ;
+
+			// if the local options are not set, we need to set them to the global ones
+			if ( !is_array($local_event_options) ) {
+				update_post_meta( $show_id, 'local_event_options', $global_event_options );
+			}
+
+			$this->wpstream_update_chanel_on_baker( $show_id, $global_event_options );
+		} else {
+			$this->wpstream_update_chanel_on_baker( $show_id, $local_event_options );
+		}
+	}
 
 	public function wpstream_update_default_channel_settings() {
 		check_ajax_referer( 'wpstream-settings-nonce', 'security' );
@@ -753,10 +817,13 @@ class Wpstream_Live_Api_Connection  {
         }
        
 
-        $local_event_options =   get_post_meta($channel_id,'local_event_options',true);
-        if(!is_array($local_event_options)){
-            $local_event_options =   get_option('wpstream_user_streaming_global_channel_options') ;
-        }
+        $local_event_options = get_post_meta($channel_id,'local_event_options',true);
+		$use_global_event_options = get_post_meta($channel_id,'use_global_event_options',true);
+	    $is_local_event_options_enabled = ( is_array( $local_event_options ) && empty( $use_global_event_options ) ) ||
+            ( !empty($use_global_event_options) && intval( $use_global_event_options ) === 0 );
+	    if( !$is_local_event_options_enabled ) {
+		    $local_event_options = get_option('wpstream_user_streaming_global_channel_options') ;
+	    }
 
 	    $is_autostart="false";
 	    $is_encrypt="false";
@@ -1100,7 +1167,7 @@ class Wpstream_Live_Api_Connection  {
     * returns pack data 
     */
     
-    public function wpstream_request_pack_data_per_user(){
+    public function wpstream_request_pack_data_per_user($context = ''){
 
         $event_data_for_transient   =   get_transient( 'wpstream_request_pack_data_per_user_transient' );    
    
@@ -1112,10 +1179,12 @@ class Wpstream_Live_Api_Connection  {
             if (!$access_token) return false;
 
             $curl_post_fields=array( 
-                'access_token'=>$access_token 
+                'access_token'=>$access_token,
+	            'context'     => $context,
+	            'plugin_version' => WPSTREAM_PLUGIN_VERSION
             );
 
-            $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
+            $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true, false, WPSTREAM_TIMEOUT_CONST);
             $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
 
             if( isset($curl_response_decoded['success']) && $curl_response_decoded['success']===true   ){
@@ -1135,7 +1204,7 @@ class Wpstream_Live_Api_Connection  {
     
 
 	public function wpstream_check_user_quota() {
-		$pack_data = $this->wpstream_request_pack_data_per_user();
+		$pack_data = $this->wpstream_request_pack_data_per_user('wpstream_check_user_quota');
 		if ( ! $pack_data || ! isset( $pack_data['success'] ) || ! $pack_data['success'] ) {
 			print json_encode(
 				array(

@@ -3,12 +3,16 @@ html {
     margin-top: 0 !important;
 }
 
+body {
+    background: #F8F8F8;
+}
+
 body.wpstream-broadcaster-page {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-    background-color: #f0f0f1;
+    background-color: #F8F8F8;
     margin: 0;
-    padding: 0;
     color: #333;
+    padding: 0 15px;
 }
 
 body.wpstream-broadcaster-page #wpadminbar {
@@ -17,8 +21,8 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Style for the header */
 .broadcaster-header {
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #f8f9fa!important;
+    box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.05);
     padding: 10px 0;
     top: 0;
     left: 0;
@@ -30,13 +34,15 @@ body.wpstream-broadcaster-page #wpadminbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
 }
 
+.header-logo {
+    padding: .3125rem 0;
+}
+
 .header-logo img {
-    height: 40px;
     width: auto;
 }
 
@@ -51,6 +57,12 @@ body.wpstream-broadcaster-page #wpadminbar {
     color: #333;
 }
 
+#messageContainer {
+    display: flex;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
 /* Adjust the main container to account for the fixed header */
 .broadcaster-container {
     margin-top: 70px;
@@ -63,12 +75,48 @@ body.wpstream-broadcaster-page #wpadminbar {
     padding: 20px;
 }
 
+.broadcaster-container .video-live-indicator {
+    position: absolute;
+    top: 0.5em;
+    left: 1.5em;
+    opacity: 90%;
+}
+
+.broadcaster-container .video-live-indicator .badge {
+    display: inline-block;
+    padding: .25em .4em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: .25rem;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+.broadcaster-container .video-live-indicator .badge.badge-pill {
+    padding-right: .6em;
+    padding-left: .6em;
+    border-radius: 10rem;
+}
+
+.broadcaster-container .video-live-indicator .badge.badge-danger {
+    color: #fff;
+    background-color: #d63638;
+}
+
+.broadcaster-container .video-live-indicator .badge.badge-warning {
+    color: #212529;
+    background-color: #ffc107;
+}
+
 .video-container {
     flex: 2;
     position: relative;
     width: 100%;
     height: auto;
-    background-color: #000;
+    background-color: #EEEEEE;
     margin-bottom: 20px;
     border-radius: 4px;
     overflow: hidden;
@@ -77,7 +125,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 #localVideo {
     width: 100%;
     height: 100%;
-    background-color: #000;
+    background-color: #EEEEEE;
 }
 
 .controls-container {
@@ -117,6 +165,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 }
 
 .status-container {
+    display: none;
     padding: 15px;
     background-color: #fff;
     border-radius: 4px;
@@ -241,6 +290,13 @@ body.wpstream-broadcaster-page #wpadminbar {
     padding: 10px;
     border-left: 4px solid #d63638;
     margin-bottom: 15px;
+    max-width: 83.33%;
+    flex: 0 0 83.333333%;
+}
+
+.error-message a {
+    color: #d63638;
+    text-decoration: underline;
 }
 
 .success-message {

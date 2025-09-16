@@ -16,7 +16,7 @@
 
 <script type="text/javascript">
 	jQuery(document).ready(function($) {
-		$(document).on('click', '#wpstream-theme-update-notice .notice-dismiss', function() {)
+		$(document).on('click', '#wpstream-theme-update-notice .notice-dismiss', function() {
 			$.post(ajaxurl, {
 				action: 'wpstream_dismiss_notice',
 				nonce: '<?php echo wp_create_nonce('wpstream_dismiss_notice'); ?>'

@@ -23,7 +23,6 @@ if (empty($channel_id)) {
 $obs_uri = get_post_meta($channel_id, 'obs_uri', true);
 $obs_stream = get_post_meta($channel_id, 'obs_stream', true);
 $whip_url = get_post_meta($channel_id, 'whipUrl', true);
-$channel_id = get_post_meta($channel_id, 'channel_id', true);
 
 if (empty($whip_url)) {
 	wp_die(__('WHIP URL not available for this channel.', 'wpstream'));
@@ -56,12 +55,17 @@ wp_localize_script(
         'channel_id'            => $channel_id,
 		'is_channel_live'       => get_post_meta($channel_id, 'status', true),
 		'whip_url'              => get_post_meta($channel_id, 'whipUrl', true),
-		'no_video_audio_access' => esc_html('We couldn’t access your camera or microphone. Please allow permissions and reload the page.', 'wpstream'),
-		'no_audio_access'       => esc_html('We couldn’t access your microphone. Please allow permissions and reload the page.', 'wpstream'),
-		'no_video_access'       => esc_html('We couldn’t access your camera. Please allow permissions and reload the page.', 'wpstream'),
-        'channel_off'           => esc_html('Error: This event is no longer active.', 'wpstream'),
+		'no_video_audio_access' => esc_html__('We couldn’t access your camera or microphone. Please allow permissions and reload the page.', 'wpstream'),
+		'no_audio_access'       => esc_html__('We couldn’t access your microphone. Please allow permissions and reload the page.', 'wpstream'),
+		'no_video_access'       => esc_html__('We couldn’t access your camera. Please allow permissions and reload the page.', 'wpstream'),
+        'channel_off'           => esc_html__('Invalid event. Your live event may have expired or its credentials are incorrect.', 'wpstream'),
+        'not_enough_traffic'    => sprintf(
+                esc_html__('Not enough streaming traffic to broadcast. Please %supgrade your subscription%s for extra resources.', 'wpstream'),
+                '<a href="https://wpstream.net/pricing/" target="_blank">',
+                '</a>'
+        ),
 	)
-)
+);
 
 ?>
 <!DOCTYPE html>
@@ -82,7 +86,7 @@ wp_localize_script(
 	<div class="header-container">
 		<div class="header-logo">
 			<a href="<?php echo esc_url(home_url('/')); ?>">
-				<img src="<?php echo esc_url(WPSTREAM_PLUGIN_DIR_URL . 'img/wpstream_logo_0.svg'); ?>" alt="WpStream Logo">
+				<img src="<?php echo esc_url(WPSTREAM_PLUGIN_DIR_URL . 'img/wpstream-logo.svg'); ?>" alt="WpStream Logo">
 			</a>
 		</div>
 		<nav class="header-nav">
@@ -91,9 +95,15 @@ wp_localize_script(
 	</div>
 </header>
 
+<div id="messageContainer"></div>
+
 <div class="broadcaster-container">
 	<div class="wrapper">
 		<div class="video-container">
+            <div id="videoLiveIndicator" class="video-live-indicator">
+                <span id="videoLiveIndicatorLive" class="badge badge-pill badge-danger" style="display:none;"><?php esc_html_e('LIVE', 'wpstream'); ?></span>
+                <span id="videoLiveIndicatorError" class="badge badge-pill badge-warning" style="display:none;"><?php esc_html_e('Connecting...', 'wpstream'); ?></span>
+            </div>
 			<video id="localVideo" autoplay muted playsinline></video>
 		</div>
 
@@ -151,8 +161,6 @@ wp_localize_script(
 					</select>
 				</div>
 			</div>
-
-			<div id="messageContainer"></div>
 		</div>
 	</div>
 </div>

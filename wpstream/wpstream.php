@@ -3,18 +3,18 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.7.2
+ * Version:           4.8
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
- * Domain Path:       /languages
+ * Domain Path:       /languages/
  */
 
 // If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) ) {
 	die;
 }
-define('WPSTREAM_PLUGIN_VERSION', '4.7.2');
+define('WPSTREAM_PLUGIN_VERSION', '4.8');
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 define('WPSTREAM_CLUBLINKSSL', 'https');
 define('WPSTREAM_PLUGIN_URL',  plugins_url() );
@@ -22,6 +22,8 @@ define('WPSTREAM_PLUGIN_DIR_URL',  plugin_dir_url(__FILE__) );
 define('WPSTREAM_PLUGIN_PATH',  plugin_dir_path(__FILE__) );
 define('WPSTREAM_PLUGIN_BASE',  plugin_basename(__FILE__) );
 define('WPSTREAM_API', 'https://baker.wpstream.net');
+
+define('WPSTREAM_TIMEOUT_CONST', 20); // in seconds
 
 function wpstream_cleanup_logs_handler() {
     $logger = new WpStream_Logger();
@@ -272,14 +274,17 @@ if ( function_exists( 'wpstream_get_author_id' ) ) {
  * Register broadcaster page endpoint
  */
 function wpstream_register_broadcaster_endpoint() {
-	add_rewrite_rule(
-		'broadcaster-page/([0-9]+)/?$',
-		'index.php?broadcaster_page=1&channel_id=$matches[1]',
-		'top'
-	);
+    add_rewrite_tag('%broadcaster_page%', '([0-1]{1})');
+    add_rewrite_tag('%channel_id%', '([0-9]+)');
 
-	add_rewrite_tag('%broadcaster_page%', '([0-1]{1})');
-	add_rewrite_tag('%channel_id%', '([0-9]+)');
+    $rewrite_rules = get_option('rewrite_rules');
+    $rule_pattern = 'broadcaster-page/([0-9]+)/?$';
+    $rule_target = 'index.php?broadcaster_page=1&channel_id=$matches[1]';
+
+    add_rewrite_rule($rule_pattern, $rule_target, 'top');
+    if ( !key_exists( $rule_pattern, $rewrite_rules ) ) {
+        flush_rewrite_rules();
+    }
 }
 add_action('init', 'wpstream_register_broadcaster_endpoint');
 

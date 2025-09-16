@@ -43,6 +43,8 @@ document.addEventListener("DOMContentLoaded", function () {
 	const messageContainer = document.getElementById("messageContainer");
 	const statusIndicator = document.getElementById("statusIndicator");
 	const statusText = document.getElementById("statusText");
+	const liveIndicatorLive = document.getElementById("videoLiveIndicatorLive");
+	const liveIndicatorError = document.getElementById("videoLiveIndicatorError");
 
 	// Resolution mappings from demo
 	const userResolutions = {
@@ -221,15 +223,21 @@ document.addEventListener("DOMContentLoaded", function () {
 			case "connected":
 				statusIndicator.classList.add("connected");
 				statusText.textContent = "Connected - Broadcasting Live";
+				liveIndicatorLive.style.display = 'inline';
+				liveIndicatorError.style.display = 'none';
 				break;
 			case "connecting":
 				statusIndicator.classList.add("connecting");
 				statusText.textContent = "Connecting...";
+				liveIndicatorError.style.display = 'inline';
+				liveIndicatorLive.innerContent = 'Connecting';
 				break;
 			case "disconnected":
 			default:
 				statusIndicator.classList.add("disconnected");
 				statusText.textContent = "Not Broadcasting";
+				liveIndicatorLive.style.display = 'none';
+				liveIndicatorError.style.display = 'none';
 				break;
 		}
 	}
@@ -287,6 +295,9 @@ document.addEventListener("DOMContentLoaded", function () {
 					if (considerReconnect && !pendingReconnect) {
 						console.log('connection closed, attempting to reconnect');
 						attemptReconnect();
+						liveIndicatorLive.style.display = 'none';
+						liveIndicatorError.style.display = 'inline';
+						liveIndicatorError.innerContent = 'Reconnecting';
 					} else {
 						console.log('connection closed, not reconnecting');
 						updateInputState(false);
@@ -428,6 +439,11 @@ document.addEventListener("DOMContentLoaded", function () {
 	function attemptReconnect() {
 		console.log("attemptReconnect()");
 
+		if ( pendingReconnect ) {
+			console.log('reconnect already in progress');
+			return;
+		}
+
 		// Clean up existing connection before reconnecting
 		if (input) {
 			if (input.peerConnection || input.webSocket) {
@@ -444,6 +460,8 @@ document.addEventListener("DOMContentLoaded", function () {
 				input.streamingMode = null;
 			}
 		}
+
+		pendingReconnect = true;
 
 		// Show a reconnecting state and allow user to cancel via Stop button
 		updateStatus("connecting");
@@ -541,6 +559,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (streamingButton) {
 		streamingButton.addEventListener("click", function () {
 			if (!streamingStarted) {
+				updateStatus('connecting');
+				streamingButton.classList.add("hidden");
+				stopButton.classList.remove("hidden");
 				startStreaming();
 			}
 		});
@@ -718,7 +739,11 @@ document.addEventListener("DOMContentLoaded", function () {
 						if (parsedResponse.available_data_mb > 0) {
 							resolve(true);
 						} else {
-							showMessage('Error checking quota', 'error');
+							const messageElement = document.createElement("div");
+							messageElement.className = "error-message";
+							messageElement.innerHTML = wpstream_broadcaster_vars.not_enough_traffic;
+							messageContainer.innerHTML = "";
+							messageContainer.appendChild(messageElement);
 							resolve(false);
 						}
 					} catch (e) {
@@ -761,6 +786,9 @@ document.addEventListener("DOMContentLoaded", function () {
 			// Begin streaming; mark that we should auto-reconnect on unexpected disconnects
 			considerReconnect = true;
 			input.startStreaming(whipUrl, connectionConfig);
+			if ( input ) {
+				console.log('something was wrong' );
+			}
 			updateStatus("connected");
 			if ( isReconnect ) {
 				console.log('Reconnected successfully!');
