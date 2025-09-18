@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	let considerReconnect = false; // set true after a successful start to allow auto-reconnects
 	let pendingReconnect = false; // true while waiting to reconnect
 	let pendingReconnectTimeout = null; // timeout handle for scheduled reconnect
-	const reconnectDelayMs = 15000; // 10s delay before attempting to reconnect
+	const reconnectDelayMs = 10000; // 10s delay before attempting to reconnect
 
 	// Get WHIP URL from config
 	if (wpstream_broadcaster_vars && wpstream_broadcaster_vars.whip_url) {
@@ -232,6 +232,12 @@ document.addEventListener("DOMContentLoaded", function () {
 				liveIndicatorError.style.display = 'inline';
 				liveIndicatorLive.innerContent = 'Connecting';
 				break;
+			case "reconnecting":
+				statusIndicator.classList.add("connecting");
+				statusText.textContent = "Reconnecting...";
+				liveIndicatorError.style.display = 'inline';
+				liveIndicatorLive.innerContent = 'Reconnecting';
+				break;
 			case "disconnected":
 			default:
 				statusIndicator.classList.add("disconnected");
@@ -306,7 +312,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				iceStateChange: function (state) {
 					console.log("ICE state changed:", state);
 					if ( state === 'connected' ) {
-						showMessage("Broadcast started successfully");
+						// showMessage("Broadcast started successfully");
 					}
 
 					if (state === "disconnected" && considerReconnect) {
@@ -315,7 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 						if (considerReconnect && !pendingReconnect) {
 							console.log('connection closed, attempting to reconnect from ice state change');
-							showMessage("Connection lost, attempting to reconnect...", "info");
+							// showMessage("Connection lost, attempting to reconnect...", "info");
 							attemptReconnect();
 						} else {
 							showMessage(
@@ -432,7 +438,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			createInput();
 		}
 
-		showMessage("Broadcasting stopped", "info");
+		// showMessage("Broadcasting stopped", "info");
 		updateInputState(false);
 	}
 
@@ -444,62 +450,69 @@ document.addEventListener("DOMContentLoaded", function () {
 			return;
 		}
 
-		// Clean up existing connection before reconnecting
-		if (input) {
-			if (input.peerConnection || input.webSocket) {
-				// Force cleanup without triggering callbacks
-				if (input.peerConnection) {
-					input.peerConnection.close();
-					input.peerConnection = null;
-				}
-				if (input.webSocket) {
+		considerReconnect = false;
+		pendingReconnect = true;
+
+		if ( input ) {
+			input.callbacks = {
+				error: function() {},
+				connectionClosed: function () {},
+				iceStateChange: function () {},
+			};
+
+			if( input.streamingMode === 'whip') {
+				input.stopStreaming();
+			} else if ( input.streamingMode === 'webrtc' ) {
+				if( input.webSocket ) {
 					input.webSocket.close();
 					input.webSocket = null;
 				}
-				// Reset streaming mode
-				input.streamingMode = null;
+				if( input.peerConnection ) {
+					input.peerConnection.close();
+					input.peerConnection = null;
+				}
 			}
 		}
 
-		pendingReconnect = true;
-
 		// Show a reconnecting state and allow user to cancel via Stop button
-		updateStatus("connecting");
-		showMessage("Disconnected. Reconnecting in 5 seconds...", "info");
+		updateStatus("reconnecting");
 		updateInputState(true);
 
-		pendingReconnect = true;
 		pendingReconnectTimeout = setTimeout(function () {
-			pendingReconnect = false;
-			pendingReconnectTimeout = null;
-			if (considerReconnect) {
-				checkChannelStatus(wpstream_broadcaster_vars.channel_id)
-					.then(function(channelActive) {
-						if (channelActive && considerReconnect) {
-							console.log("Channel is active, proceeding with reconnect...");
-							input.stopStreaming();
-							setTimeout(function () {
-								createInput(true);
-							}, 15000);
-						} else {
-							console.log("Channel is not active, cannot reconnect.");
-							considerReconnect = false;
-							showMessage('Channel is no longer active. Broadcasting stopped');
-							resetStreamingUI();
-						}
-					})
-					.catch(function (error) {
-						console.error('Error checking channel status');
+			if (!considerReconnect && !pendingReconnect) {
+				return; // User cancelled or stopped
+			}
+
+			checkChannelStatus(wpstream_broadcaster_vars.channel_id)
+				.then(function(channelActive) {
+					if (channelActive) {
+						console.log("Channel is active, proceeding with reconnect...");
+						// Reset flags before recreating
+						pendingReconnect = false;
+						pendingReconnectTimeout = null;
+						considerReconnect = true;
+
+						// Create new input and start streaming
+						createInput(true);
+					} else {
+						console.log("Channel is not active, cannot reconnect.");
+						pendingReconnect = false;
+						pendingReconnectTimeout = null;
+						showMessage('Channel is no longer active. Broadcasting stopped', 'error');
+						resetStreamingUI();
+					}
+				})
+				.catch(function (error) {
+					console.error('Error during reconnect attempt:', error);
+					pendingReconnect = false;
+					pendingReconnectTimeout = null;
+					// Don't attempt another reconnect immediately to avoid loops
+					setTimeout(() => {
 						if (considerReconnect) {
-							console.error('Error during reconnect attempt:', error);
 							attemptReconnect();
 						}
-					});
-
-				// console.log('Reconnecting...');
-				// createInput( true );
-				// startStreaming();
-			}
+					}, 5000);
+				});
 		}, reconnectDelayMs);
 	}
 
@@ -551,7 +564,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				track.enabled = enabled;
 			});
 
-			showMessage(enabled ? "Audio enabled" : "Audio disabled", "info");
+			// showMessage(enabled ? "Audio enabled" : "Audio disabled", "info");
 		}
 	}
 
@@ -578,7 +591,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				pendingReconnect = false;
 				considerReconnect = false;
 				updateStatus("disconnected");
-				showMessage("Broadcast stopped", "info");
+				// showMessage("Broadcast stopped", "info");
 				updateInputState(false);
 				if (stopButton) {
 					stopButton.classList.add("hidden");
@@ -792,7 +805,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			updateStatus("connected");
 			if ( isReconnect ) {
 				console.log('Reconnected successfully!');
-				showMessage("Reconnected successfully!", "success");
+				// showMessage("Reconnected successfully!", "success");
 			}
 			updateInputState(true);
 		} else {
