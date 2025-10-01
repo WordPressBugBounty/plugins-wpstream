@@ -1,32 +1,37 @@
-# Translation file for WPStream plugin
+# Copyright (C) 2025 wpstream
+# This file is distributed under the same license as the WpStream - Live Streaming, Video on Demand, Pay Per View plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: WpStream - Live Streaming, Video on Demand, Pay Per View 4.7.2\n"
-"Report-Msgid-Bugs-To: your-email@domain.com\n"
+"Project-Id-Version: WpStream - Live Streaming, Video on Demand, Pay Per View 4.8.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/plugin\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2025-09-16T06:26:53+00:00\n"
+"POT-Creation-Date: 2025-09-22T22:19:20+03:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"X-Generator: WP-CLI 2.7.1\n"
+"X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: wpstream\n"
 
 #. Plugin Name of the plugin
+#: wpstream.php
 msgid "WpStream - Live Streaming, Video on Demand, Pay Per View"
 msgstr ""
 
 #. Plugin URI of the plugin
 #. Author URI of the plugin
+#: wpstream.php
 msgid "http://wpstream.net"
 msgstr ""
 
 #. Description of the plugin
+#: wpstream.php
 msgid "WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work."
 msgstr ""
 
 #. Author of the plugin
+#: wpstream.php
 msgid "wpstream"
 msgstr ""
 
@@ -47,847 +52,868 @@ msgid "If enabled, the live viewer count will show up in the player."
 msgstr ""
 
 #: admin/class-wpstream-admin.php:89
-#: admin/class-wpstream-admin.php:1555
+#: admin/class-wpstream-admin.php:1563
 msgid "Lock To Website"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:90
+#. translators: %1$s is the website URL.
+#: admin/class-wpstream-admin.php:91
+#, php-format
 msgid "If enabled, live video will only display on %1$s, otherwise it can show up on any website."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:94
-#: admin/class-wpstream-admin.php:1538
+#: admin/class-wpstream-admin.php:95
+#: admin/class-wpstream-admin.php:1546
 msgid "Autoplay"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:95
+#: admin/class-wpstream-admin.php:96
 msgid "If enabled, live video will attempt to start playing automatically. This is only achievable in some browsers."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:99
-#: admin/class-wpstream-admin.php:1547
+#: admin/class-wpstream-admin.php:100
+#: admin/class-wpstream-admin.php:1555
 msgid "Start Muted"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:100
+#: admin/class-wpstream-admin.php:101
 msgid "If enabled, live video will start muted. This may increase the rate of autoplay in some browsers. "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:104
+#: admin/class-wpstream-admin.php:105
 msgid "Low Latency (beta)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:105
+#: admin/class-wpstream-admin.php:106
 msgid "Shortens the live delay between streamer and viewers. Useful for interactive applications like gaming, auctions, trading etc. Low latency may worsen the viewer experience on some devices."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:109
+#: admin/class-wpstream-admin.php:110
 msgid "Adaptive Bitrate (beta)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:110
+#: admin/class-wpstream-admin.php:111
 msgid "Ensures a smooth and uninterrupted viewing experience by adjusting video quality for viewers with reduced network speed or device capabilities."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:114
+#: admin/class-wpstream-admin.php:115
 msgid "Encrypt Live Stream"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:115
-#: admin/class-wpstream-admin.php:1566
+#: admin/class-wpstream-admin.php:116
+#: admin/class-wpstream-admin.php:1575
 msgid "If enabled, video data will be encrypted. Enabling encryption may lead to reduced website performance under certain configurations. Encrypted video may not display in all browsers."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:119
+#: admin/class-wpstream-admin.php:120
 msgid "Use Sessions with Encryption"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:120
+#: admin/class-wpstream-admin.php:121
 msgid "If enabled, encryption key distribution will be checked against valid user sessions. Setting may malfunction or lead to reduced website performance under certain configurations. "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:124
+#: admin/class-wpstream-admin.php:125
 msgid "Auto TURN ON"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:125
+#: admin/class-wpstream-admin.php:126
 msgid "If enabled, channel will TURN ON automatically when broadcasting with an External Streaming App (RTMP Encoder/Broadcaster)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:187
-#: admin/class-wpstream-admin.php:231
-#: public/class-wpstream-public.php:163
+#: admin/class-wpstream-admin.php:130
+msgid "Casting"
+msgstr ""
+
+#: admin/class-wpstream-admin.php:131
+msgid "If enabled, viewers will be able to cast the video to external devices (e.g. Chromecast, Smart TV)"
+msgstr ""
+
+#: admin/class-wpstream-admin.php:193
+#: admin/class-wpstream-admin.php:237
+#: public/class-wpstream-public.php:193
 msgid "Click to download!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:188
+#: admin/class-wpstream-admin.php:194
 msgid "We are uploading your file. Do not close this window!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:189
-#: public/class-wpstream-public.php:165
+#: admin/class-wpstream-admin.php:195
+#: public/class-wpstream-public.php:195
 msgid "Upload Complete! You can upload another file!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:190
-#: public/class-wpstream-public.php:166
+#: admin/class-wpstream-admin.php:196
+#: public/class-wpstream-public.php:196
 msgid "The file is not an accepted video format"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:191
-#: public/class-wpstream-public.php:167
+#: admin/class-wpstream-admin.php:197
+#: public/class-wpstream-public.php:197
 msgid "Upload Complete!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:195
-#: public/class-wpstream-public.php:168
+#: admin/class-wpstream-admin.php:201
+#: public/class-wpstream-public.php:198
 msgid "Upload Failed!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:196
-#: public/class-wpstream-public.php:169
+#: admin/class-wpstream-admin.php:202
+#: public/class-wpstream-public.php:199
 msgid "Upload Failed! Please Try again!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:197
-#: admin/class-wpstream-admin.php:2349
+#: admin/class-wpstream-admin.php:203
+#: admin/class-wpstream-admin.php:2360
 msgid "Choose a file&hellip;"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:198
+#: admin/class-wpstream-admin.php:204
 msgid "Preparing multipart upload..."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:199
+#: admin/class-wpstream-admin.php:205
 msgid "Uploading part {part} of {total}..."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:200
+#: admin/class-wpstream-admin.php:206
 msgid "Failed to upload part {part}. Please try again."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:201
+#: admin/class-wpstream-admin.php:207
 msgid "Completing upload. Please wait..."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:202
+#: admin/class-wpstream-admin.php:208
 msgid "Failed to upload part {part}. Retrying..."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:203
+#: admin/class-wpstream-admin.php:209
 msgid "Choose Recording"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:204
+#: admin/class-wpstream-admin.php:210
 msgid "Please select a recording from the list"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:205
+#: admin/class-wpstream-admin.php:211
 msgid "Invalid response from server. Missing required upload data."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:206
-#: admin/class-wpstream-admin.php:2414
+#: admin/class-wpstream-admin.php:212
+#: admin/class-wpstream-admin.php:2425
 msgid "The video is still processing"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:207
-#: admin/class-wpstream-admin.php:2431
+#: admin/class-wpstream-admin.php:213
+#: admin/class-wpstream-admin.php:2442
 msgid "File Name:"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:208
+#: admin/class-wpstream-admin.php:214
 msgid "Something did not work. Please try again."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:214
+#: admin/class-wpstream-admin.php:220
 msgid "Delete file"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:215
+#: admin/class-wpstream-admin.php:221
 msgid "Download"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:216
-#: admin/class-wpstream-admin.php:2435
+#: admin/class-wpstream-admin.php:222
+#: admin/class-wpstream-admin.php:2446
 msgid "Click to download! The url will work for the next 20 minutes!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:218
+#: admin/class-wpstream-admin.php:224
 msgid "Create new Free-To-View VOD from this recording"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:221
+#: admin/class-wpstream-admin.php:227
 msgid "Create new Pay-Per-View VOD from this recording"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:239
-#: public/class-wpstream-public.php:173
+#: admin/class-wpstream-admin.php:245
+#: public/class-wpstream-public.php:203
 msgid "TURNING ON"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:240
-#: public/class-wpstream-public.php:174
+#: admin/class-wpstream-admin.php:246
+#: public/class-wpstream-public.php:204
 msgid "TURNING OFF"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:241
-#: admin/class-wpstream-admin.php:620
-#: admin/class-wpstream-admin.php:802
-#: public/class-wpstream-public.php:175
+#: admin/class-wpstream-admin.php:247
+#: admin/class-wpstream-admin.php:626
+#: admin/class-wpstream-admin.php:808
+#: public/class-wpstream-public.php:205
 msgid "TURN ON"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:242
-#: public/class-wpstream-public.php:176
+#: admin/class-wpstream-admin.php:248
+#: public/class-wpstream-public.php:206
 msgid "TURN OFF"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:243
-#: public/class-wpstream-public.php:177
+#: admin/class-wpstream-admin.php:249
+#: public/class-wpstream-public.php:207
 msgid "Failed to get channel info. Please try again."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:244
-#: public/class-wpstream-public.php:178
+#: admin/class-wpstream-admin.php:250
+#: public/class-wpstream-public.php:208
 msgid "Channel is now OFF. Click to turn ON."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:245
-#: public/class-wpstream-public.php:179
+#: admin/class-wpstream-admin.php:251
+#: public/class-wpstream-public.php:209
 msgid "Click to turn channel off. This will interrupt any ongoing broadcast."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:246
-#: public/class-wpstream-public.php:180
+#: admin/class-wpstream-admin.php:252
+#: public/class-wpstream-public.php:210
 msgid "Turning a channel on may take 1-2 minutes or more. Please be patient."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:247
-#: public/class-wpstream-public.php:181
+#: admin/class-wpstream-admin.php:253
+#: public/class-wpstream-public.php:211
 msgid "This may take a few minutes."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:248
-#: public/class-wpstream-public.php:182
+#: admin/class-wpstream-admin.php:254
+#: public/class-wpstream-public.php:212
 msgid "You don't have enough data to start a new event!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:249
-#: public/class-wpstream-public.php:183
+#: admin/class-wpstream-admin.php:255
+#: public/class-wpstream-public.php:213
 msgid "Failed to start the channel. Please try again in a few minutes."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:250
-#: public/class-wpstream-public.php:184
+#: admin/class-wpstream-admin.php:256
+#: public/class-wpstream-public.php:214
 msgid "Channel is turning on"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:251
-#: public/class-wpstream-public.php:185
+#: admin/class-wpstream-admin.php:257
+#: public/class-wpstream-public.php:215
 msgid "Channel is turning off"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:252
-#: public/class-wpstream-public.php:186
+#: admin/class-wpstream-admin.php:258
+#: public/class-wpstream-public.php:216
 msgid "Channel is ON"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:253
-#: admin/class-wpstream-admin.php:619
-#: admin/class-wpstream-admin.php:801
-#: public/class-wpstream-public.php:187
+#: admin/class-wpstream-admin.php:259
+#: admin/class-wpstream-admin.php:625
+#: admin/class-wpstream-admin.php:807
+#: public/class-wpstream-public.php:217
 msgid "Channel is OFF"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:254
-#: public/class-wpstream-public.php:189
+#: admin/class-wpstream-admin.php:260
+#: public/class-wpstream-public.php:219
 msgid "ARE YOU SURE you'd like to TURN OFF the channel now? "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:261
+#: admin/class-wpstream-admin.php:267
 msgid "Your account is now in BASIC STREAMING mode."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:274
+#: admin/class-wpstream-admin.php:280
 msgid "Failed to save settings. Please try again."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:275
+#: admin/class-wpstream-admin.php:281
 msgid "Choose Logo Image"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:276
+#: admin/class-wpstream-admin.php:282
 msgid "Select Image"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:277
+#: admin/class-wpstream-admin.php:283
 msgid "Update Successful."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:278
+#: admin/class-wpstream-admin.php:284
 msgid "Something went wrong. Try again."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:326
+#: admin/class-wpstream-admin.php:332
 msgid "WpStream "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:391
+#: admin/class-wpstream-admin.php:397
 msgid "Your Pay-Per-View Channel List"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:396
+#: admin/class-wpstream-admin.php:402
 msgid "Create new Pay-Per-View channel."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:455
+#: admin/class-wpstream-admin.php:461
 msgid "Free-To-View Channels"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:458
+#: admin/class-wpstream-admin.php:464
 msgid "Create new Free-To-View channel."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:475
-#: admin/class-wpstream-admin.php:3088
+#: admin/class-wpstream-admin.php:481
+#: admin/class-wpstream-admin.php:3099
 #: includes/class-wpstream.php:895
 #: includes/class-wpstream.php:916
 msgid "Close"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:489
+#: admin/class-wpstream-admin.php:495
 msgid "* You do not have any Pay-Per-View channels!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:492
+#: admin/class-wpstream-admin.php:498
 msgid "* You do not have any free channels!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:495
+#: admin/class-wpstream-admin.php:501
 msgid "Add new Free-To-View channel "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:496
+#: admin/class-wpstream-admin.php:502
 msgid "Add new Pay-Per-View channel "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:554
+#: admin/class-wpstream-admin.php:560
 msgid "Spread the word! To let people know about your channel, click on the corresponding icon and share on the social platforms of your choice. The more the merrier!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:576
-#: admin/class-wpstream-admin.php:756
+#: admin/class-wpstream-admin.php:582
+#: admin/class-wpstream-admin.php:762
 msgid "You are not allowed to broadcast."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:585
-#: admin/class-wpstream-admin.php:765
+#: admin/class-wpstream-admin.php:591
+#: admin/class-wpstream-admin.php:771
 msgid "You are not allowed to broadcast"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:695
-#: admin/class-wpstream-admin.php:873
+#: admin/class-wpstream-admin.php:701
+#: admin/class-wpstream-admin.php:879
 msgid "Settings"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:837
+#: admin/class-wpstream-admin.php:843
 msgid "Webcam"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:850
+#: admin/class-wpstream-admin.php:856
 msgid "External App"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:867
+#: admin/class-wpstream-admin.php:873
 msgid "Statistics"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:898
-#: includes/class-wpstream_product.php:692
+#: admin/class-wpstream-admin.php:904
+#: includes/class-wpstream_product.php:697
 msgid "View"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:907
+#: admin/class-wpstream-admin.php:913
 msgid "Share"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:948
+#: admin/class-wpstream-admin.php:954
 msgid "Edit settings for this channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:949
+#. translators: %s is a link to the Default Channel Settings admin page.
+#: admin/class-wpstream-admin.php:956
+#, php-format
 msgid "When is OFF, the settings from %s will be applied"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:949
-#: admin/class-wpstream-admin.php:1602
+#. translators: %s is a link to the Default Channel Settings admin page.
+#: admin/class-wpstream-admin.php:956
+#: admin/class-wpstream-admin.php:1611
 msgid "Default Channel Settings"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:968
+#. translators: %s is the channel post ID.
+#: admin/class-wpstream-admin.php:976
+#, php-format
 msgid "Channel Settings (#ID %s)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1004
+#: admin/class-wpstream-admin.php:1012
 msgid "Share your Channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1019
+#: admin/class-wpstream-admin.php:1027
 msgid "Go Live with External Streaming App"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1021
+#: admin/class-wpstream-admin.php:1029
 msgid "Please choose your RTMP encoder/broadcaster"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1061
-#: admin/class-wpstream-admin.php:1064
-#: admin/class-wpstream-admin.php:1096
-#: admin/class-wpstream-admin.php:1099
-#: admin/class-wpstream-admin.php:1133
-#: admin/class-wpstream-admin.php:1136
-#: admin/class-wpstream-admin.php:1169
-#: admin/class-wpstream-admin.php:1172
-#: admin/class-wpstream-admin.php:1204
-#: admin/class-wpstream-admin.php:1207
-#: admin/class-wpstream-admin.php:1239
-#: admin/class-wpstream-admin.php:1286
-#: admin/class-wpstream-admin.php:1289
+#: admin/class-wpstream-admin.php:1069
+#: admin/class-wpstream-admin.php:1072
+#: admin/class-wpstream-admin.php:1104
+#: admin/class-wpstream-admin.php:1107
+#: admin/class-wpstream-admin.php:1141
+#: admin/class-wpstream-admin.php:1144
+#: admin/class-wpstream-admin.php:1177
+#: admin/class-wpstream-admin.php:1180
+#: admin/class-wpstream-admin.php:1212
+#: admin/class-wpstream-admin.php:1215
+#: admin/class-wpstream-admin.php:1247
+#: admin/class-wpstream-admin.php:1294
+#: admin/class-wpstream-admin.php:1297
 msgid "copy"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1377
+#: admin/class-wpstream-admin.php:1385
 msgid "Slug for free video/channel pages "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1380
+#: admin/class-wpstream-admin.php:1388
 msgid "This will replace the default \"wpstream\" of all your free video/channel urls. Special characters like \"&\" are not permitted. To have your new slug show up you need to re-save the \"Permalinks Settings\" under Settings -> Permalinks, even if not making any changes."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1385
+#: admin/class-wpstream-admin.php:1393
 msgid "Non-Admin User Roles Allowed to Broadcast"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1388
+#: admin/class-wpstream-admin.php:1396
 msgid "These types of users can stream via frontend shortcodes / blocks. Single individual channels are automaticlally created for streaming by non-admins."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1393
+#: admin/class-wpstream-admin.php:1401
 msgid "Non Admin Streamers Channel Type."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1397
-#: public/class-wpstream-public.php:1227
-#: public/class-wpstream-public.php:1239
+#: admin/class-wpstream-admin.php:1405
+#: public/class-wpstream-public.php:1257
+#: public/class-wpstream-public.php:1269
 msgid "Free Live Channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1398
+#: admin/class-wpstream-admin.php:1406
 msgid "Pay-Per-View"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1400
+#: admin/class-wpstream-admin.php:1408
 msgid "Choose whether the channels assigned to non-admins are free-for-all or pay-per-view (WooCommerce product)."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1405
+#: admin/class-wpstream-admin.php:1413
 msgid "Default Pay-Per-View Price"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1408
+#: admin/class-wpstream-admin.php:1416
 msgid "Default price of pay-per-view channels assigned to non-admins."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1415
+#: admin/class-wpstream-admin.php:1423
 msgid "Use Global Subscription Mode"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1418
+#: admin/class-wpstream-admin.php:1426
 msgid "If enabled, a client can access all the media products (live and VOD) by purchasing a single subscription. The \"WooCommerce Subscriptions\" plugin is required."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1423
+#: admin/class-wpstream-admin.php:1431
 msgid "Subscription ID for Global Subscription Mode"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1426
+#: admin/class-wpstream-admin.php:1434
 msgid "ID of the subscription product to be purchased for global access to media. All non-subscription video products that are not already attached to a subscription will be accessible to users that have purchased it."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1430
+#: admin/class-wpstream-admin.php:1438
 msgid "PPV not logged in message"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1433
+#: admin/class-wpstream-admin.php:1441
 msgid "This message will be displayed on top of the media player for pay-per-view items when user is not logged in."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1434
+#: admin/class-wpstream-admin.php:1442
 msgid "You must be logged in to watch this video."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1438
+#: admin/class-wpstream-admin.php:1446
 msgid "PPV not purchased message"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1441
+#: admin/class-wpstream-admin.php:1449
 msgid "This message will be displayed on top of the media player for common pay-per-view items that have not been purchased."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1442
+#: admin/class-wpstream-admin.php:1450
 msgid "You did not yet purchase this item."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1446
+#: admin/class-wpstream-admin.php:1454
 msgid "Subscription not purchased message"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1449
+#: admin/class-wpstream-admin.php:1457
 msgid "This message will be displayed on top of the media player for subscription-type pay-per-view items that have not been purchased."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1450
+#: admin/class-wpstream-admin.php:1458
 msgid " You did not yet subscribe to this item."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1454
+#: admin/class-wpstream-admin.php:1462
 msgid "Thank you message"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1457
+#: admin/class-wpstream-admin.php:1465
 msgid "This message will be displayed on the thank you page (after purchase) and the confirmation email."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1458
+#: admin/class-wpstream-admin.php:1466
 msgid "Thanks for your purchase. You can access your item at any time by visiting the following page: {item_link}"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1463
+#: admin/class-wpstream-admin.php:1471
 msgid "Subscription Active message"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1466
+#: admin/class-wpstream-admin.php:1474
 msgid "This message will be displayed on subscription product page."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1467
+#: admin/class-wpstream-admin.php:1475
 msgid "Your Subscription is Active"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1471
+#: admin/class-wpstream-admin.php:1479
 msgid "You are not live message"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1474
+#: admin/class-wpstream-admin.php:1482
 msgid "This message will be displayed in player."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1475
+#: admin/class-wpstream-admin.php:1483
 msgid "We are not live at this moment"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1480
+#: admin/class-wpstream-admin.php:1488
 msgid "Video player theme"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1484
+#: admin/class-wpstream-admin.php:1492
 msgid "Default"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1485
+#: admin/class-wpstream-admin.php:1493
 msgid "City"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1486
+#: admin/class-wpstream-admin.php:1494
 msgid "Forest"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1487
+#: admin/class-wpstream-admin.php:1495
 msgid "Fantasy"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1488
+#: admin/class-wpstream-admin.php:1496
 msgid "Sea"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1490
+#: admin/class-wpstream-admin.php:1498
 msgid "Choose the video player theme to have a different look for the player."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1495
+#: admin/class-wpstream-admin.php:1503
 msgid "Logo for the video player"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1497
+#: admin/class-wpstream-admin.php:1505
 msgid "This logo will be displayed on the the video player."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1514
+#: admin/class-wpstream-admin.php:1522
 msgid "Position of the video player logo"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1517
+#: admin/class-wpstream-admin.php:1525
 msgid "Top Left"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1518
+#: admin/class-wpstream-admin.php:1526
 msgid "Top Right"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1519
+#: admin/class-wpstream-admin.php:1527
 msgid "Bottom Left"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1520
+#: admin/class-wpstream-admin.php:1528
 msgid "Bottom Right"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1522
+#: admin/class-wpstream-admin.php:1530
 msgid "Choose the position of the logo on the video player."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1530
+#: admin/class-wpstream-admin.php:1538
 msgid "Events Options  "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1533
+#: admin/class-wpstream-admin.php:1541
 msgid "Global Options for live events."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1541
+#: admin/class-wpstream-admin.php:1549
 msgid "If enabled, video will attempt to start playing automatically. This is only achievable in some browsers."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1550
+#: admin/class-wpstream-admin.php:1558
 msgid "If enabled, video will start muted. This may increase the rate of autoplay in some browsers."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1558
+#. translators: %1$s is the site URL.
+#: admin/class-wpstream-admin.php:1567
+#, php-format
 msgid "If enabled, video will only display on %1$s, otherwise it can show up on any website."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1563
+#: admin/class-wpstream-admin.php:1572
 msgid "Encrypt Video"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1582
+#: admin/class-wpstream-admin.php:1591
 msgid "Logs"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1585
+#: admin/class-wpstream-admin.php:1594
 msgid "This is the error log of the plugin."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1597
+#: admin/class-wpstream-admin.php:1606
 msgid "WpStream Settings"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1601
+#: admin/class-wpstream-admin.php:1610
 msgid "General Options"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1603
+#: admin/class-wpstream-admin.php:1612
 msgid "VOD Settings"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1604
+#: admin/class-wpstream-admin.php:1613
 msgid "Subscription Options"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1605
+#: admin/class-wpstream-admin.php:1614
 msgid "Customize Messages"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1606
+#: admin/class-wpstream-admin.php:1615
 msgid "Support"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1637
+#: admin/class-wpstream-admin.php:1646
 msgid "These settings will apply to newly created channels; existing channels will not change settings if you change them here"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1710
-#: includes/class-wpstream_product.php:435
-#: includes/class-wpstream_product.php:492
+#: admin/class-wpstream-admin.php:1719
+#: includes/class-wpstream_product.php:440
+#: includes/class-wpstream_product.php:497
 msgid "Upload Image"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1711
+#: admin/class-wpstream-admin.php:1720
 msgid "Remove Image"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1730
+#: admin/class-wpstream-admin.php:1739
 msgid "Video Help"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1737
-#: admin/class-wpstream-admin.php:2212
+#: admin/class-wpstream-admin.php:1746
+#: admin/class-wpstream-admin.php:2223
 msgid "Save Changes"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1796
+#: admin/class-wpstream-admin.php:1805
 msgid "System Information"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1800
+#: admin/class-wpstream-admin.php:1809
 msgid "PHP Version"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1805
+#: admin/class-wpstream-admin.php:1814
 msgid "We recommend PHP 7.4 or higher"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1812
+#: admin/class-wpstream-admin.php:1821
 msgid "WordPress Version"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1817
+#: admin/class-wpstream-admin.php:1826
 msgid "We recommend WordPress 5.6 or higher"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1824
+#: admin/class-wpstream-admin.php:1833
 msgid "WP Debug Mode"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1825
+#: admin/class-wpstream-admin.php:1834
 msgid "Enabled"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1825
+#: admin/class-wpstream-admin.php:1834
 msgid "Disabled"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1829
+#: admin/class-wpstream-admin.php:1838
 msgid "Debug mode should be disabled on production sites"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1836
+#: admin/class-wpstream-admin.php:1845
 msgid "WP Memory Limit"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1844
+#: admin/class-wpstream-admin.php:1853
 msgid "We recommend at least 64MB"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1851
+#: admin/class-wpstream-admin.php:1860
 msgid "WpStream Version"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1856
+#: admin/class-wpstream-admin.php:1865
 msgid "Update available"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1859
+#: admin/class-wpstream-admin.php:1868
 msgid "Update Now"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1868
+#: admin/class-wpstream-admin.php:1877
 msgid "API Connection"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1869
+#: admin/class-wpstream-admin.php:1878
 msgid "Connected"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1869
+#: admin/class-wpstream-admin.php:1878
 msgid "Disconnected"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1873
+#: admin/class-wpstream-admin.php:1882
 msgid "API connection issue"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1895
+#: admin/class-wpstream-admin.php:1904
 msgid "Active Plugins"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1899
+#: admin/class-wpstream-admin.php:1908
 msgid "Plugin"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1900
+#: admin/class-wpstream-admin.php:1909
 msgid "Version"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1907
+#: admin/class-wpstream-admin.php:1916
 msgid "No WPStream plugins found."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1919
+#. translators: %s is the new version number.
+#: admin/class-wpstream-admin.php:1929
+#, php-format
 msgid "A new version is available: %s"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1934
+#: admin/class-wpstream-admin.php:1944
 msgid "Recent Logs"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1938
+#: admin/class-wpstream-admin.php:1948
 msgid "Time"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1939
+#: admin/class-wpstream-admin.php:1949
 msgid "Type"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1940
+#: admin/class-wpstream-admin.php:1950
 msgid "Description"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:1947
+#: admin/class-wpstream-admin.php:1957
 msgid "No logs found."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2180
+#: admin/class-wpstream-admin.php:2190
 msgid "WpStream Credentials"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2186
+#. translators: %s is the URL to create a WpStream account
+#: admin/class-wpstream-admin.php:2197
+#, php-format
 msgid "To connect your plugin, enter your WpStream credentials below or go <a href=\"%s\" target=\"_blank\">here</a> to create an account."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2195
+#: admin/class-wpstream-admin.php:2206
 msgid "Connected to WpStream.net!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2197
+#: admin/class-wpstream-admin.php:2208
 msgid "Failed to connect to WpStream.net. Please address CURL connectivity with your hosting provider."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2232
+#: admin/class-wpstream-admin.php:2243
 msgid "Create new Free-To-View channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2233
+#: admin/class-wpstream-admin.php:2244
 msgid "Create Pay-Per-View channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2254
+#: admin/class-wpstream-admin.php:2265
 msgid "Upload New Recording"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2256
+#: admin/class-wpstream-admin.php:2267
 msgid "Your Recordings"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2326
-#: admin/class-wpstream-admin.php:2391
+#: admin/class-wpstream-admin.php:2337
+#: admin/class-wpstream-admin.php:2402
 msgid "Not connected. Please connect to WpStream to upload videos."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2329
+#: admin/class-wpstream-admin.php:2340
 msgid "You don't have enough cloud storage and data to upload a new item. Please delete some videos or upgrade your plan."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2339
+#: admin/class-wpstream-admin.php:2350
 msgid "Please select or drop a video file. Do not close this window during the upload!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2353
+#: admin/class-wpstream-admin.php:2364
 msgid "Drop a video file here!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2354
+#: admin/class-wpstream-admin.php:2365
 msgid ""
 "The Video File must be encoded with the following settings:<br>\n"
 "\n"
@@ -898,297 +924,317 @@ msgid ""
 "                    You may use a tool like MediaInfo to verify your file. Also you may convert it with specialized software like HandBrake."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2360
+#: admin/class-wpstream-admin.php:2371
 msgid "Accepted file extensions: .mp4, .mov"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2413
+#: admin/class-wpstream-admin.php:2424
 msgid "File Name :"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2433
+#: admin/class-wpstream-admin.php:2444
 msgid "delete file"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2434
+#: admin/class-wpstream-admin.php:2445
 msgid "download"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2456
+#: admin/class-wpstream-admin.php:2467
 msgid "You don't have any videos."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2548
+#: admin/class-wpstream-admin.php:2559
 msgid "Video On Demand Settings"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2549
-#: includes/class-wpstream_product.php:679
-#: includes/class-wpstream_product.php:686
+#: admin/class-wpstream-admin.php:2560
+#: includes/class-wpstream_product.php:684
+#: includes/class-wpstream_product.php:691
 msgid "Video Collection"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2550
+#: admin/class-wpstream-admin.php:2561
 msgid "Product Data"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2559
+#: admin/class-wpstream-admin.php:2570
 msgid "Video Collection Options"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2628
+#: admin/class-wpstream-admin.php:2639
 msgid "Media Type:"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2630
+#: admin/class-wpstream-admin.php:2641
 msgid "Recording"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2631
+#: admin/class-wpstream-admin.php:2642
 msgid "Self Hosted or External Video"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2642
+#: admin/class-wpstream-admin.php:2653
 msgid "Choose video:"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2662
+#: admin/class-wpstream-admin.php:2673
 msgid "Video:"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2665
+#: admin/class-wpstream-admin.php:2676
 msgid "Select Video"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2673
+#: admin/class-wpstream-admin.php:2684
 msgid "Choose one of your existing recordings."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2674
+#: admin/class-wpstream-admin.php:2685
 msgid "Upload a video from your computer or paste the URL of a YouTube/external video."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:2995
+#: admin/class-wpstream-admin.php:3006
 msgid "The php CURL library is not enabled on your server. WpStream plugin needs this library in order to work. Please address this issue with your hosting provider."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3041
 #: admin/class-wpstream-admin.php:3052
+#: admin/class-wpstream-admin.php:3063
 msgid "Live Streaming"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3091
+#: admin/class-wpstream-admin.php:3102
 msgid "To Go Live, please publish your channel first !"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3165
-#: public/class-wpstream-public.php:638
-#: public/class-wpstream-public.php:667
-#: public/class-wpstream-public.php:695
-#: public/class-wpstream-public.php:731
-#: public/class-wpstream-public.php:773
-#: public/class-wpstream-public.php:833
-#: public/class-wpstream-public.php:903
+#: admin/class-wpstream-admin.php:3176
+#: public/class-wpstream-public.php:668
+#: public/class-wpstream-public.php:697
+#: public/class-wpstream-public.php:725
+#: public/class-wpstream-public.php:761
+#: public/class-wpstream-public.php:803
+#: public/class-wpstream-public.php:863
+#: public/class-wpstream-public.php:933
 msgid "WpStream"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3165
+#: admin/class-wpstream-admin.php:3176
 msgid "Quick Start"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3169
+#: admin/class-wpstream-admin.php:3180
 msgid "The quick start guide will help you set up Live Streaming, Video On Demand, and Monetization in a fun and interactive way. Give it a shot! "
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3172
+#: admin/class-wpstream-admin.php:3183
 msgid "Start the Guide"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3249
+#: admin/class-wpstream-admin.php:3260
 msgid "WpStream Account"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3252
+#: admin/class-wpstream-admin.php:3263
 msgid "A WpStream account is required to make use of the plugin."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3257
+#: admin/class-wpstream-admin.php:3268
 msgid "Checking if you are already logged....."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3263
+#: admin/class-wpstream-admin.php:3274
 msgid "Login with your WpStream Account"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3276
+#: admin/class-wpstream-admin.php:3287
 msgid "Login"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3283
+#: admin/class-wpstream-admin.php:3294
 msgid "Register for  a WpStream Account"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3285
+#: admin/class-wpstream-admin.php:3296
 msgid "Your Email"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3291
+#: admin/class-wpstream-admin.php:3302
 msgid "Your Password"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3313
+#: admin/class-wpstream-admin.php:3324
 msgid "Type the characters above"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3321
+#: admin/class-wpstream-admin.php:3332
 msgid "register"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3325
+#: admin/class-wpstream-admin.php:3336
 msgid "I already have a WpStream Account"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3327
+#: admin/class-wpstream-admin.php:3338
 msgid "Back to Registration"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3387
+#: admin/class-wpstream-admin.php:3398
 msgid "Go LIVE!"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3389
+#: admin/class-wpstream-admin.php:3400
 msgid "Create a Video-On-Demand (VOD)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3407
-#: admin/class-wpstream-admin.php:3521
+#: admin/class-wpstream-admin.php:3418
+#: admin/class-wpstream-admin.php:3532
 msgid "Do you want to charge a fee for watching?"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3409
-#: admin/class-wpstream-admin.php:3523
+#: admin/class-wpstream-admin.php:3420
+#: admin/class-wpstream-admin.php:3534
 msgid "No - Free-To-View (FTV)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3411
-#: admin/class-wpstream-admin.php:3526
+#: admin/class-wpstream-admin.php:3422
+#: admin/class-wpstream-admin.php:3537
 msgid "Yes - Pay-Per-View (PPV)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3414
-#: admin/class-wpstream-admin.php:3444
-#: admin/class-wpstream-admin.php:3484
-#: admin/class-wpstream-admin.php:3528
-#: admin/class-wpstream-admin.php:3564
-#: admin/class-wpstream-admin.php:3623
+#: admin/class-wpstream-admin.php:3425
+#: admin/class-wpstream-admin.php:3455
+#: admin/class-wpstream-admin.php:3495
+#: admin/class-wpstream-admin.php:3539
+#: admin/class-wpstream-admin.php:3575
+#: admin/class-wpstream-admin.php:3634
 msgid "Prev"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3433
+#: admin/class-wpstream-admin.php:3444
 msgid "Let’s create your first FTV live channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3438
+#: admin/class-wpstream-admin.php:3449
 msgid "My first FTV channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3439
-#: admin/class-wpstream-admin.php:3474
+#: admin/class-wpstream-admin.php:3450
+#: admin/class-wpstream-admin.php:3485
 msgid "Create Channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3464
+#: admin/class-wpstream-admin.php:3475
 msgid "Make your live stream Pay Per View"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3470
+#: admin/class-wpstream-admin.php:3481
 msgid "Choose a name for your channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3471
+#: admin/class-wpstream-admin.php:3482
 msgid "My First PPV Channel"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3472
+#: admin/class-wpstream-admin.php:3483
 msgid "Pay-Per-View Price ($)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3503
+#: admin/class-wpstream-admin.php:3514
 msgid "Pay-Per-View streaming requires WooCommerce. Please install the WooCommerce plugin and try again."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3505
+#: admin/class-wpstream-admin.php:3516
 msgid "Install WooCommerce"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3507
-#: admin/class-wpstream-admin.php:3584
+#: admin/class-wpstream-admin.php:3518
+#: admin/class-wpstream-admin.php:3595
 msgid "Try Again"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3550
+#: admin/class-wpstream-admin.php:3561
 msgid "Let’s create your first Free-To-View VOD"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3555
+#: admin/class-wpstream-admin.php:3566
 msgid "Name your FTV Video-On-Demand"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3556
+#: admin/class-wpstream-admin.php:3567
 msgid "My First FTV VOD"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3580
+#: admin/class-wpstream-admin.php:3591
 msgid "A recording is needed to create a VOD from. There are no recordings under your account. You can create new recordings by recording a live channel or uploading video files directly."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3582
+#: admin/class-wpstream-admin.php:3593
 msgid "Upload Video"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3602
+#: admin/class-wpstream-admin.php:3613
 msgid "Let's create your first Pay-Per-View VOD"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3610
+#: admin/class-wpstream-admin.php:3621
 msgid "Name your PPV Video-On-Demand"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3611
+#: admin/class-wpstream-admin.php:3622
 msgid "My First PPV VOD"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3613
+#: admin/class-wpstream-admin.php:3624
 msgid "Pay-Per-View Price"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:3615
+#: admin/class-wpstream-admin.php:3626
 msgid "Create PPV VOD"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:4002
+#: admin/class-wpstream-admin.php:4013
 msgid "Your Account was created. Please stand by..."
 msgstr ""
 
-#: admin/class-wpstream-admin.php:4027
+#: admin/class-wpstream-admin.php:4038
 msgid "Registration could not be completed. Please try again or register on wpstream.net"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:4078
-#: admin/class-wpstream-admin.php:4088
+#: admin/class-wpstream-admin.php:4089
+#: admin/class-wpstream-admin.php:4099
 msgid "The email doesn't look right !"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:4221
+#: admin/class-wpstream-admin.php:4232
 msgid "Not enough permissions to make this change"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:4230
+#: admin/class-wpstream-admin.php:4241
 msgid "Failed to connect to the filesystem"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:4239
+#: admin/class-wpstream-admin.php:4250
 msgid "Update failed due to"
+msgstr ""
+
+#: hello-wpstream/template-parts/dashboard-templates/general-template-edit-account.php:136
+msgid "First name"
+msgstr ""
+
+#: hello-wpstream/template-parts/dashboard-templates/general-template-edit-account.php:141
+msgid "Last name"
+msgstr ""
+
+#: hello-wpstream/template-parts/dashboard-templates/general-template-edit-account.php:145
+msgid "Display Name"
+msgstr ""
+
+#: hello-wpstream/template-parts/dashboard-templates/general-template-edit-account.php:149
+msgid "Email Address"
+msgstr ""
+
+#: hello-wpstream/template-parts/dashboard-templates/general-template-edit-account.php:153
+msgid "About me"
 msgstr ""
 
 #: includes/class-wpstream-ajax.php:54
@@ -1280,22 +1326,22 @@ msgstr ""
 msgid "Unauthorized"
 msgstr ""
 
-#: includes/class-wpstream-player.php:489
-#: includes/class-wpstream-player.php:933
-#: includes/class-wpstream-player.php:1087
+#: includes/class-wpstream-player.php:490
+#: includes/class-wpstream-player.php:962
+#: includes/class-wpstream-player.php:1119
 msgid "Play Trailer"
 msgstr ""
 
-#: includes/class-wpstream-player.php:844
-#: includes/class-wpstream-player.php:1034
+#: includes/class-wpstream-player.php:873
+#: includes/class-wpstream-player.php:1066
 msgid "Playing:"
 msgstr ""
 
-#: includes/class-wpstream-player.php:941
+#: includes/class-wpstream-player.php:970
 msgid "Play Video"
 msgstr ""
 
-#: includes/class-wpstream-player.php:1014
+#: includes/class-wpstream-player.php:1045
 msgid "Insufficient resources to stream this title"
 msgstr ""
 
@@ -1327,222 +1373,250 @@ msgstr ""
 msgid "No media found! "
 msgstr ""
 
-#: includes/class-wpstream.php:960
+#. translators: %s: user login
+#: includes/class-wpstream.php:961
+#, php-format
 msgid "%s Channel"
 msgstr ""
 
-#: includes/class-wpstream_product.php:50
+#. translators: Post type singular name
+#: includes/class-wpstream_product.php:51
+#, php-format
 msgid "New %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:51
+#: includes/class-wpstream_product.php:52
+#, php-format
 msgid "Add new %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:52
-#: includes/class-wpstream_product.php:337
+#: includes/class-wpstream_product.php:53
+#: includes/class-wpstream_product.php:338
+#, php-format
 msgid "Edit %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:53
 #: includes/class-wpstream_product.php:54
-#: includes/class-wpstream_product.php:338
+#: includes/class-wpstream_product.php:55
+#: includes/class-wpstream_product.php:339
+#, php-format
 msgid "View %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:55
-#: includes/class-wpstream_product.php:344
+#: includes/class-wpstream_product.php:56
+#: includes/class-wpstream_product.php:346
+#, php-format
 msgid "Search %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:56
-#: includes/class-wpstream_product.php:349
+#: includes/class-wpstream_product.php:57
+#: includes/class-wpstream_product.php:354
+#, php-format
 msgid "No %s found"
 msgstr ""
 
-#: includes/class-wpstream_product.php:57
+#: includes/class-wpstream_product.php:58
+#, php-format
 msgid "No %s found in trash"
 msgstr ""
 
-#: includes/class-wpstream_product.php:58
-#: includes/class-wpstream_product.php:336
+#: includes/class-wpstream_product.php:59
+#: includes/class-wpstream_product.php:337
+#, php-format
 msgid "All %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:59
+#: includes/class-wpstream_product.php:60
+#, php-format
 msgid "%s Archives"
 msgstr ""
 
-#: includes/class-wpstream_product.php:60
+#: includes/class-wpstream_product.php:61
+#, php-format
 msgid "%s Attributes"
 msgstr ""
 
-#: includes/class-wpstream_product.php:61
+#: includes/class-wpstream_product.php:62
+#, php-format
 msgid "Insert into %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:62
+#: includes/class-wpstream_product.php:63
+#, php-format
 msgid "Uploaded to this %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:65
-#: includes/class-wpstream_product.php:342
+#: includes/class-wpstream_product.php:66
+#: includes/class-wpstream_product.php:344
+#, php-format
 msgid "Parent %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:66
-#: includes/class-wpstream_product.php:343
+#: includes/class-wpstream_product.php:67
+#: includes/class-wpstream_product.php:345
+#, php-format
 msgid "Parent %s:"
 msgstr ""
 
-#: includes/class-wpstream_product.php:339
+#: includes/class-wpstream_product.php:340
+#, php-format
 msgid "Update %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:340
+#: includes/class-wpstream_product.php:341
+#, php-format
 msgid "Add New %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:341
+#. translators: Taxonomy singular name
+#: includes/class-wpstream_product.php:343
+#, php-format
 msgid "New %s Name"
 msgstr ""
 
-#: includes/class-wpstream_product.php:345
+#. translators: Taxonomy plural name
+#: includes/class-wpstream_product.php:348
+#, php-format
 msgid "Popular %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:346
+#. translators: Taxonomy plural name
+#: includes/class-wpstream_product.php:350
+#, php-format
 msgid "Separate %s with commas"
 msgstr ""
 
-#: includes/class-wpstream_product.php:347
+#: includes/class-wpstream_product.php:351
+#, php-format
 msgid "Add or remove %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:348
+#. translators: Taxonomy plural name
+#: includes/class-wpstream_product.php:353
+#, php-format
 msgid "Choose from the most used %s"
 msgstr ""
 
-#: includes/class-wpstream_product.php:425
-#: includes/class-wpstream_product.php:428
+#: includes/class-wpstream_product.php:430
+#: includes/class-wpstream_product.php:433
 msgid "Display the content for page id for this term"
 msgstr ""
 
-#: includes/class-wpstream_product.php:432
-#: includes/class-wpstream_product.php:490
-#: includes/class-wpstream_product.php:698
+#: includes/class-wpstream_product.php:437
+#: includes/class-wpstream_product.php:495
+#: includes/class-wpstream_product.php:703
 msgid "Featured Image"
 msgstr ""
 
-#: includes/class-wpstream_product.php:441
-#: includes/class-wpstream_product.php:498
+#: includes/class-wpstream_product.php:446
+#: includes/class-wpstream_product.php:503
 msgid "Category Tagline"
 msgstr ""
 
-#: includes/class-wpstream_product.php:485
+#: includes/class-wpstream_product.php:490
 msgid "Page id for this term"
 msgstr ""
 
-#: includes/class-wpstream_product.php:561
+#: includes/class-wpstream_product.php:566
 msgid "Free-To-View Live Channel"
 msgstr ""
 
-#: includes/class-wpstream_product.php:562
-#: includes/class-wpstream_product.php:563
-#: includes/class-wpstream_product.php:564
+#: includes/class-wpstream_product.php:567
+#: includes/class-wpstream_product.php:568
+#: includes/class-wpstream_product.php:569
 msgid "Free-To-View Live Channels"
 msgstr ""
 
-#: includes/class-wpstream_product.php:601
+#: includes/class-wpstream_product.php:606
 msgid "Actors"
 msgstr ""
 
-#: includes/class-wpstream_product.php:602
+#: includes/class-wpstream_product.php:607
 msgid "Actor"
 msgstr ""
 
-#: includes/class-wpstream_product.php:611
+#: includes/class-wpstream_product.php:616
 msgid "Media Categories"
 msgstr ""
 
-#: includes/class-wpstream_product.php:612
+#: includes/class-wpstream_product.php:617
 msgid "Media Category"
 msgstr ""
 
-#: includes/class-wpstream_product.php:621
+#: includes/class-wpstream_product.php:626
 msgid "Movie Ratings"
 msgstr ""
 
-#: includes/class-wpstream_product.php:622
+#: includes/class-wpstream_product.php:627
 msgid "Movie Rating"
 msgstr ""
 
-#: includes/class-wpstream_product.php:637
+#: includes/class-wpstream_product.php:642
 msgid "Free-To-View VOD"
 msgstr ""
 
-#: includes/class-wpstream_product.php:638
-#: includes/class-wpstream_product.php:639
-#: includes/class-wpstream_product.php:640
+#: includes/class-wpstream_product.php:643
+#: includes/class-wpstream_product.php:644
+#: includes/class-wpstream_product.php:645
 msgid "Free-To-View VODs"
 msgstr ""
 
-#: includes/class-wpstream_product.php:680
-#: includes/class-wpstream_product.php:681
-#: includes/class-wpstream_product.php:682
 #: includes/class-wpstream_product.php:685
+#: includes/class-wpstream_product.php:686
+#: includes/class-wpstream_product.php:687
+#: includes/class-wpstream_product.php:690
 msgid "Video Collections"
 msgstr ""
 
-#: includes/class-wpstream_product.php:687
+#: includes/class-wpstream_product.php:692
 msgid "Add New Video Collection"
 msgstr ""
 
-#: includes/class-wpstream_product.php:688
+#: includes/class-wpstream_product.php:693
 msgid "Add Video Collection"
 msgstr ""
 
-#: includes/class-wpstream_product.php:689
+#: includes/class-wpstream_product.php:694
 msgid "Edit"
 msgstr ""
 
-#: includes/class-wpstream_product.php:690
+#: includes/class-wpstream_product.php:695
 msgid "Edit Video Collection"
 msgstr ""
 
-#: includes/class-wpstream_product.php:691
+#: includes/class-wpstream_product.php:696
 msgid "New Video Collection"
 msgstr ""
 
-#: includes/class-wpstream_product.php:693
+#: includes/class-wpstream_product.php:698
 msgid "View Video Collection"
 msgstr ""
 
-#: includes/class-wpstream_product.php:694
+#: includes/class-wpstream_product.php:699
 msgid "Search Video Collection By Name or ID"
 msgstr ""
 
-#: includes/class-wpstream_product.php:695
+#: includes/class-wpstream_product.php:700
 msgid "No Video Collection found"
 msgstr ""
 
-#: includes/class-wpstream_product.php:696
+#: includes/class-wpstream_product.php:701
 msgid "No Video Collection found in Trash"
 msgstr ""
 
-#: includes/class-wpstream_product.php:697
+#: includes/class-wpstream_product.php:702
 msgid "Parent Video Collection"
 msgstr ""
 
-#: includes/class-wpstream_product.php:699
+#: includes/class-wpstream_product.php:704
 msgid "Set Featured Image"
 msgstr ""
 
-#: includes/class-wpstream_product.php:700
+#: includes/class-wpstream_product.php:705
 msgid "Remove Featured Image"
 msgstr ""
 
-#: includes/class-wpstream_product.php:701
+#: includes/class-wpstream_product.php:706
 msgid "Use Featured Image"
 msgstr ""
 
@@ -1566,165 +1640,165 @@ msgstr ""
 msgid "Tune in to my Live Stream!"
 msgstr ""
 
-#: public/class-wpstream-public.php:120
+#: public/class-wpstream-public.php:150
 msgid "Inactive Channel - Chat is disabled."
 msgstr ""
 
-#: public/class-wpstream-public.php:121
+#: public/class-wpstream-public.php:151
 msgid "The live stream is paused and may resume shortly."
 msgstr ""
 
-#: public/class-wpstream-public.php:123
+#: public/class-wpstream-public.php:153
 msgid "The live stream has not yet started"
 msgstr ""
 
-#: public/class-wpstream-public.php:124
+#: public/class-wpstream-public.php:154
 msgid "The live stream is starting..."
 msgstr ""
 
-#: public/class-wpstream-public.php:125
+#: public/class-wpstream-public.php:155
 msgid "The live stream is paused"
 msgstr ""
 
-#: public/class-wpstream-public.php:126
+#: public/class-wpstream-public.php:156
 msgid "The live stream has ended"
 msgstr ""
 
-#: public/class-wpstream-public.php:164
+#: public/class-wpstream-public.php:194
 msgid "We are uploading your file.Do not close this window!"
 msgstr ""
 
-#: public/class-wpstream-public.php:188
+#: public/class-wpstream-public.php:218
 msgid "Are you sure? "
 msgstr ""
 
-#: public/class-wpstream-public.php:311
-#: public/class-wpstream-public.php:320
-#: public/class-wpstream-public.php:330
+#: public/class-wpstream-public.php:341
+#: public/class-wpstream-public.php:350
+#: public/class-wpstream-public.php:360
 msgid "Dashboard"
 msgstr ""
 
-#: public/class-wpstream-public.php:312
-#: public/class-wpstream-public.php:321
-#: public/class-wpstream-public.php:331
-#: public/class-wpstream-public.php:343
+#: public/class-wpstream-public.php:342
+#: public/class-wpstream-public.php:351
+#: public/class-wpstream-public.php:361
+#: public/class-wpstream-public.php:373
 msgid "Orders"
 msgstr ""
 
-#: public/class-wpstream-public.php:313
-#: public/class-wpstream-public.php:322
-#: public/class-wpstream-public.php:332
-#: public/class-wpstream-public.php:344
+#: public/class-wpstream-public.php:343
+#: public/class-wpstream-public.php:352
+#: public/class-wpstream-public.php:362
+#: public/class-wpstream-public.php:374
 msgid "Addresses"
 msgstr ""
 
-#: public/class-wpstream-public.php:314
-#: public/class-wpstream-public.php:323
-#: public/class-wpstream-public.php:333
-#: public/class-wpstream-public.php:345
+#: public/class-wpstream-public.php:344
+#: public/class-wpstream-public.php:353
+#: public/class-wpstream-public.php:363
+#: public/class-wpstream-public.php:375
 msgid "Edit Account"
 msgstr ""
 
-#: public/class-wpstream-public.php:316
-#: public/class-wpstream-public.php:324
-#: public/class-wpstream-public.php:338
-#: public/class-wpstream-public.php:348
+#: public/class-wpstream-public.php:346
+#: public/class-wpstream-public.php:354
+#: public/class-wpstream-public.php:368
+#: public/class-wpstream-public.php:378
 msgid "Logout"
 msgstr ""
 
-#: public/class-wpstream-public.php:334
-#: public/class-wpstream-public.php:346
+#: public/class-wpstream-public.php:364
+#: public/class-wpstream-public.php:376
 msgid "My Live Streams"
 msgstr ""
 
-#: public/class-wpstream-public.php:335
-#: public/class-wpstream-public.php:347
+#: public/class-wpstream-public.php:365
+#: public/class-wpstream-public.php:377
 msgid "My Videos"
 msgstr ""
 
-#: public/class-wpstream-public.php:342
+#: public/class-wpstream-public.php:372
 msgid "Dashboard2"
 msgstr ""
 
-#: public/class-wpstream-public.php:643
+#: public/class-wpstream-public.php:673
 msgid "Insert WpStream Start Streaming Button"
 msgstr ""
 
-#: public/class-wpstream-public.php:672
+#: public/class-wpstream-public.php:702
 msgid "Insert WpStream Chat"
 msgstr ""
 
-#: public/class-wpstream-public.php:700
-#: public/class-wpstream-public.php:736
+#: public/class-wpstream-public.php:730
+#: public/class-wpstream-public.php:766
 msgid "Insert WpStream Player"
 msgstr ""
 
-#: public/class-wpstream-public.php:763
+#: public/class-wpstream-public.php:793
 #: widgets/media_list_channels.php:98
 #: widgets/media_list_vod.php:97
 msgid "Both"
 msgstr ""
 
-#: public/class-wpstream-public.php:764
+#: public/class-wpstream-public.php:794
 #: widgets/media_list_channels.php:99
 #: widgets/media_list_vod.php:98
 msgid "Live Event"
 msgstr ""
 
-#: public/class-wpstream-public.php:765
+#: public/class-wpstream-public.php:795
 #: widgets/media_list_channels.php:100
 #: widgets/media_list_vod.php:99
 msgid "Video on demand"
 msgstr ""
 
-#: public/class-wpstream-public.php:778
+#: public/class-wpstream-public.php:808
 msgid " List wpstream products"
 msgstr ""
 
-#: public/class-wpstream-public.php:810
+#: public/class-wpstream-public.php:840
 #: widgets/media_list_channels.php:104
 #: widgets/media_list_vod.php:103
 msgid "Free"
 msgstr ""
 
-#: public/class-wpstream-public.php:811
+#: public/class-wpstream-public.php:841
 #: widgets/media_list_channels.php:105
 #: widgets/media_list_vod.php:104
 msgid "Paid"
 msgstr ""
 
-#: public/class-wpstream-public.php:816
+#: public/class-wpstream-public.php:846
 #: widgets/media_list_channels.php:118
 #: widgets/media_list_vod.php:117
 msgid "no"
 msgstr ""
 
-#: public/class-wpstream-public.php:817
+#: public/class-wpstream-public.php:847
 #: widgets/media_list_channels.php:119
 #: widgets/media_list_vod.php:118
 msgid "yes"
 msgstr ""
 
-#: public/class-wpstream-public.php:838
+#: public/class-wpstream-public.php:868
 msgid " List wpstream channels"
 msgstr ""
 
-#: public/class-wpstream-public.php:878
-#: public/class-wpstream-public.php:940
+#: public/class-wpstream-public.php:908
+#: public/class-wpstream-public.php:970
 #: widgets/media_list_channels.php:193
 #: widgets/media_list_vod.php:187
 msgid "Watch now!"
 msgstr ""
 
-#: public/class-wpstream-public.php:908
+#: public/class-wpstream-public.php:938
 msgid " List wpstream video on demand"
 msgstr ""
 
-#: public/class-wpstream-public.php:1267
+#: public/class-wpstream-public.php:1297
 msgid "See Free Live Chanel"
 msgstr ""
 
-#: public/class-wpstream-public.php:1269
+#: public/class-wpstream-public.php:1299
 msgid "See Free Video"
 msgstr ""
 
@@ -1756,59 +1830,61 @@ msgstr ""
 msgid "Invalid event. Your live event may have expired or its credentials are incorrect."
 msgstr ""
 
-#: templates/broadcaster-template.php:63
-msgid "Not enough streaming traffic to broadcast. Please %supgrade your subscription%s for extra resources."
+#. translators: 1 and 2 are opening and closing anchor tags respectively
+#: templates/broadcaster-template.php:64
+#, php-format
+msgid "Not enough streaming traffic to broadcast. Please %1$supgrade your subscription%2$s for extra resources."
 msgstr ""
 
-#: templates/broadcaster-template.php:76
+#: templates/broadcaster-template.php:77
 msgid "WpStream Broadcaster"
 msgstr ""
 
-#: templates/broadcaster-template.php:104
+#: templates/broadcaster-template.php:105
 msgid "LIVE"
 msgstr ""
 
-#: templates/broadcaster-template.php:105
+#: templates/broadcaster-template.php:106
 msgid "Connecting..."
 msgstr ""
 
-#: templates/broadcaster-template.php:113
+#: templates/broadcaster-template.php:114
 msgid "Start Broadcast"
 msgstr ""
 
-#: templates/broadcaster-template.php:114
+#: templates/broadcaster-template.php:115
 msgid "Stop Broadcast"
 msgstr ""
 
-#: templates/broadcaster-template.php:119
+#: templates/broadcaster-template.php:120
 msgid "Not connected"
 msgstr ""
 
-#: templates/broadcaster-template.php:126
+#: templates/broadcaster-template.php:127
 msgid "Video Source"
 msgstr ""
 
-#: templates/broadcaster-template.php:139
+#: templates/broadcaster-template.php:140
 msgid "Audio Source"
 msgstr ""
 
-#: templates/broadcaster-template.php:154
+#: templates/broadcaster-template.php:155
 msgid "Video Resolution"
 msgstr ""
 
-#: templates/broadcaster-template.php:157
+#: templates/broadcaster-template.php:158
 msgid "1920x1080"
 msgstr ""
 
-#: templates/broadcaster-template.php:158
+#: templates/broadcaster-template.php:159
 msgid "1280x720"
 msgstr ""
 
-#: templates/broadcaster-template.php:159
+#: templates/broadcaster-template.php:160
 msgid "800x600"
 msgstr ""
 
-#: templates/broadcaster-template.php:160
+#: templates/broadcaster-template.php:161
 msgid "640x480"
 msgstr ""
 
@@ -1928,6 +2004,7 @@ msgstr ""
 
 #. translators: 1: Plugin name 2: Elementor
 #: wpstream-elementor.php:117
+#, php-format
 msgid "\"%1$s\" requires \"%2$s\" to be installed and activated."
 msgstr ""
 
@@ -1945,6 +2022,7 @@ msgstr ""
 #. translators: 1: Plugin name 2: PHP 3: Required PHP version
 #: wpstream-elementor.php:141
 #: wpstream-elementor.php:166
+#, php-format
 msgid "\"%1$s\" requires \"%2$s\" version %3$s or greater."
 msgstr ""
 

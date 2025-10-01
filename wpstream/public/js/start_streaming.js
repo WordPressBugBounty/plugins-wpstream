@@ -727,7 +727,7 @@ function wpstream_webcaster_actions(){
 
 	                if ( whipUrl !== '' ) {
 		                // Open the new broadcaster in a new window
-		                var broadcasterUrl = wpstream_settings_vars.broadcaster_url + channelId;
+		                var broadcasterUrl = wpstream_start_streaming_vars.broadcaster_url + channelId;
 		                window.open(broadcasterUrl, 'wpstream_broadcaster_' + channelId, 'fullscreen=yes');
 	                }
                 } else {

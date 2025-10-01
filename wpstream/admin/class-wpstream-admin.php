@@ -266,7 +266,8 @@ class Wpstream_Admin {
                             '- Otherwise, choose OK to start your channel with these limitations.' . PHP_EOL . PHP_EOL .
                             'ARE YOU SURE you want to continue with Basic Streaming?',
                             'wpstream'
-                        )
+                        ),
+                        'broadcaster_url'   => esc_url( esc_url(home_url('/broadcaster-page/') ) ),
                     ));
 
                 wp_enqueue_script('wpstream-settings',   plugin_dir_url( __DIR__  ) .'/admin/js/wpstream_settings.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);

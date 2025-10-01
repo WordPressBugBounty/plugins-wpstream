@@ -3,7 +3,7 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.8.1
+ * Version:           4.8.2
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
@@ -14,7 +14,7 @@
 if ( ! defined( 'WPINC' ) ) {
 	die;
 }
-define('WPSTREAM_PLUGIN_VERSION', '4.8.1');
+define('WPSTREAM_PLUGIN_VERSION', '4.8.2');
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 define('WPSTREAM_CLUBLINKSSL', 'https');
 define('WPSTREAM_PLUGIN_URL',  plugins_url() );
@@ -282,7 +282,7 @@ function wpstream_register_broadcaster_endpoint() {
     $rule_target = 'index.php?broadcaster_page=1&channel_id=$matches[1]';
 
     add_rewrite_rule($rule_pattern, $rule_target, 'top');
-    if ( !key_exists( $rule_pattern, $rewrite_rules ) ) {
+    if ( !is_array($rewrite_rules) || !key_exists( $rule_pattern, $rewrite_rules ) ) {
         flush_rewrite_rules();
     }
 }

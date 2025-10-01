@@ -186,7 +186,8 @@ class Wpstream_Public {
                         'channel_on'            =>  esc_html__('Channel is ON','wpstream'),
                         'channel_off'           =>  esc_html__('Channel is OFF','wpstream'),
                         'turn_off_confirm'      =>  esc_html__('Are you sure? '.PHP_EOL.' Channels turn OFF automatically after 1 hour of inactivity (no active broadcast). Manual TURN OFF is only useful if you require to change the channel settings.','wpstream'),
-                        'turn_off_confirm'      =>  esc_html__('ARE YOU SURE you\'d like to TURN OFF the channel now? '.PHP_EOL.PHP_EOL.'Channels TURN OFF automatically after 1 hour of inactivity (no active broadcast).'.PHP_EOL.PHP_EOL.'Manual TURN OFF is only useful if you require to change the channel settings immediately.'.PHP_EOL.PHP_EOL.'Statistics may be unavailable or incomplete for up to an hour.'.PHP_EOL.PHP_EOL.'If your channel is configured with Auto TURN ON, it will turn back on as soon as there is a broadcast.','wpstream')
+                        'turn_off_confirm'      =>  esc_html__('ARE YOU SURE you\'d like to TURN OFF the channel now? '.PHP_EOL.PHP_EOL.'Channels TURN OFF automatically after 1 hour of inactivity (no active broadcast).'.PHP_EOL.PHP_EOL.'Manual TURN OFF is only useful if you require to change the channel settings immediately.'.PHP_EOL.PHP_EOL.'Statistics may be unavailable or incomplete for up to an hour.'.PHP_EOL.PHP_EOL.'If your channel is configured with Auto TURN ON, it will turn back on as soon as there is a broadcast.','wpstream'),
+                        'broadcaster_url'       => esc_url( esc_url(home_url('/broadcaster-page/') ) ),
                    
                     ));
                 

@@ -133,24 +133,24 @@
 		<div class="wpstream-dashboard-account-details__detail-items">
 			<?php
 			$user_data = array(
-				esc_html__('First name','hello-wpstream')    => array(
+				esc_html__('First name','wpstream')    => array(
 																	'value'	=>	$user->first_name,
 																	'id'	=>	'wpstream_first_name_value'
 																),
 
-				esc_html__('Last name', 'hello-wpstream')     => array(
+				esc_html__('Last name', 'wpstream')     => array(
 																	'value'	=> 	$user->last_name,
 																	'id'	=>	'wpstream_last_name_value'
 																),
-				esc_html__('Display Name', 'hello-wpstream')   => array(
+				esc_html__('Display Name', 'wpstream')   => array(
 																	'value' => 	$user->display_name,
 																	'id'	=>	'wpstream_display_name_value'
 																),
-		 		esc_html__('Email Address', 'hello-wpstream') => array(
+		 		esc_html__('Email Address', 'wpstream') => array(
 																	'value'=> $user->user_email,
 																	'id'=>	'wpstream_email_value'
 																),
-				esc_html__('About me', 'hello-wpstream') => array(
+				esc_html__('About me', 'wpstream') => array(
 					'value'=> $user->description,
 					'id'=>	'wpstream_about_me_value'
 				),
