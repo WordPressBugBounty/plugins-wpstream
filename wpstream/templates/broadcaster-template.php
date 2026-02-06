@@ -104,11 +104,18 @@ wp_localize_script(
                 <span id="videoLiveIndicatorLive" class="badge badge-pill badge-danger" style="display:none;"><?php esc_html_e('LIVE', 'wpstream'); ?></span>
                 <span id="videoLiveIndicatorError" class="badge badge-pill badge-warning" style="display:none;"><?php esc_html_e('Connecting...', 'wpstream'); ?></span>
             </div>
-			<video id="localVideo" autoplay muted playsinline></video>
+            <div class="video-wrapper">
+                <div id="wpstream-pre-load-spinner" class="wpstream-pre-load-spinner"></div>
+			    <video id="localVideo" autoplay muted playsinline></video>
+            </div>
 		</div>
 
 		<div class="settings-panel" id="settingsPanel">
 			<div>
+				<?php
+				$ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
+				print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
+				?>
 				<div class="controls-container">
 					<button id="startBroadcast" class="button start-broadcast" disabled><?php esc_html_e('Start Broadcast', 'wpstream'); ?></button>
 					<button id="stopBroadcast" class="button stop-broadcast hidden"><?php esc_html_e('Stop Broadcast', 'wpstream'); ?></button>
@@ -157,7 +164,7 @@ wp_localize_script(
 						<option value="fhd"><?php esc_html_e('1920x1080', 'wpstream'); ?></option>
 						<option value="hd"><?php esc_html_e('1280x720', 'wpstream'); ?></option>
 						<option value="square"><?php esc_html_e('800x600', 'wpstream'); ?></option>
-						<option value="vga"><?php esc_html_e('640x480', 'wpstream'); ?></option>
+						<option value="vga"><?php esc_html_e('640x360', 'wpstream'); ?></option>
 					</select>
 				</div>
 			</div>

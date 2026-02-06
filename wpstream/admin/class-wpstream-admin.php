@@ -281,29 +281,41 @@ class Wpstream_Admin {
                 ));
 
 
-                        wp_enqueue_script('wpstream-on-boarding-js',plugin_dir_url( __DIR__  ) .'/admin/js/wpstream-onboarding2.js',array(),  WPSTREAM_PLUGIN_VERSION, true);
+                    $branch = isset($_GET['branch']) ? sanitize_text_field( wp_unslash( $_GET['branch'] ) ) : '';
+                    wp_enqueue_script('wpstream-on-boarding-js',plugin_dir_url( __DIR__  ) .'/admin/js/wpstream-onboarding2.js',array(),  WPSTREAM_PLUGIN_VERSION, true);
                     wp_localize_script('wpstream-on-boarding-js', 'wpstreamonboarding_js_vars', 
                         array( 
-                            'admin_url'             =>  get_admin_url(),
-                            'plugin_url'            =>  get_dashboard_url().'/plugins.php',
-                            'upload_url'            =>  get_dashboard_url().'admin.php?page=wpstream_recordings'
-                   
+                            'admin_url'  => get_admin_url(),
+                            'plugin_url' => get_dashboard_url().'/plugins.php',
+                            'upload_url' => get_dashboard_url().'admin.php?page=wpstream_recordings',
+                            'branch'     => $branch
                     ));
 
-//        wp_enqueue_style(
-//		    'wpstream-broadcaster-css',
-//		    plugin_dir_url(__FILE__) . 'public/css/broadcaster.css',
-//		    array(),
-//		    filemtime(plugin_dir_path(__FILE__) . 'public/css/broadcaster.css' ),
-//	    );
-//
-//	    wp_enqueue_script(
-//		    'wpstream-broadcaster',
-//		    plugin_dir_url(__FILE__) . 'public/js/broadcaster.js',
-//		    array('jquery'),
-//		    WPSTREAM_PLUGIN_VERSION,
-//		    true
-//	    );
+                    $current_screen=get_current_screen();
+					// enqueue the file only on the on-boarding page and wpstream_product post type
+					$is_wpstream_onboarding_page = $current_screen->base ==='wpstream_page_wpstream_onboard';
+                    $is_wpstream_onboarding_post_type_page = isset($_GET['onboard']) && $_GET['onboard'] === 'yes';
+					$onboarding_visible = $is_wpstream_onboarding_page || $is_wpstream_onboarding_post_type_page;
+					if( $onboarding_visible) {
+						wp_enqueue_script('wpstream-on-boarding-page-js', plugin_dir_url( __DIR__  ) .'admin/js/wpstream-onboarding-page.js',array(),  WPSTREAM_PLUGIN_VERSION, true);
+						wp_localize_script( 'wpstream-on-boarding-page-js', 'wpstream_onboarding_page_vars',
+							array(
+								'admin_url'      => get_admin_url(),
+								'request_url'    => WPSTREAM_CLICK,
+								'wps_user'       => get_option('wpstream_api_username_from_token'),
+								'current_page'   => $is_wpstream_onboarding_post_type_page ? 'post_edit' : 'onboarding',
+								'plugin_version' => WPSTREAM_PLUGIN_VERSION,
+								'branch'         => $branch,
+							)
+						);
+					}
+
+                    if ( in_array( $current_screen->base, ['toplevel_page_wpstream_credentials', 'wpstream_page_wpstream_live_channels', 'wpstream_page_wpstream_recordings', 'wpstream_page_wpstream_onboard'] ) ) {
+                        wp_enqueue_script( 'wpstream-user-quota-update', plugin_dir_url( __DIR__  ) . 'admin/js/wpstream-user-quota.js', array(), WPSTREAM_PLUGIN_VERSION, true );
+                        wp_localize_script( 'wpstream-user-quota-update', 'wpstream_user_quota_vars', array(
+                                'admin_url' => get_admin_url()
+                        ));
+                    }
 
 	    // Add localized variables for broadcaster
 	    wp_localize_script('wpstream-broadcaster', 'wpstream_broadcaster_vars', array(
@@ -381,8 +393,8 @@ class Wpstream_Admin {
 
             $event_list = new WP_Query($args);
             global $live_event_for_user;
-            $live_event_for_user    =    $this->main->wpstream_live_connection->wpstream_get_live_event_for_user();
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_new_general_set');
+            $live_event_for_user    = $this->main->wpstream_live_connection->wpstream_get_live_event_for_user();
+            $pack_details           = $this->main->quota_manager->get_live_quota_data( 'wpstream_new_general_set' );
 
             $this->main->show_user_data($pack_details);
             if( $event_list->have_posts()){
@@ -422,7 +434,8 @@ class Wpstream_Admin {
 
             $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
             print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_new_general_set');
+
+            $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_new_general_set' );
             if( isset($pack_details['available_data_mb'])){
                 if ($pack_details['available_data_mb'] <= 0){
                     print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
@@ -646,7 +659,8 @@ class Wpstream_Admin {
                 print '</div>';
             
 
-                print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'" > ' . $button_status;
+                $start_event_nonce = wp_create_nonce( 'wpstream_start_event_nonce' );
+                print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'"  data-nonce="' . esc_attr( $start_event_nonce ) . '" > ' . $button_status;
                     print '<div class="wpstream_tooltip">'.esc_html__('Channel is now OFF. Click to turn ON.','wpestream').'</div>'; 
                 print '</div>';
                           
@@ -938,11 +952,15 @@ class Wpstream_Admin {
             print '<div class="wpstream_close_modal"></div>';
         }
 
-        public function wpstream_local_event_options_toggle() {
+        public function wpstream_local_event_options_toggle( $is_basic_stream_mode = false ) {
             $use_global_event_options       = get_post_meta(get_the_ID(), 'use_global_event_options', true );
             $local_event_options            = get_post_meta( get_the_ID(), 'local_event_options', true );
             $use_local_event_options_enabled = ( is_array( $local_event_options ) && empty( $use_global_event_options ) ) ||
                 ( !empty($use_global_event_options) && intval( $use_global_event_options ) === 0 );
+
+            if ( $is_basic_stream_mode ) {
+				$this->wpstream_basic_stream_mode_message();
+            }
 
             print '<div class="wpstream_local_event_options_toggle_wrapper">';
                 print '<div class="wpstream_local_event_options_toggle_info">';
@@ -950,10 +968,25 @@ class Wpstream_Admin {
                     print '<span>'.sprintf(esc_html__('When is OFF, the settings from %s will be applied','wpstream'), '<a href="' . admin_url('admin.php?page=wpstream_settings&tab=default_options') . '" target="_blank">'.esc_html__('Default Channel Settings','wpstream').'</a>').'</span>';
                 print '</div>';
                 print '<label class="wpstream_switch">';
-                    print '<input id="local_event_options_enabled" type="checkbox" class="wpstream_local_event_options_toggle" ' . ($use_local_event_options_enabled === true ? 'checked' : '') . '>';
+                    print '<input id="local_event_options_enabled" type="checkbox" class="wpstream_local_event_options_toggle" ' . ($use_local_event_options_enabled === true ? 'checked' : '') . ' ' . ( $is_basic_stream_mode ? 'disabled' : '' ) . '>';
                     print '<span class="wpstream_slider round"></span>';
                 print '</label>';
             print '</div>';
+        }
+
+		public function wpstream_basic_stream_mode_message() {
+			print '<div class="basic-mode-notice">';
+				print sprintf(
+					wp_kses(
+						__(
+						'You are currently in Basic Streaming Mode. The default channel settings will be used instead. Please <a href="%s" target="_blank">upgrade</a> your plan to edit the channel settings.',
+						'wpstream'
+						 ),
+						 array( 'a' => array( 'href' => array() ) )
+					),
+					esc_url( 'https://wpstream.net/pricing/' )
+				);
+				print '</div>';
         }
 
         /*
@@ -963,22 +996,20 @@ class Wpstream_Admin {
         */
 
         public function wpstream_display_modal_seetings($the_id){
+            $is_basic_stream_mode = $this->wpstream_is_basic_streaming_mode();
+
             print '<div class="wpstream_modal_form wpestate_settings_modal">';
                 $this->wpstream_close_modal_button();
                 print '<h3>';
                 printf( esc_html__('Channel Settings (#ID %s)','wpstream'),$the_id);
                 print '</h3>';
 
-                $this->wpstream_local_event_options_toggle();
+                $this->wpstream_local_event_options_toggle( $is_basic_stream_mode );
 
                 $local_event_options            = get_post_meta($the_id,'local_event_options',true);
                 $use_global_event_options       = get_post_meta($the_id, 'use_global_event_options',true);
                 $is_local_event_options_enabled = ( is_array( $local_event_options ) && empty( $use_global_event_options ) ) ||
                     ( !empty($use_global_event_options) && intval( $use_global_event_options ) === 0 );
-
-                if( !$is_local_event_options_enabled ) {
-                    $local_event_options = get_option('wpstream_user_streaming_global_channel_options') ;
-                }
 
                 $local_array_exclude=array('ses_encrypt','vod_domain_lock','vod_encrypt');
 
@@ -988,6 +1019,7 @@ class Wpstream_Admin {
 						$local_event_options,
 						$local_array_exclude,
 						!$is_local_event_options_enabled,
+						$is_basic_stream_mode
 					);
                 print '</div>';
             print '</div>';
@@ -1015,7 +1047,7 @@ class Wpstream_Admin {
         */
 
         public function wpstream_display_modal_broadcast($the_id,$external_software_streaming_class,$obs_uri,$obs_stream){
-            print '<div class="wpstream_modal_form wpestate_broadcast_modal">';    
+            print '<div class="wpstream_modal_form wpestate_broadcast_modal">';
                 $this->wpstream_close_modal_button();    
                 print '<h3>'.esc_html__('Go Live with External Streaming App','wpstream').'</h3>';    
 
@@ -1380,6 +1412,14 @@ class Wpstream_Admin {
                             'type'      =>  'text',
                             'details'   =>  esc_html__('This will replace the default "wpstream" of all your free video/channel urls. Special characters like "&" are not permitted. To have your new slug show up you need to re-save the "Permalinks Settings" under Settings -> Permalinks, even if not making any changes.','wpstream'),
                         ),
+
+                 'free_vod_slug'   =>  array(
+                            'tab'       =>  'general_options',
+                            'label'     =>  esc_html__('Slug for free VOD pages ','wpstream'),
+                            'name'      =>  'free_media_slug_vod',
+                            'type'      =>  'text',
+                            'details'   =>  esc_html__('This will replace the default "wpstream_vod" of all your free VOD urls. Special characters like "&" are not permitted. To have your new slug show up you need to re-save the "Permalinks Settings" under Settings -> Permalinks, even if not making any changes.','wpstream'),
+                        ),
                 
                 2 => array(
                             'tab'       =>  'general_options',
@@ -1607,6 +1647,8 @@ class Wpstream_Admin {
                     <a href="?page=wpstream_settings&tab=support_tab"           class="nav-tab '; echo $active_tab == 'support_tab' ? 'nav-tab-active' : '';         echo '">'.esc_html__('Support','wpstream').'</a>
                 </h2>';
                 $help_link='';
+
+                $is_basic_stream_mode = $this->wpstream_is_basic_streaming_mode();
                 print '<div class="wpstream_option_wrapper">';
 
                                 switch ($active_tab) {
@@ -1636,6 +1678,9 @@ class Wpstream_Admin {
                                    if ( $option['type']=='user_streaming_global_channel_options' ) {
                                        print '<div class="default-channel-settings-info">';
                                        print esc_html__( 'These settings will apply to newly created channels; existing channels will not change settings if you change them here', 'wpstream');
+                                       if ( $is_basic_stream_mode ) {
+                                           $this->wpstream_basic_stream_mode_message();
+                                       }
                                        print '</div>';
 
                                    }
@@ -1651,7 +1696,12 @@ class Wpstream_Admin {
                                                 break;
                                             case 'user_streaming_global_channel_options':
                                                 $exclude_array=array();
-                                                $this->user_streaming_global_channel_options($option['name'],$options_value,$exclude_array);
+												$this->user_streaming_global_channel_options(
+													$option['name'],
+													$options_value,
+													$exclude_array,
+													$is_basic_stream_mode
+												);
                                                 break;
                                             case 'text':
                                                 if($options_value==''){
@@ -2029,16 +2079,41 @@ class Wpstream_Admin {
 
 		return $all_plugins_info;
 	}
-         
-         
+
+    public function wpstream_render_outdated_plugin_notice() {
+        $has_update = get_site_transient('update_plugins');
+        if (isset($has_update->response['plugin/wpstream.php'])) {
+            ?>
+            <div class="notice notice-warning is-dismissible">
+                <p>
+                    <?php
+                    printf(
+                        /* translators: 1: Link to update page */
+                        esc_html__('A new version of WpStream is available. Please update to the latest version for the best experience. Go to the %1$s to update now.', 'wpstream'),
+                        '<a href="' . esc_url(admin_url('update-core.php')) . '">' . esc_html__('updates page', 'wpstream') . '</a>'
+                    );
+                    ?>
+                </p>
+            </div>
+            <?php
+        }
+    }
+
+
         /**
          * Set user roles
          *
          * @since    3.0.1
          */  
 
-        public function user_streaming_global_channel_options( $name, $value, $local_array='', $disabled = false ){
-        
+		public function user_streaming_global_channel_options(
+			$name,
+			$value,
+			$local_array='',
+			$disabled = false,
+			$is_basic_stream_mode = false
+	) {
+
             foreach($this->global_event_options as $key=>$option){
                
                 if(  is_array($local_array) && !in_array($key,$local_array)){
@@ -2060,7 +2135,7 @@ class Wpstream_Admin {
                                 print ' checked ';
                             }
                         }
-                        if ($disabled) {
+                        if ( $disabled || $is_basic_stream_mode ) {
                             print ' disabled ';
                         }
 
@@ -2171,9 +2246,9 @@ class Wpstream_Admin {
             );
 
 
-            $token          =   $this->main->wpstream_live_connection->wpstream_get_token();
-            $pack_details   =   $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_set_wpstream_credentials');
-            
+            $token        = $this->main->wpstream_live_connection->wpstream_get_token();
+            $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_set_wpstream_credentials' );
+
             $this->main->show_user_data($pack_details);
 
             print   '<form method="post" action="" >';
@@ -2582,10 +2657,11 @@ class Wpstream_Admin {
             if(isset($post->ID)){
                 if ( $post->post_type !== 'product' ) return;
                 $term_list      =   wp_get_post_terms($post->ID, 'product_type');
-                if( $term_list[0]->name=='video_on_demand' ||  
-                    $term_list[0]->name=='live_stream' ||  
-                    $term_list[0]->name=='wpstream_bundle'){
-                        update_post_meta( $post->ID, '_virtual', 'yes' );
+                if( !empty($term_list) &&
+                    isset($term_list[0]->name) &&
+                    in_array($term_list[0]->name, ['live_stream', 'video_on_demand', 'wpstream_bundle'])
+                ){
+                    update_post_meta( $post->ID, '_virtual', 'yes' );
                 }
             }
         }
@@ -3002,7 +3078,91 @@ class Wpstream_Admin {
             print '<input type="hidden" id="wpstream_notice_nonce" value="'.esc_html($ajax_nonce).'"/>';
 
         }
-        
+
+        /**
+        * Get plugin latest update release date from WordPress.org
+        * @param $plugin_slug
+        * @param $version
+        *
+        * @return bool
+         */
+        public function get_plugin_release_date( $plugin_slug, $version = null ) {
+            $api_url = 'https://api.wordpress.org/plugins/info/1.0/' . $plugin_slug . '.json';
+            $response = wp_remote_get( $api_url );
+
+            if ( is_wp_error( $response ) ) {
+                return false;
+            }
+
+            $body = wp_remote_retrieve_body( $response );
+            $data = json_decode( $body, true );
+
+            if ( !$data || !isset( $data['versions'] ) ) {
+                return false;
+            }
+
+            // no version provided, get the latest version
+            if ( !$version ) {
+                $version = $data['version'];
+            }
+
+            // check if the version exists in the versions array
+            if ( !isset( $data['versions'][ $version ] ) ) {
+                return false;
+            }
+
+            if ( isset( $data['last_updated'] ) ) {
+                return date('Y-m-d', strtotime( $data['last_updated'] ) );
+            }
+
+            return false;
+        }
+
+        /**
+        * Adds notice for the WpStream update availability
+        * when the update is not older than 30 days
+         */
+		public function wpstream_plugin_update_available_notice() {
+			if (!current_user_can('update_plugins')) {
+				return;
+			}
+
+			$plugin_slug = 'wpstream/wpstream.php';
+			$update_data = get_site_transient('update_plugins');
+
+			if ( property_exists( $update_data, 'response' ) &&
+				is_array($update_data->response) &&
+				key_exists($plugin_slug, $update_data->response)
+			) {
+				$new_version = $update_data->response[$plugin_slug]->new_version;
+
+                $release_date = $this->get_plugin_release_date( 'wpstream', $new_version );
+
+                if ( $release_date ) {
+                    $days_since_release = ( time() - strtotime( $release_date ) ) / DAY_IN_SECONDS;
+
+                    // if there's an update newer than 7 days, do not show the notice
+                    if ( $days_since_release < 7 ) {
+                        return;
+                    }
+                }
+				$update_url = wp_nonce_url(
+					self_admin_url('update.php?action=upgrade-plugin&plugin=' . urlencode($plugin_slug)),
+					'upgrade-plugin_' . $plugin_slug
+				);
+
+				echo '<div class="notice notice-warning is-dismissible">';
+				echo '<p><strong>' . __('WpStream Plugin Update Available', 'wpstream') . '</strong></p>';
+				echo '<p>' . sprintf(
+					__('Version %s is available. Please update to the latest version for new features and security improvements.', 'wpstream'),
+					'<strong>' . esc_html($new_version) . '</strong>'
+				) . '</p>';
+				echo '<p><a href="' . esc_url($update_url) . '" class="button button-primary">' .
+					 __('Update Now', 'wpstream') . '</a></p>';
+				echo '</div>';
+            }
+        }
+
           /**
         * Admin notices
         *
@@ -3076,7 +3236,7 @@ class Wpstream_Admin {
             if( get_post_status( $post->ID ) === 'publish' ) {
                 $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
                 print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
-                $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_start_stream_meta');
+                $pack_details = $this->main->quota_manager->get_live_quota_data('wpstream_start_stream_meta');
                 if( isset($pack_details['available_data_mb'])){
                     if ($pack_details['available_data_mb'] <= 0){
                         print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
@@ -3094,7 +3254,15 @@ class Wpstream_Admin {
         }
 
 
-
+    public function wpstream_is_basic_streaming_mode(){
+        $pack_details = $this->main->quota_manager->get_live_quota_data('wpstream_is_basic_streaming_mode');
+        if( isset($pack_details['available_data_mb'] ) ) {
+            if ( $pack_details['available_data_mb'] <= 0 ){
+                return true;
+            }
+        }
+        return false;
+    }
 
 
 
@@ -3152,12 +3320,10 @@ class Wpstream_Admin {
         */
         
         public function wpstream_pre_onboard_display(){
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_pre_onboard_display');
-
+            $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_pre_onboard_display' );
             $this->main->show_user_data($pack_details);
 
-
-            $thumb= plugin_dir_url( dirname( __FILE__ ) ). 'img/logo_onboarding.svg'; 
+            $thumb= plugin_dir_url( dirname( __FILE__ ) ). 'img/logo_onboarding.svg';
             ?>
 
                 <div class="wpstream_quick_start_wrapper">
@@ -3319,6 +3485,17 @@ class Wpstream_Admin {
 
 
 
+                            <div class="wpstream_option wpstream_terms_agreement">
+                                <!-- Add "by registering you agree to the privacy terms" checkbox-->
+                                <input id="wpstream_register_privacy" type="checkbox" name="wpstream_register_privacy" />
+                                <label for="wpstream_register_privacy">
+                                <?php printf(
+                                    esc_html__('By registering you agree to the %sPrivacy Policy%s','wpstream'),
+                                    '<a href="https://wpstream.net/privacy-policy/" target="_blank">',
+                                    '</a>'
+                                );?>
+                                </label>
+                            </div>
                             <input type="submit" name="submit"  class="wpstream_button wpstream_button_action wpstream_onboard_register" value="<?php esc_html_e('register','wpstream');?>" />
                         </div>
 

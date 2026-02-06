@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.1
-Stable tag: 4.8.2
+Stable tag: 4.10.1
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -116,13 +116,11 @@ Absolutely! You can set up subscriptions, pay-per-view, or hybrid models with Wo
 =Can my website users go live on my website on their own?=
 Regular users are able to GO LIVE via the Front-End. Check out the <a href="https://docs.wpstream.net/docs/elementor-3/" target="_blank">documentation</a> to find out how streaming video is done by regular users.
 
-
 =What can I live stream with?=
 Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol) capability. For example, StreamYard, OBS, Wirecast, iPhones, and Androids. <a href="https://wpstream.net/live-streaming/" target="_blank">See here</a>.
 
-
-
-
+= Where do I report security bugs found in this plugin? =
+Please report security bugs found in the source code of the WpStream plugin through the [Patchstack Vulnerability Disclosure  Program](https://patchstack.com/database/vdp/9e5fbaaa-34e8-4647-9a67-08c4760f554d). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
 
 == Installation ==
 1. Review our comprehensive tutorials here  https://wpstream.net/category/getting-started/
@@ -136,6 +134,64 @@ Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol
 
 
 == Changelog ==
+
+= 4.10.1 =
+* Fix - Import demo data feature
+
+= 4.10 =
+* Feature - Add quality selector (ABR) option to the player
+
+= 4.9.8 =
+* Fix - Watch later option on the Elementor widget
+* Fix - Video collection wrong content
+* Fix - YouTube video not starting when used on VOD
+
+= 4.9.7 =
+* Fix - Login during Quick Start onboarding
+
+= 4.9.6 =
+* Fix - Show paid channels/VODs on the My Account dashboard
+* Enhancements - Added nonce verification to AJAX requests
+
+= 4.9.5 =
+* Fix - Saving the Non-Admin User Roles Allowed to Broadcast setting
+* Fix - Warning for no role account when accessing a page with role-blocked shortcodes
+
+= 4.9.4 =
+* Fix - Broadcaster reconnecting when losing connection
+* Fix - Automatically select the right camera resolution when trying to use a non-supported resolution
+* Fix - Broadcaster button on mobile devices
+
+= 4.9.3 =
+* Fix - Video not showing correctly when Hello WpStream theme is active
+
+= 4.9.2 =
+* Enhancement - Add loading spinner to the video player when loading
+* Enhancement - Improve the quota to periodically update the data
+* Fix - Channel status on the dashboard
+* Fix - Logo size on mobile devices
+
+= 4.9.1 =
+* Fix - External Streaming App modal not showing
+
+= 4.9 =
+* Enhancement - Live update quota in the admin area
+
+= 4.8.7 =
+* Fix - Show/hide player elements based on subscription plan
+
+= 4.8.6 =
+* Fix - Basic streaming changes
+
+= 4.8.5 =
+* Enhancement - Better track the quota calls
+
+= 4.8.4 =
+* Fix - Optimizing the quota calls
+
+= 4.8.3 =
+* Fix - Saving individual/global channel settings
+* Enhancement - Update the quota updates for better accuracy
 
 = 4.8.2 =
 * Fix - Accessing the broadcaster from the front-end (e.g. BuddyBoss profile)

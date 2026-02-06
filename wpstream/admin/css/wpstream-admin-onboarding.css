@@ -106,6 +106,16 @@
     margin-top: 0px;
 }
 
+.wpstream_on_board_register_wrapper #wpstream_register_privacy {
+    width: 1rem;
+}
+
+.wpstream_on_board_register_wrapper .wpstream_terms_agreement {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
 .wpstream_on_board_login_wrapper_explanations{
     margin-bottom: 35px;
     font-size: 14px;

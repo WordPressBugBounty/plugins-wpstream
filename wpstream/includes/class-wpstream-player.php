@@ -41,11 +41,12 @@ class Wpstream_Player{
     */
     
     public function wpstream_player_check_status(){
-        $channel_id                   =   intval($_POST['channel_id']);
+		check_ajax_referer('wpstream_player_check_status_nonce', 'nonce');
+        $channel_id = intval($_POST['channel_id']);
      
         
-        $transient_name             =   'event_data_to_return_'.   $channel_id;
-        $event_data_for_transient   =   get_transient( $transient_name );
+        $transient_name           = 'event_data_to_return_'.   $channel_id;
+        $event_data_for_transient = get_transient( $transient_name );
        
     
         $usefull_info =' get cache from transiet'; 
@@ -163,6 +164,10 @@ class Wpstream_Player{
     */
 
     public function wpstream_video_player_shortcode($from_sh_id='') {
+		// disable cache in order to be able to check the nonce
+		if ( !defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true );
+		}
 
         wp_enqueue_script('video.min');
         wp_enqueue_script('wpstream-player');
@@ -233,7 +238,7 @@ class Wpstream_Player{
                     $this->wpstream_live_event_player($product_id);               
                 echo '</div></div>';
             } else if( get_post_type($product_id) == 'wpstream_product_vod' ){
-                echo '<div class="wpstream_player_wrapper wpstream_player_shortcode"><div class="wpstream_player_container">'; 
+                echo '<div class="wpstream_player_wrapper wpstream_player_shortcode"><div class="wpstream_player_container">';
                     $this->wpstream_video_on_demand_player($product_id);
                 echo '</div></div>';
             }
@@ -249,6 +254,10 @@ class Wpstream_Player{
     */
 
     public function wpstream_video_player_shortcode_low_latency($from_sh_id='') {
+	    if ( !defined( 'DONOTCACHEPAGE' ) ) {
+		    define( 'DONOTCACHEPAGE', true );
+	    }
+
         wp_enqueue_script('video.min');
         wp_enqueue_script('wpstream-player');
 
@@ -350,7 +359,7 @@ class Wpstream_Player{
         wp_enqueue_script('wpstream-player');
 
 
-	    $player_theme = $this->wpstream_get_player_theme();
+	    $player_theme = $this->wpstream_get_player_theme( $channel_id );
         $now                =   time().rand(0,1000000);
         $overlay_video_div_id = "random_id_".$now;
         // print '<div id="'.esc_attr($overlay_video_div_id).'" class="vjs-title-overlay wpstream-video-title-overlay">'.esc_html__('Playing:','wpstream').' '.get_the_title($channel_id).'</div>';
@@ -401,9 +410,10 @@ class Wpstream_Player{
             $autoplay=false;
         }
 
-        
 
-        echo '<div class="wpstream_live_player_wrapper function_wpstream_live_event_player" data-now="'.$now.'" data-me="'.esc_attr($usernamestream).'" data-product-id="'.$channel_id.'" id="wpstream_live_player_wrapper'.$now.'" > ';
+
+	    $player_nonce = wp_create_nonce( 'wpstream_player_check_status_nonce' );
+        echo '<div class="wpstream_live_player_wrapper function_wpstream_live_event_player" data-now="'.$now.'" data-me="'.esc_attr($usernamestream).'" data-product-id="'.$channel_id.'" id="wpstream_live_player_wrapper'.$now.'" data-nonce="' . $player_nonce . '" > ';
                 
             $show_viewer_count = (
                 ( isset($event_settings['view_count']) && intval($event_settings['view_count']) == 1 )
@@ -472,13 +482,22 @@ class Wpstream_Player{
 
 
 			$player_logo_position = get_option('wpstream_player_logo_position');
-			$player_logo_position_class = '';
+			$player_logo_position_class      = '';
+	        $player_logo_horizontal_position = '';
 			if( $player_logo_position && $player_logo_position != '' ){
-				$player_logo_position_class = 'logo-' . explode( '-', $player_logo_position )[0];
+				$player_logo_position_class      = 'logo-' . explode( '-', $player_logo_position )[0];
+				$player_logo_horizontal_position = 'logo-' . explode( '-', $player_logo_position )[1];
 			}
-                echo'
-                <video id="wpstream-video'.$now.'"     '.$poster_data.'  class="video-js vjs-default-skin  vjs-fluid vjs-wpstream ' . esc_attr($has_trailer_class) . ' ' . $player_theme . ' ' . $player_logo_position_class .'" playsinline="true" '.$is_muted_str." ".$autoplay_str.'>
-                
+//			echo'
+//				<div class="wpstream-video-container">
+//					<div id="wpstream-pre-load-spinner" class="wpstream-pre-load-spinner"></div>
+//					<video id="wpstream-video'.$now.'"     '.$poster_data.'  class="video-js vjs-default-skin  vjs-fluid vjs-wpstream ' . esc_attr($has_trailer_class) . ' ' . $player_theme . ' ' . $player_logo_position_class . ' ' . $player_logo_horizontal_position . '" playsinline="true" '.$is_muted_str." ".$autoplay_str.'>
+//					</video>
+//				</div>';
+			echo '<div class="wpstream-pre-load-spinner"></div>';
+			echo'
+					<video id="wpstream-video'.$now.'"     '.$poster_data.'  class="video-js vjs-default-skin  vjs-fluid vjs-wpstream ' . esc_attr($has_trailer_class) . ' ' . $player_theme . ' ' . $player_logo_position_class . ' ' . $player_logo_horizontal_position . '" playsinline="true" '.$is_muted_str." ".$autoplay_str.'>
+					
                 </video>';
                 if ($video_trailer){
                     print '<div class="wpstream_theme_trailer_wrapper">';
@@ -726,7 +745,7 @@ class Wpstream_Player{
        
                 $curl_response          =   $this->main->wpstream_live_connection->wpstream_baker_do_curl_base($url,$curl_post_fields);
                 $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-       
+
                 if($curl_response_decoded['success']){
                     set_transient(  $transient_name, $curl_response_decoded['hlsUrl'] ,300);
                     $hls_to_return =  $curl_response_decoded['hlsUrl'];
@@ -748,9 +767,9 @@ class Wpstream_Player{
                   
         }
 
-        function wpstream_get_player_theme() {
+        function wpstream_get_player_theme( $channel_id = null ) {
 			$player_theme = get_option('wpstream_video_player_theme');
-			$is_streamify_user = $this->wpstream_is_streamify_user();
+			$is_streamify_user = $this->wpstream_is_streamify_user( $channel_id );
 			if ( !empty($player_theme) && !$is_streamify_user ) {
 				$this->wpstream_enqueue_player_theme_style( $player_theme );
 				return 'vjs-theme-' . $player_theme;
@@ -841,7 +860,10 @@ class Wpstream_Player{
             $now                =   time().rand(0,1000000);
 
             $overlay_video_div_id = "random_id_".$now;
-            print '<div id="'.esc_attr($overlay_video_div_id).'" class="vjs-title-overlay wpstream-video-title-overlay">'.esc_html__('Playing:','wpstream').' '.get_the_title($product_id).'</div>';
+            $this->wpstream_render_vod_title_overlay(
+                $overlay_video_div_id,
+                get_the_title($product_id)
+            );
 
             $thumb_id               =   get_post_thumbnail_id($product_id);
             $thumb                  =   wp_get_attachment_image_src($thumb_id,'small');
@@ -856,7 +878,7 @@ class Wpstream_Player{
             $hlsDecryptionKeyIndex  =   get_post_meta($product_id,'hlsDecryptionKeyIndex',true);
 
 
-            $pack = $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_video_on_demand_player');
+			$pack = $this->main->quota_manager->get_live_quota_data( 'wpstream_video_on_demand_player' );
 
 
 
@@ -911,12 +933,14 @@ class Wpstream_Player{
                 }
 
 	            $player_logo_position       = get_option('wpstream_player_logo_position');
-	            $player_logo_position_class = '';
+	            $player_logo_position_class      = '';
+	            $player_logo_horizontal_position = '';
 	            if( $player_logo_position && $player_logo_position!='' ){
-		            $player_logo_position_class = 'logo-' . explode( '-', $player_logo_position )[0];
+		            $player_logo_position_class      = 'logo-' . explode( '-', $player_logo_position )[0];
+		            $player_logo_horizontal_position = 'logo-' . explode( '-', $player_logo_position )[1];
 	            }
 
-                echo '<video id="wpstream-video-vod-'.$now.'" class="'.esc_attr($has_trailer_class).' video-js vjs-default-skin  vjs-fluid kuk wpstream_video_on_demand vjs-wpstream ' . $player_theme .' ' . $player_logo_position_class . '"  data-me="'.esc_attr($usernamestream).'" data-product-id="'.$product_id.'"  playsinline preload="auto"
+                echo '<video id="wpstream-video-vod-'.$now.'" class="'.esc_attr($has_trailer_class).' video-js vjs-default-skin  vjs-fluid kuk wpstream_video_on_demand vjs-wpstream ' . $player_theme .' ' . $player_logo_position_class . ' ' . $player_logo_horizontal_position . '"  data-me="'.esc_attr($usernamestream).'" data-product-id="'.$product_id.'"  playsinline preload="auto"
                   '. $poster_data.' '.$wpstream_data_setup.'>
                         <p class="vjs-no-js">
                           To view this video please enable JavaScript, and consider upgrading to a web browser that
@@ -971,7 +995,7 @@ class Wpstream_Player{
                                 unmuteTrailerButtonElementId: "wpstream_video_on_demand_unmute_trailer_btn_'.$now.'",
                                 playVideoButtonElementId: "wpstream_video_on_demand_play_video_btn_'.$now.'",
                                 playerLogoSettings: {
-                                    image: "'. $this->wpstream_get_video_player_logo() . '",
+                                    image: "'. $this->wpstream_get_video_player_logo( $product_id ) . '",
                                     position: "' . esc_html( get_option('wpstream_player_logo_position','top-right') ) . '",
                                     opacity: ' . ( intval ( esc_html( get_option('wpstream_player_logo_opacity','100') ) ) / 100 ) . ',
                                     width: 100,
@@ -998,7 +1022,7 @@ class Wpstream_Player{
                                 autoplay: '.var_export($autoplay, true).',
                                 muted: '.var_export($muted, true).',
                                 playerLogoSettings: {
-                                    image: "'. $this->wpstream_get_video_player_logo() . '",
+                                    image: "'. $this->wpstream_get_video_player_logo( $product_id ) . '",
                                     position: "' . esc_html( get_option('wpstream_player_logo_position','top-right') ) . '",
                                     opacity: ' . ( intval ( esc_html( get_option('wpstream_player_logo_opacity','100') ) ) / 100 ) . ',
                                     width: 100,
@@ -1031,7 +1055,10 @@ class Wpstream_Player{
 	        $player_theme = $this->wpstream_get_player_theme();
             $now                =   time().rand(0,1000000);
             $overlay_video_div_id = "random_id_".$now;
-            print '<div id="'.esc_attr($overlay_video_div_id).'" class="vjs-title-overlay wpstream-video-title-overlay">'.esc_html__('Playing:','wpstream').' '.get_the_title($product_id).'</div>';
+            $this->wpstream_render_vod_title_overlay(
+                $overlay_video_div_id,
+                get_the_title($product_id)
+            );
 
 
 
@@ -1114,14 +1141,14 @@ class Wpstream_Player{
                             playTrailerButtonElementId: "wpstream_video_on_demand_play_trailer_btn_'.$now.'",
                             muteTrailerButtonElementId: "wpstream_video_on_demand_mute_trailer_btn_'.$now.'",
                             unmuteTrailerButtonElementId: "wpstream_video_on_demand_unmute_trailer_btn_'.$now.'",
-                            playerLogoSettings: {
-                                    image: "'. $this->wpstream_get_video_player_logo() . '",
-                                    position: "' . esc_html( get_option('wpstream_player_logo_position','top-right') ) . '",
-                                    opacity: ' . ( intval ( esc_html( get_option('wpstream_player_logo_opacity','100') ) ) / 100 ) . ',
-                                    width: 100,
-                                    height: "auto",
-                                    padding: 10,
-                                },
+//                            playerLogoSettings: {
+//                                    image: "'. $this->wpstream_get_video_player_logo( get_the_ID() ) . '",
+//                                    position: "' . esc_html( get_option('wpstream_player_logo_position','top-right') ) . '",
+//                                    opacity: ' . ( intval ( esc_html( get_option('wpstream_player_logo_opacity','100') ) ) / 100 ) . ',
+//                                    width: 100,
+//                                    height: "auto",
+//                                    padding: 10,
+//                                },
                         });
                     });
                 //]]>
@@ -1148,6 +1175,23 @@ class Wpstream_Player{
             
             return  get_option('wpstream_api_username_from_token');
         }
+
+            /**
+             * Render title overlay via action hook.
+             *
+             * @param string $overlay_id Overlay element id.
+             * @param string $title_text Title text.
+             */
+            private function wpstream_render_vod_title_overlay( $overlay_id, $title_text ) {
+                if ( has_action( 'wpstream_vod_title_overlay' ) ) {
+                    do_action(
+                        'wpstream_vod_title_overlay',
+                        $overlay_id,
+                        $title_text,
+                        esc_html__( 'Playing:', 'wpstream' )
+                    );
+                }
+            }
         
     /**
      * check if the we can add display the player
@@ -1530,11 +1574,13 @@ class Wpstream_Player{
 	/**
 	 * Get the video player logo URL.
 	 *
+	 * @param int $product_id Product ID.
 	 * @return mixed|string
 	 */
-	public function wpstream_get_video_player_logo() {
-		if ( $this->wpstream_is_streamify_user() ) {
-			return WPSTREAM_PLUGIN_DIR_URL . 'img/default_300.png';
+	public function wpstream_get_video_player_logo( $product_id ) {
+		$is_streamify_user = $this->wpstream_is_streamify_user( $product_id );
+		if ( $is_streamify_user ) {
+			return WPSTREAM_PLUGIN_DIR_URL . 'img/wpstream-symbol-large.png';
 		}
 
 		$logo = get_option( 'wpstream_player_logo', '' );
@@ -1562,16 +1608,17 @@ class Wpstream_Player{
 		return $cached_data;
 	}
 
-	public function wpstream_is_streamify_user() {
+	/*
+	 * Check if the user is on a basic subscription
+	 *
+	 * @param int $channel_id Channel ID
+	 * @return bool
+	 */
+	public function wpstream_is_streamify_user( $channel_id ) {
+		$is_basic_streaming = get_post_meta( $channel_id, 'basicStreaming', true );
+		if ( $is_basic_streaming === '1' ) {
+			return true;
+		}
 		return false;
-//		$pack_details = $this->wpstream_get_cached_pack_data();
-//
-//		if ( isset( $pack_details['total_data'] ) && $pack_details['total_data'] === 500 &&
-//			isset( $pack_details['total_storage_mb'] ) && $pack_details['total_storage_mb'] === 100 &&
-//			isset( $pack_details['available_data'] ) && $pack_details['available_data'] <= 0
-//		) {
-//			return true;
-//		}
-//		return false;
 	}
 }

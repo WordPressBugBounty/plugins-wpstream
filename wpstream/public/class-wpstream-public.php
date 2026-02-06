@@ -80,6 +80,7 @@ class Wpstream_Public {
 				'all'
 			);
             wp_enqueue_style('wpstream-integrations',   plugin_dir_url( __DIR__ ) .'integrations/css/integrations.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
+
     }
 
     /**
@@ -93,6 +94,24 @@ class Wpstream_Public {
         // Enqueuing is happing directly wherever is used
         wp_register_script('video.min',              'https://vjs.zencdn.net/8.20.0/video.min.js', WPSTREAM_PLUGIN_VERSION, true);
 
+        // Quality selector dependency (Video.js plugin)
+        wp_register_script(
+            'videojs-contrib-quality-levels',
+            'https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.0.0/dist/videojs-contrib-quality-levels.min.js',
+            array('video.min'),
+            '4.0.0',
+            true
+        );
+
+        // WpStream quality selector (Video.js 8 compatible)
+        wp_register_script(
+            'wpstream-quality-selector',
+            plugin_dir_url( __FILE__ ) . 'js/wpstream-quality-selector.js',
+            array('video.min', 'videojs-contrib-quality-levels'),
+            WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/wpstream-quality-selector.js'),
+            true
+        );
+
 		// Enqueue the VideoJS Logo plugin script
 	    wp_enqueue_script(
 			'videojs-logo',
@@ -101,7 +120,12 @@ class Wpstream_Public {
 			'3.0.0',
 			true
 	    );
-                wp_register_script('youtube.min',          
+
+        // Ensure quality selector scripts are available wherever wpstream-player runs
+        wp_enqueue_script('videojs-contrib-quality-levels');
+        wp_enqueue_script('wpstream-quality-selector');
+
+                wp_register_script('youtube.min',
                                   plugin_dir_url( __FILE__ ).'js/youtube.min.js',
                                   array('video.min'), 
                                   WPSTREAM_PLUGIN_VERSION, true);
@@ -109,29 +133,38 @@ class Wpstream_Public {
                 wp_register_script(
 					'wpstream-player',
 					plugin_dir_url( __FILE__ ).'js/wpstream-player.js',
-                    array('video.min'),
+					array('video.min','wpstream-quality-selector'),
                     WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/wpstream-player.js'),
 	                true
                 );
 
-                wp_localize_script('wpstream-player', 'wpstream_player_vars',
-                    array( 
-                        'admin_url'             =>  get_admin_url(),
-                        'chat_not_connected'    =>  esc_html__('Inactive Channel - Chat is disabled.','wpstream'),
-                        'server_up'             =>  esc_html__('The live stream is paused and may resume shortly.','wpstream'),
-                        'wpstream_player_state_stopped_msg'             =>  esc_html__(get_option('wpstream_you_are_not_live','We are not live at this moment'),'wpstream'),
-                        'wpstream_player_state_init_msg'             =>  esc_html__('The live stream has not yet started','wpstream'),
-                        'wpstream_player_state_startup_msg'             =>  esc_html__('The live stream is starting...','wpstream'),
-                        'wpstream_player_state_paused_msg'             =>  esc_html__('The live stream is paused','wpstream'),
-                        'wpstream_player_state_ended_msg'             =>  esc_html__('The live stream has ended','wpstream'),
-	                    'wpstream_player_theme' => get_option('wpstream_video_player_theme'),
-	                    'playerLogoSettings'  => array(
-		                    'imageUrl'     => $this->main->wpstream_player->wpstream_get_video_player_logo(),
-		                    'position'  => get_option( 'wpstream_player_logo_position', 'top-left' ),
-		                    'opacity'   => get_option('wpstream_player_logo_opacity', '100'),
-	                    ),
-                    )
-                );
+				$abr_enabled = false;
+				$post_meta = get_post_meta( get_the_ID(), 'local_event_options', true );
+				if ( !empty($post_meta) && isset($post_meta['adaptive_bitrate']) && $post_meta['adaptive_bitrate'] == 1 ) {
+					$abr_enabled = true;
+				}
+				wp_localize_script('wpstream-player', 'wpstream_player_vars',
+					array(
+						'admin_url'                         =>  get_admin_url(),
+						'chat_not_connected'                =>  esc_html__('Inactive Channel - Chat is disabled.','wpstream'),
+						'server_up'                         =>  esc_html__('The live stream is paused and may resume shortly.','wpstream'),
+						'wpstream_player_state_stopped_msg' =>  esc_html__(get_option('wpstream_you_are_not_live','We are not live at this moment'),'wpstream'),
+						'wpstream_player_state_init_msg'    =>  esc_html__('The live stream has not yet started','wpstream'),
+						'wpstream_player_state_startup_msg' =>  esc_html__('The live stream is starting...','wpstream'),
+						'wpstream_player_state_paused_msg'  =>  esc_html__('The live stream is paused','wpstream'),
+						'wpstream_player_state_ended_msg'   =>  esc_html__('The live stream has ended','wpstream'),
+						'wpstream_player_state_error_msg'   =>  esc_html__('Something went wrong','wpstream'),
+						'wpstream_player_theme'             => get_option('wpstream_video_player_theme'),
+						'playerLogoSettings'                => array(
+							'imageUrl' => $this->main->wpstream_player->wpstream_get_video_player_logo( get_the_ID() ),
+							'position' => get_option( 'wpstream_player_logo_position', 'top-left' ),
+							'opacity'  => get_option('wpstream_player_logo_opacity', '100'),
+						),
+						'wpstream_is_streamify_user'        => $this->main->wpstream_player->wpstream_is_streamify_user( get_the_ID() ),
+						'player_check_status_nonce' => wp_create_nonce( 'wpstream_player_check_status_nonce'),
+						'is_abr_enabled'                   => $abr_enabled,
+					)
+				);
                 
                 wp_enqueue_script( 'jquery-ui-autocomplete' );
                 wp_enqueue_script( "jquery-effects-core");
@@ -222,29 +255,6 @@ class Wpstream_Public {
 			    'gdpr_agree' 			=> esc_html__('You need to agree with GDPR terms.', 'hello-wpstream'),
 		    )
 	    );
-
-	    wp_enqueue_style(
-		    'wpstream-broadcaster-css',
-		    WPSTREAM_PLUGIN_DIR_URL . 'public/css/broadcaster.css',
-		    array(),
-		    filemtime( WPSTREAM_PLUGIN_PATH . 'public/css/broadcaster.css' ) ,
-	    );
-
-//	    wp_enqueue_script(
-//		    'wpstream-broadcaster',
-//		    WPSTREAM_PLUGIN_DIR_URL . 'public/js/broadcaster.js',
-//		    array('jquery'),
-//		    filemtime( WPSTREAM_PLUGIN_PATH . 'public/js/broadcaster.js' ),
-//		    true
-//	    );
-//
-//	    // Add localized variables for broadcaster
-//	    wp_localize_script('wpstream-broadcaster', 'wpstream_broadcaster_vars', array(
-//		    'ajax_url' => admin_url('admin-ajax.php'),
-//		    'nonce' => wp_create_nonce('wpstream_broadcaster_nonce'),
-//		    'plugin_url' => plugin_dir_url(__FILE__),
-//		    'obs_uri' => '',
-//	    ));
     }
 
 
@@ -421,8 +431,8 @@ class Wpstream_Public {
 	public function wpstream_archives_lists_taxonomy_labels_callback( $taxonomy_labels ) {
 		$taxonomy_labels['product'] = esc_html__( 'Video Products', 'hello-wpstream' );
 		$taxonomy_labels['wpstream_bundles'] = esc_html__( 'Bundles', 'hello-wpstream' );
-		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'hello-wpstream' );
 		$taxonomy_labels['wpstream_product'] = esc_html__( 'Free Events', 'hello-wpstream' );
+		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'hello-wpstream' );
 		return $taxonomy_labels;
 	}
 
@@ -1716,7 +1726,6 @@ class Wpstream_Public {
                  
                 
                     if ( false === $event_list_paid_posts ) {
-                        print '  transient paid expired ';  
                         $args = array(
                             'posts_per_page'    => -1,
                             'post_type'         => 'product',

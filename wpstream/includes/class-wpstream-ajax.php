@@ -30,6 +30,7 @@ class WpStream_Ajax {
 		add_action( 'wp_ajax_wpstream_handle_channel_creation', [$this, 'wpstream_handle_channel_creation'] );
 		add_action( 'wp_ajax_wpstream_handle_channel_details_saving', [$this, 'wpstream_handle_channel_details_saving'] );
 		add_action( 'wp_ajax_wpstream_remove_post_id', [$this, 'wpstream_remove_post_id_callback'] );
+		add_action( 'wp_ajax_wpstream_get_live_quota_data', [$this, 'wpstream_get_live_quota_data'] );
 
 		// Enqueue dashboard scripts
 		add_action( 'wp_enqueue_scripts', [$this, 'wpstream_enqueue_dashboard_scripts'] );
@@ -897,5 +898,25 @@ class WpStream_Ajax {
 		wp_send_json( $response );
 
 		wp_die();
+	}
+
+	public function wpstream_get_live_quota_data() {
+		if ( ! wp_verify_nonce( $_POST['security'] ?? '', 'wpstream_notice_nonce' ) ) {
+			wp_send_json_error( 'Nonce verification failed.' );
+			die();
+		}
+
+		if ( ! is_user_logged_in() ) {
+			wp_send_json_error( 'You must be logged in to perform this action.' );
+			die();
+		}
+
+		$quota_data = $this->main->quota_manager->get_live_quota_data( 'wpstream_get_live_quota_data' );
+
+		if ( $quota_data ) {
+			wp_send_json_success( $quota_data );
+		} else {
+			wp_send_json_error( 'Could not retrieve quota data.' );
+		}
 	}
 }

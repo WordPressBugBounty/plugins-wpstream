@@ -50,28 +50,28 @@ document.addEventListener("DOMContentLoaded", function () {
 	const userResolutions = {
 		vga: {
 			width: { ideal: 640 },
-			height: { ideal: 480 },
+			height: { ideal: 360 },
 		},
 		hd: {
-			width: { ideal: 1280 },
-			height: { ideal: 720 },
+			width: { exact: 1280 },
+			height: { exact: 720 },
 		},
 		fhd: {
-			width: { ideal: 1920 },
-			height: { ideal: 1080 },
+			width: { exact: 1920 },
+			height: { exact: 1080 },
 		},
 		square: {
-			width: { ideal: 800 },
-			height: { ideal: 600 },
+			width: { exact: 800 },
+			height: { exact: 600 },
 		},
 		default: {
-			width: { ideal: 1280 },
-			height: { ideal: 720 },
+			width: { min: 640, ideal: 1280, max: 1920 },
+			height: { min: 360, ideal: 720, max: 1080 },
 		},
 	};
 
 	const displayResolutions = {
-		vga: { width: 640, height: 480 },
+		vga: { width: 640, height: 360 },
 		hd: { width: 1280, height: 720 },
 		fhd: { width: 1920, height: 1080 },
 		square: { width: 800, height: 600 },
@@ -88,9 +88,9 @@ document.addEventListener("DOMContentLoaded", function () {
 		frameCalculatorTimer = setInterval(function () {
 			console.log(
 				"Resolution: " +
-					videoElement.videoWidth +
-					"x" +
-					videoElement.videoHeight
+				videoElement.videoWidth +
+				"x" +
+				videoElement.videoHeight
 			);
 
 			if (totalVideoFrames === 0) {
@@ -200,6 +200,15 @@ document.addEventListener("DOMContentLoaded", function () {
 		messageElement.className = type + "-message";
 		messageElement.textContent = message;
 
+		const dismissButton = document.createElement("button");
+		dismissButton.className = 'dismiss-message';
+		dismissButton.innerHTML = '&times;';
+		dismissButton.addEventListener('click', function() {
+			messageElement.remove();
+		});
+
+		messageElement.appendChild(dismissButton);
+
 		messageContainer.innerHTML = "";
 		messageContainer.appendChild(messageElement);
 
@@ -216,7 +225,8 @@ document.addEventListener("DOMContentLoaded", function () {
 		statusIndicator.classList.remove(
 			"connected",
 			"disconnected",
-			"connecting"
+			"connecting",
+			"reconnecting"
 		);
 
 		switch (status) {
@@ -230,13 +240,14 @@ document.addEventListener("DOMContentLoaded", function () {
 				statusIndicator.classList.add("connecting");
 				statusText.textContent = "Connecting...";
 				liveIndicatorError.style.display = 'inline';
-				liveIndicatorLive.innerContent = 'Connecting';
+				liveIndicatorError.innerText = 'Connecting...';
 				break;
 			case "reconnecting":
 				statusIndicator.classList.add("connecting");
-				statusText.textContent = "Reconnecting...";
+				statusText.textContent = "Reconnecting";
 				liveIndicatorError.style.display = 'inline';
-				liveIndicatorLive.innerContent = 'Reconnecting';
+				liveIndicatorLive.style.display = 'none';
+				liveIndicatorError.innerText = 'Connection lost. Reconnecting in 10 seconds...';
 				break;
 			case "disconnected":
 			default:
@@ -248,7 +259,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 	}
 
-	function createInput( shouldAutoStart = false ) {
+	function createInput( shouldAutoStart = false, keepMessages = false ) {
 		if (streamingButton) {
 			streamingButton.disabled = true;
 		}
@@ -258,45 +269,57 @@ document.addEventListener("DOMContentLoaded", function () {
 			input = null;
 		}
 
-		resetMessages();
+		if ( !keepMessages ) {
+			resetMessages();
+		}
+
+		if (localStream) {
+			localStream.getTracks().forEach((track) => track.stop());
+			localStream = null;
+		}
 
 		input = OvenLiveKit.create({
 			callbacks: {
 				error: function (error) {
-					let errorMessage = "";
+					let errorMessage = '';
 
-					if (error.message) {
-						errorMessage = error.message;
-					} else if (error.name) {
-						errorMessage = error.name;
-					} else {
-						errorMessage = error.toString();
+						if (error.message) {
+							errorMessage = error.message;
+						} else if (error.name) {
+							errorMessage = error.name;
+						} else {
+							errorMessage = error.toString();
+						}
+
+					if (error.name === "OverconstrainedError") {
+						showMessage(
+							"Your browser or camera does not support this frame size: " + videoResolutionSelect.value,
+							'error'
+						);
+						videoResolutionSelect.value = 'default';
+						createInput(shouldAutoStart, true);
+						return;
 					}
 
-					if (errorMessage === "OverconstrainedError") {
-						errorMessage =
-							"The input device does not support the specified resolution or frame rate.";
-					}
+						resetMessages();
+						showMessage(errorMessage, "error");
 
-					resetMessages();
-					showMessage(errorMessage, "error");
+						if (shouldAutoStart) {
+							considerReconnect = false;
+						}
+					},
+					connectionClosed: function (type, event) {
+						console.log("Connection closed:", type, event);
+						streamingStarted = false;
+						// updateStatus("disconnected");
 
-					if ( shouldAutoStart) {
-						considerReconnect = false;
-					}
-				},
-				connectionClosed: function (type, event) {
-					console.log("Connection closed:", type, event);
-					streamingStarted = false;
-					updateStatus("disconnected");
-
-					if (streamingButton) {
-						streamingButton.classList.remove("hidden");
-						streamingButton.disabled = false;
-					}
-					if (stopButton) {
-						stopButton.classList.add("hidden");
-					}
+						// if (streamingButton) {
+						// 	streamingButton.classList.remove("hidden");
+						// 	streamingButton.disabled = false;
+						// }
+						// if (stopButton) {
+						// 	stopButton.classList.add("hidden");
+						// }
 
 					if (considerReconnect && !pendingReconnect) {
 						console.log('connection closed, attempting to reconnect');
@@ -306,37 +329,38 @@ document.addEventListener("DOMContentLoaded", function () {
 						liveIndicatorError.innerContent = 'Reconnecting';
 					} else {
 						console.log('connection closed, not reconnecting');
-						updateInputState(false);
+						// updateInputState(false);
 					}
 				},
 				iceStateChange: function (state) {
 					console.log("ICE state changed:", state);
 					if ( state === 'connected' ) {
 						// showMessage("Broadcast started successfully");
+						updateStatus('connected');
 					}
 
-					if (state === "disconnected" && considerReconnect) {
-						streamingStarted = false;
-						updateStatus("disconnected");
-
-						if (considerReconnect && !pendingReconnect) {
-							console.log('connection closed, attempting to reconnect from ice state change');
-							// showMessage("Connection lost, attempting to reconnect...", "info");
-							attemptReconnect();
-						} else {
-							showMessage(
-								"Connection failed. Please check your network settings.",
-								"error"
-							);
+						if (state === "disconnected" && considerReconnect) {
+							streamingStarted = false;
+							if (considerReconnect && !pendingReconnect) {
+								console.log(
+									"connection closed, attempting to reconnect from ice state change"
+								);
+								updateStatus("reconnecting");
+								attemptReconnect();
+							} else {
+								showMessage(
+									"Connection failed. Please check your network settings.",
+									"error"
+								);
+							}
 						}
-					}
+					},
 				},
-			},
-		});
+			});
 
-		input.attachMedia(videoElement);
+			input.attachMedia(videoElement);
 
-		if (videoSourceSelect.value) {
+		if (videoSourceSelect.options.length > 0) {
 			if (videoSourceSelect.value === "displayCapture") {
 				input
 					.getDisplayMedia(getDisplayConstraints())
@@ -444,75 +468,69 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	function attemptReconnect() {
 		console.log("attemptReconnect()");
+		updateStatus('reconnecting');
 
 		if ( pendingReconnect ) {
 			console.log('reconnect already in progress');
 			return;
 		}
 
-		considerReconnect = false;
-		pendingReconnect = true;
-
-		if ( input ) {
-			input.callbacks = {
-				error: function() {},
-				connectionClosed: function () {},
-				iceStateChange: function () {},
-			};
-
-			if( input.streamingMode === 'whip') {
-				input.stopStreaming();
-			} else if ( input.streamingMode === 'webrtc' ) {
-				if( input.webSocket ) {
-					input.webSocket.close();
-					input.webSocket = null;
-				}
-				if( input.peerConnection ) {
+		// Clean up existing connection before reconnecting
+		if (input) {
+			if (input.peerConnection || input.webSocket) {
+				// Force cleanup without triggering callbacks
+				if (input.peerConnection) {
 					input.peerConnection.close();
 					input.peerConnection = null;
 				}
+				if (input.webSocket) {
+					input.webSocket.close();
+					input.webSocket = null;
+				}
+				// Reset streaming mode
+				input.streamingMode = null;
 			}
 		}
 
+		pendingReconnect = true;
+
 		// Show a reconnecting state and allow user to cancel via Stop button
-		updateStatus("reconnecting");
-		updateInputState(true);
+		// showMessage("Disconnected. Reconnecting in 5 seconds...", "info");
+		// updateInputState(false);
 
+		pendingReconnect = true;
 		pendingReconnectTimeout = setTimeout(function () {
-			if (!considerReconnect && !pendingReconnect) {
-				return; // User cancelled or stopped
-			}
-
-			checkChannelStatus(wpstream_broadcaster_vars.channel_id)
-				.then(function(channelActive) {
-					if (channelActive) {
-						console.log("Channel is active, proceeding with reconnect...");
-						// Reset flags before recreating
-						pendingReconnect = false;
-						pendingReconnectTimeout = null;
-						considerReconnect = true;
-
-						// Create new input and start streaming
-						createInput(true);
-					} else {
-						console.log("Channel is not active, cannot reconnect.");
-						pendingReconnect = false;
-						pendingReconnectTimeout = null;
-						showMessage('Channel is no longer active. Broadcasting stopped', 'error');
-						resetStreamingUI();
-					}
-				})
-				.catch(function (error) {
-					console.error('Error during reconnect attempt:', error);
-					pendingReconnect = false;
-					pendingReconnectTimeout = null;
-					// Don't attempt another reconnect immediately to avoid loops
-					setTimeout(() => {
+			pendingReconnect = false;
+			pendingReconnectTimeout = null;
+			if (considerReconnect) {
+				checkChannelStatus(wpstream_broadcaster_vars.channel_id)
+					.then(function(channelActive) {
+						if (channelActive && considerReconnect) {
+							console.log("Channel is active, proceeding with reconnect...");
+							updateStatus("connecting");
+							// input.stopStreaming();
+							setTimeout(function () {
+								createInput(true);
+							}, 5000);
+						} else {
+							console.log("Channel is not active, cannot reconnect.");
+							considerReconnect = false;
+							showMessage('Channel is no longer active. Broadcasting stopped');
+							resetStreamingUI();
+						}
+					})
+					.catch(function (error) {
+						console.error('Error checking channel status');
 						if (considerReconnect) {
+							console.error('Error during reconnect attempt:', error);
 							attemptReconnect();
 						}
-					}, 5000);
-				});
+					});
+
+				// console.log('Reconnecting...');
+				// createInput( true );
+				// startStreaming();
+			}
 		}, reconnectDelayMs);
 	}
 
@@ -538,7 +556,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				track.enabled = enabled;
 			});
 
-			showMessage(enabled ? "Video enabled" : "Video disabled", "info");
+			// showMessage(enabled ? "Video enabled" : "Video disabled", "info");
 		}
 	}
 
@@ -702,17 +720,21 @@ document.addEventListener("DOMContentLoaded", function () {
 				return;
 			}
 
+			var nonce = jQuery('#wpstream_start_event_nonce').val();
+
 			jQuery.ajax({
 				url: wpstream_broadcaster_vars.ajax_url,
 				type: 'POST',
 				data: {
 					action: 'wpstream_check_event_status',
 					channel_id: channelId,
+					nonce: nonce
 				},
 				success: function(response) {
 					try {
 						const parsedResponse = JSON.parse(response);
 						if (parsedResponse.status === 'active') {
+							messageContainer.innerHTML = "";
 							resolve(true);
 						} else {
 							showMessage(wpstream_broadcaster_vars.channel_off, 'error');
@@ -726,6 +748,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				},
 				error: function(xhr, status, error) {
 					console.error('Error checking channel status:', error);
+					resetStreamingUI();
 					showMessage('Error checking channel status: ' + error, 'error');
 					reject(false);
 				}
@@ -750,6 +773,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					try {
 						const parsedResponse = JSON.parse(response);
 						if (parsedResponse.available_data_mb > 0) {
+							messageContainer.innerHTML = '';
 							resolve(true);
 						} else {
 							const messageElement = document.createElement("div");
@@ -800,9 +824,10 @@ document.addEventListener("DOMContentLoaded", function () {
 			considerReconnect = true;
 			input.startStreaming(whipUrl, connectionConfig);
 			if ( input ) {
+				// TODO: check why input is sometimes null here
 				console.log('something was wrong' );
 			}
-			updateStatus("connected");
+			// updateStatus("connected");
 			if ( isReconnect ) {
 				console.log('Reconnected successfully!');
 				// showMessage("Reconnected successfully!", "success");

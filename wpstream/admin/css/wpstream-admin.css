@@ -338,7 +338,6 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 
 #wpstream-sidebar-meta .wpstream_event_streaming_local {
     margin-left: 0px;
-    height: 458px;
     overflow: auto;
     padding-right: 20px;
 }
@@ -354,13 +353,28 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     flex-wrap: nowrap;
 }
 
+.basic-mode-notice {
+    color:#fff;
+    background: #f40000;
+    box-shadow: 0 1px 1px 0 rgb(0 0 0 / 10%);
+    margin: 5px 0px 15px 0px;
+    font-size: 14px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.basic-mode-notice a {
+    color:#fff;
+    text-decoration: underline;
+}
+
 .wpstream_local_event_options_toggle_wrapper {
     display: flex;
     gap: 25px;
-    padding-right: 20px;
     padding-bottom: 10px;
     border-bottom: 1px solid #e4e4e4;
     margin-bottom: 10px;
+    max-width: 443px;
 }
 
 .wpstream_local_event_options_toggle_wrapper .wpstream_local_event_options_toggle_info {
@@ -1211,7 +1225,8 @@ input:checked + .wpstream_slider:before {
     left: 395px;
 }
 
-#wpstream-sidebar-meta  .wpstream_setting_event_unit_wrapper label{
+#wpstream-sidebar-meta .wpstream_setting_event_unit_wrapper label,
+.wpstream_page_wpstream_live_channels .event_list_unit .wpstream_setting_event_unit_wrapper label {
     left: auto;
     right: 0px;
 }

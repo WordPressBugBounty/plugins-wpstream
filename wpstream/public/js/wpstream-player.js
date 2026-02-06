@@ -125,6 +125,8 @@ class WpstreamPlayer {
   getDynamicSettings() {
     console.log("getDynamicSettings()");
     let ajaxurl = wpstream_player_vars.admin_url + "admin-ajax.php";
+	// const nonce = jQuery('.wpstream_live_player_wrapper').attr('data-nonce');
+	const nonce = wpstream_player_vars.player_check_status_nonce;
     let owner = this;
     jQuery.ajax({
       type: "POST",
@@ -133,11 +135,13 @@ class WpstreamPlayer {
       data: {
         action: "wpstream_player_check_status",
         channel_id: this.channelId,
+        nonce: nonce,
       },
       success: function (data) {
         console.log("dynamicSettings: ", data);
         if (data == 0) {
           owner.setState("stopped");
+		  removeSpinner(3);
         } else if (data.started == "no") {
           owner.setState("notstarted");
           owner.chat.disconnect();
@@ -152,6 +156,7 @@ class WpstreamPlayer {
       },
       error: function (error) {
         console.log("dynamicSettingsError: ", error);
+		owner.setState("error");
       },
     });
     if (this.ruler <= 1) {
@@ -185,6 +190,7 @@ class WpstreamPlayer {
       case "starting":
         this.liveMessage.showMessage('stopped');
         this.playback.pauseContent();
+		removeSpinner(1);
         break;
       case "started":
         this.liveMessage.hide();
@@ -208,6 +214,9 @@ class WpstreamPlayer {
         this.liveMessage.hide();
         this.playback.playContent();
         break;
+	  case 'error':
+		  removeSpinner(4);
+	    this.liveMessage.showMessage('error');
     }
   }
 
@@ -297,7 +306,18 @@ class WpstreamPlayback {
       // muted    : true
     });
 
-    this.applyTheme(wpstream_player_vars.wpstream_player_theme)
+    // Enable HLS quality selector (Video.js 8 compatible)
+    try {
+      if (typeof window.wpstreamInstallQualitySelector === 'function' && wpstream_player_vars.is_abr_enabled == 1) {
+        window.wpstreamInstallQualitySelector(this.player);
+      }
+    } catch (e) {
+      // optional
+    }
+
+	  if ( !wpstream_player_vars.wpstream_is_streamify_user ) {
+		  this.applyTheme(wpstream_player_vars.wpstream_player_theme);
+	  }
 
       if ( typeof this.player.logo === 'function' && wpstream_player_vars.playerLogoSettings ) {
           this.player.logo({
@@ -467,7 +487,7 @@ class WpstreamPlayback {
   }
 
   applyTheme(themeName) {
-    const themes = ['vjs-theme-city', 'vjs-theme-forest', 'vjs-theme-sunset', 'vjs-theme-sea'];
+    const themes = ['vjs-theme-city', 'vjs-theme-forest', 'vjs-theme-fantasy', 'vjs-theme-sea'];
     themes.forEach(theme => {
       this.player.removeClass(theme);
     })
@@ -1065,6 +1085,7 @@ class LiveConnect {
         owner.master.onLiveConnectActive(false);
       };
       this.ws.onmessage = function (message) {
+        removeSpinner( 2);
         console.log("onmessage: ", connectAttempt, message.data);
         owner.processMessage(message.data);
       };
@@ -1086,7 +1107,9 @@ class LiveConnect {
     if (json.type) {
       switch (json.type) {
         case "viewerCount":
-          this.master.updateViewerCount(json.data);
+			if ( !wpstream_player_vars.wpstream_is_streamify_user ) {
+				this.master.updateViewerCount(json.data);
+			}
           break;
         case "pending":
           this.master.updatePending(json.data);
@@ -1274,10 +1297,60 @@ function wpstream_player_initialize_vod(settings) {
 
   const originalPoster = player.poster();
 
+  // Spinner used for YouTube buffering/tech init.
+  let wpstreamVodSpinnerEl = null;
+  const wpstreamEnsureVodSpinner = () => {
+    if (wpstreamVodSpinnerEl) return;
+    try {
+      const container = player.el() && player.el().parentNode ? player.el().parentNode : null;
+      if (!container) return;
+
+      // Ensure absolute-positioned spinner has a positioning context.
+      try {
+        const currentPos = window.getComputedStyle(container).position;
+        if (!currentPos || currentPos === 'static') {
+          container.style.position = 'relative';
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      wpstreamVodSpinnerEl = document.createElement('div');
+      wpstreamVodSpinnerEl.className = 'wpstream-pre-load-spinner';
+      wpstreamVodSpinnerEl.style.display = 'none';
+      container.appendChild(wpstreamVodSpinnerEl);
+    } catch (e) {
+      wpstreamVodSpinnerEl = null;
+    }
+  };
+
+  const wpstreamShowVodSpinner = () => {
+    wpstreamEnsureVodSpinner();
+    if (wpstreamVodSpinnerEl) {
+      wpstreamVodSpinnerEl.style.display = 'block';
+    }
+  };
+
+  const wpstreamHideVodSpinner = () => {
+    if (wpstreamVodSpinnerEl) {
+      wpstreamVodSpinnerEl.style.display = 'none';
+    }
+  };
+
   player.src({ ...initialSrc, autoplay: true, muted: true });
   if (titleOverlay){
     player.el().appendChild(titleOverlay);
   }
+
+  //  Enable HLS quality selector (Video.js 8 compatible)
+  // Disable for now on VODs
+  // try {
+  //   if (typeof window.wpstreamInstallQualitySelector === 'function' ) {
+  //     window.wpstreamInstallQualitySelector(player);
+  //   }
+  // } catch (e) {
+  //   // optional
+  // }
 
   if (settings.theaterModeButtons) {
     const Button = videojs.getComponent("Button");
@@ -1395,6 +1468,7 @@ function wpstream_player_initialize_vod(settings) {
 
   player.on("error", () => {
     console.log("error()");
+	wpstreamHideVodSpinner();
     if (playing == "trailer") {
       console.log("trailer failed");
       playTrailerButton.hide();
@@ -1438,9 +1512,16 @@ function wpstream_player_initialize_vod(settings) {
     }
   });
 
-  playVideoButton.on("click", function () {
+  let wpstreamPlayVideoInFlight = false;
+  const wpstreamStartVideoPlayback = () => {
+    if (wpstreamPlayVideoInFlight) return;
+    wpstreamPlayVideoInFlight = true;
+
     console.log("playVideo");
-    if (!settings.videoUrl) return;
+    if (!settings.videoUrl) {
+      wpstreamPlayVideoInFlight = false;
+      return;
+    }
     if (playing == "trailer") {
       playing = "content";
       player.controls(true);
@@ -1448,8 +1529,109 @@ function wpstream_player_initialize_vod(settings) {
       player.src(getSrc(settings.videoUrl));
     }
 
-    player.play();
+    const isYouTube = getSrc(settings.videoUrl).type === "video/youtube";
+  if (isYouTube) {
+    wpstreamShowVodSpinner();
+  }
+
+		// For YouTube, the tech becomes ready asynchronously after src() changes.
+		// Do a short retry loop so one user click is enough.
+    const maxWaitMs = 2000;
+    const retryEveryMs = 50;
+		const startedAt = Date.now();
+		let retryTimer = null;
+
+		const clearRetry = () => {
+			if (retryTimer) {
+				clearInterval(retryTimer);
+				retryTimer = null;
+			}
+      wpstreamPlayVideoInFlight = false;
+      wpstreamHideVodSpinner();
+		};
+
+		// Hide big-play immediately; only show it if all retries fail.
+		try {
+			player.bigPlayButton && player.bigPlayButton.hide();
+		} catch (e) {}
+
+		// If YouTube and user expects audio, start muted for reliability, then restore.
+		let shouldRestoreMute = false;
+		if (isYouTube && !settings.muted) {
+			try {
+				player.muted(true);
+				shouldRestoreMute = true;
+			} catch (e) {}
+		}
+
+		player.one("playing", function () {
+			clearRetry();
+			if (shouldRestoreMute) {
+				try {
+					player.muted(false);
+				} catch (e) {}
+			}
+		});
+
+		const attemptPlay = () => {
+      // Note: with the YouTube tech, paused() may flip to false before
+      // playback truly starts. Only stop retries on the 'playing' event.
+			try {
+				if (!player.paused()) {
+					return;
+				}
+			} catch (e) {}
+
+			const p = player.play();
+			if (p && typeof p.catch === "function") {
+				p.catch(function () {
+					// swallow; we will retry for a short time
+				});
+			}
+		};
+
+		attemptPlay();
+
+		// Only needed for YouTube: keep trying briefly until tech + iframe are ready.
+		if (isYouTube) {
+			retryTimer = setInterval(function () {
+				if (Date.now() - startedAt > maxWaitMs) {
+					clearRetry();
+					// Give the user a manual fallback if autoplay is blocked.
+					try {
+						player.bigPlayButton && player.bigPlayButton.show();
+					} catch (e) {}
+					return;
+				}
+				attemptPlay();
+			}, retryEveryMs);
+    } else {
+      // Non-YouTube: release the lock immediately.
+      wpstreamPlayVideoInFlight = false;
+    }
+  };
+
+  // Start as early as possible on a real user gesture to reduce perceived delay.
+  playVideoButton.on("pointerdown", function () {
+    wpstreamStartVideoPlayback();
   });
+
+  // Fallback for browsers without pointer events.
+  playVideoButton.on("click", function () {
+    wpstreamStartVideoPlayback();
+  });
+
+  // If the VOD is a YouTube URL, try to start it on page load.
+  // Important: browsers generally only allow this if playback starts muted.
+  if (settings.videoUrl && getSrc(settings.videoUrl).type === "video/youtube" && !settings.trailerUrl) {
+    try {
+      player.ready(function () {
+        setTimeout(function () {
+          try { playVideoButton.trigger("click"); } catch (e) {}
+        }, 0);
+      });
+    } catch (e) {}
+  }
 }
 
 function getSrc(url) {
@@ -1461,4 +1643,11 @@ function getSrc(url) {
 
 function isLlHls(url) {
   return /ll[a-z]+\.m3u8/.test(url);
+}
+
+function removeSpinner( place ) {
+	const playerSpinner = document.querySelectorAll('.wpstream-pre-load-spinner');
+	playerSpinner.forEach(spinner => {
+		spinner.style.display = 'none';
+	})
 }

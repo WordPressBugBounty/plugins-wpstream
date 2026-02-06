@@ -79,11 +79,11 @@ if ( ! function_exists( 'wpstream_return_taxonomy_array' ) ) {
 	function wpstream_return_taxonomy_array() {
 		$taxonomy_array = array(
 			'category'              => array(
-				'post',
-				'product',
-				'wpstream_bundles',
-				'wpstream_product_vod',
 				'wpstream_product',
+				'wpstream_product_vod',
+				'wpstream_bundles',
+				'product',
+				'post',
 			),
 
 			'post_tag'              => array(

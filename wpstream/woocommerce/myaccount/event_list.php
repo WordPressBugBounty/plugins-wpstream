@@ -11,17 +11,14 @@ if (function_exists('wpstream_theme_purchased_event_list')) {
     wpstream_theme_purchased_event_list();
 
 }else{
- 
-    $customer_orders = get_posts( array(
-        'numberposts'   =>  -1,
-        'meta_key'      =>  '_customer_user',
-        'meta_value'    =>  get_current_user_id(),
-        'post_type'     =>  wc_get_order_types(),
-        'post_status'   =>  array_keys( wc_get_order_statuses() ),
-        'orderby'       =>  'ID',
-        'order'         =>  'DESC',
-    ) );
- 
+	$customer_orders = wc_get_orders(array(
+			'customer_id' => get_current_user_id(),
+			'limit'       => -1,
+			'orderby'     => 'date',
+			'order'       => 'DESC',
+			'status'      => array_keys(wc_get_order_statuses()),
+	));
+
     $orders_array=array();
     foreach( $customer_orders as $order_data){
 

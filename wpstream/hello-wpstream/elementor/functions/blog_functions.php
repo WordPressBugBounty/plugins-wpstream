@@ -621,7 +621,6 @@ if ( ! function_exists( 'wpstream_theme_show_watch_later_icons' ) ) {
 			} else {
 				$return_string = '  <div tabindex="0" class="wpstream-watch-later-action wpstream_no_action" data-toggle="tooltip" data-bs-placement="bottom" '
 					. 'data-bs-original-title="' . esc_attr__( 'Sign in to watch later', 'hello-wpstream' ) . '"'
-					. 'title="' . esc_attr__( 'Watch Later', 'hello-wpstream' ) . '"'
 					. 'data-postID="' . esc_attr( $post_id ) . '">'
 					. wpstream_theme_get_svg_icon( $icon_name ) . ' <span>' . $wpstream_water_later_status . '</span>'
 					. '</div>';

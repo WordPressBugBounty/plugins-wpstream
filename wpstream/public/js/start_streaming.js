@@ -1,9 +1,13 @@
 /*global $, jQuery, wpstream_start_streaming_vars*/
 var counters={};
 
+// post_type can be FTV or PPV channel or VOD
+var post_type = null;
+
 jQuery(document).ready(function ($) {
     "use strict";
-    
+
+	wpstream_set_current_post_type();
     wpstream_check_live_connections();
     wpestate_start_modal_actions();
     wpestate_start_modal_error_actions();
@@ -17,12 +21,41 @@ jQuery(document).ready(function ($) {
 
     wpstream_bind_stats_link();
     wpstream_adjust_settings_general();
-  
-        
+
 });
 
+function wpstream_safe_track_onboarding(action, step, element_type = 'button', element_name = '') {
+	if (typeof wpstream_track_onboarding_step === 'function') {
+		wpstream_track_onboarding_step(action, step, element_type, element_name);
+	}
+}
 
+function wpstream_set_current_post_type() {
+	let params = (new URL(document.location)).searchParams;
+	let branch= params.get( 'branch' );
+	branch = parseInt( branch );
 
+	if( isNaN( branch ) ) {
+		post_type = null;
+	}
+
+	switch ( branch ) {
+		case 1:
+			post_type = 'ftv_channel';
+			break;
+		case 2:
+			post_type = 'ppv_channel';
+			break;
+		case 3:
+			post_type = 'ftv_vod';
+			break;
+		case 4:
+			post_type = 'ppv_vod';
+			break;
+		default:
+			post_type = null;
+	}
+}
 
 /*
 *
@@ -133,6 +166,7 @@ var start_onboarding='';
 function wpstream_bind_start_event(button){
    
     button.click(function(event){
+		wpstream_safe_track_onboarding('start_stream_clicked', 'wpstream_' + post_type);
         var basicStreaming = jQuery('#wpstream_basic_streaming').val() === 'true';
         if (basicStreaming){
             console.log("doing basic streaming");
@@ -226,13 +260,14 @@ function wpstream_bind_start_event(button){
 
 function wpstream_bind_stop_event(button){
     button.click(function(event){
+		wpstream_safe_track_onboarding( 'stop_stream_clicked', 'wpstream_' + post_type );
 
 
         if(!confirm(wpstream_start_streaming_vars.turn_off_confirm)){
             return false;
         }
         button.unbind('click');
-        
+
 
         var ajaxurl             =   wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
         var show_id             =   parseFloat( jQuery(this).attr('data-show-id') );
@@ -399,7 +434,9 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
 
 function wpstream_check_event_status_in_js(channel_id,notes,successCallback, errorCallback){
 
-    var ajaxurl             =   wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
+    var ajaxurl = wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
+	var nonce = jQuery('#wpstream_start_event_nonce').val();
+
     jQuery.ajax({
         type: 'POST',
         dataType: 'json',
@@ -410,7 +447,7 @@ function wpstream_check_event_status_in_js(channel_id,notes,successCallback, err
             'action'            :   'wpstream_check_event_status',
             'channel_id'        :   channel_id,
             'notes'             :   notes,
-         
+	        'nonce'             :   nonce
         },
         success: function (data) {
 
@@ -449,11 +486,21 @@ function wpstream_event_ready_make_actions_visible(parent){
     parent.find('.wpstream-button-icon').removeClass('wpstream_inactive_icon');
     parent.find('.wpstream_show_settings').addClass('wpstream_inactive_icon');
     const channelStatus = parent.find('.wpstream_channel_status');
-    if ( channelStatus.css('display', 'none') ) {
-        channelStatus.text(wpstream_start_streaming_vars.channel_on);
-        channelStatus.fadeIn(200);
-    }
-
+	channelStatus.each(function( index, element ) {
+		if ( !jQuery(element).hasClass('not_ready_to_stream') && jQuery(element).css('display', 'none') ) {
+			console.log('put back channel on');
+			jQuery(element).text(wpstream_start_streaming_vars.channel_on);
+			jQuery(element).fadeIn(200);
+		}
+		if ( jQuery(element).hasClass('not_ready_to_stream') ) {
+			console.log('hide the element');
+			jQuery(element).hide();
+		}
+	});
+	const stopEventButton = parent.find('.wpstream_stop_event');
+	if ( stopEventButton.css('display', 'none') ) {
+		stopEventButton.fadeIn(200);
+	}
     var webcasterUrl = parent.find('.start_webcaster').attr('data-webcaster-url');
     if (webcasterUrl === ""){
         parent.find('.start_webcaster').addClass('wpstream_inactive_icon');
@@ -576,9 +623,10 @@ function wpestate_start_modal_actions(){
 
         jQuery('.wpstream_modal_background').show();
         var modal_class=jQuery(this).attr('data-modal');
+		wpstream_safe_track_onboarding( 'open_modal', 'wpstream_' + post_type, 'button', modal_class );
         var parent =jQuery(this).closest('.event_list_unit');
         jQuery('.wpstream_modal_background').show();
-        parent.find("."+modal_class).show();
+        parent.find("."+modal_class).css('display','flex').css('flex-direction','column');
     })
 
     jQuery('.wpstream_external_broadcast_options').change(function(event){
@@ -707,10 +755,13 @@ function wpstream_webcaster_actions(){
         if(jQuery(this).hasClass('wpstream_inactive_icon')){
             return;
         }
+		wpstream_safe_track_onboarding( 'open_webcaster', 'wpstream_' + post_type );
         var $this = jQuery(this);
         var ajaxurl = wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
         var channelId      = jQuery(this).closest('.event_list_unit').data('show-id');
         var whipUrl = '';
+		var pendingPopup = window.open('', '_blank', 'location=yes,scrollbars=yes,status=yes');
+		var nonce = jQuery('#wpstream_start_event_nonce').val();
 
         jQuery.ajax({
             type: 'POST',
@@ -720,6 +771,7 @@ function wpstream_webcaster_actions(){
             data: {
                 'action': 'wpstream_check_whipurl',
                 'channel_id': channelId,
+	            'nonce': nonce,
             },
             success: function (data) {
                 if( data.success == true ){
@@ -728,7 +780,14 @@ function wpstream_webcaster_actions(){
 	                if ( whipUrl !== '' ) {
 		                // Open the new broadcaster in a new window
 		                var broadcasterUrl = wpstream_start_streaming_vars.broadcaster_url + channelId;
-		                window.open(broadcasterUrl, 'wpstream_broadcaster_' + channelId, 'fullscreen=yes');
+		                // window.open(broadcasterUrl, 'wpstream_broadcaster_' + channelId, 'fullscreen=yes');
+		                if (pendingPopup) {
+			                pendingPopup.location.href = broadcasterUrl;
+		                } else {
+							if (pendingPopup) {
+								pendingPopup.close();
+							}
+		                }
 	                }
                 } else {
 	                var caster_url = $this.attr('data-webcaster-url');
@@ -982,4 +1041,14 @@ function wpstream_check_server_status(url_param,callback) {
         }
     });
 }
-    
+
+function wpstream_convert_mb_to_gb(megabits) {
+	let gigabit = megabits / 1000;
+	gigabit = parseFloat( gigabit.toFixed( 1 ) );
+
+	if ( gigabit < 0 ) {
+		return 0
+	}
+
+	return gigabit;
+}

@@ -1,3 +1,12 @@
+let sessionId = '';
+
+const urlParams = new URLSearchParams(window.location.search);
+if ( urlParams.get('page') === 'wpstream_onboard' ) {
+	sessionId = crypto.randomUUID();
+} else {
+	sessionId = urlParams.get('session_id');
+}
+
 const ONBOARD=(function(){
 
     document.addEventListener('DOMContentLoaded',init);
@@ -224,6 +233,7 @@ const ONBOARD=(function(){
     ];
    
     function init(){
+	    wpstream_policy_privacy_checkbox();
         wpstream_by_pass_login();
         wpstream_onboard_login();
         wpstream_get_videos_list();
@@ -239,6 +249,14 @@ const ONBOARD=(function(){
         wpstream_onboard_initial_bubble_prev_action();
      
     }
+
+	function wpstream_policy_privacy_checkbox() {
+		jQuery('.wpstream_onboard_register').attr('disabled', true);
+
+		jQuery('#wpstream_register_privacy').on('change', function() {
+			jQuery('.wpstream_onboard_register').attr('disabled', !this.checked);
+		})
+	}
     
     /*
     *  Start browser broadcaster
@@ -267,7 +285,7 @@ const ONBOARD=(function(){
             
             var nextThing = 'wpstream_step_2';
             jQuery('.wpstream_step_wrapper').hide();
-            jQuery('#'+nextThing).show();    
+            jQuery('#'+nextThing).show();
            
     
         }else{
@@ -338,6 +356,8 @@ const ONBOARD=(function(){
 
             }
         });
+
+		wpstream_track_onboarding_step( 'account_login', 'login_step', 'button', 'account_login_button' );
     }
 
     function wpstream_get_videos_list() {
@@ -439,6 +459,7 @@ const ONBOARD=(function(){
             var nonce                           =   jQuery('#wpstream_onboarding_nonce').val();
             var wpstream_register_captcha       =   jQuery('#wpstream_register_captcha').val();
             var wpstream_register_captcha_id    =   jQuery('#wpstream_register_captcha_id').val();
+			var wpstream_privacy_checkbox       =   jQuery('#wpstream_register_privacy').is(':checked');
 
           
         
@@ -447,6 +468,12 @@ const ONBOARD=(function(){
                 button.css('pointer-events','auto');
                 return;
             }
+
+			if( !wpstream_privacy_checkbox ){
+				jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text('You must agree to the Privacy Policy to continue.').show();
+				button.css('pointer-events','auto');
+				return;
+			}
 
 
             jQuery('.wpstream_onboarding_notification').removeClass('onboarding_error').text('Sending data. Please Stand by...').show();
@@ -471,6 +498,7 @@ const ONBOARD=(function(){
                             jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text('We couldn\'t authenticate with your new credentials').show();
                         }else{
                             jQuery('.wpstream_onboarding_notification').text('Registration successful, please stand by...').show();
+	                        wpstream_track_onboarding_step( 'register_account', 'wpstream_step_1' );
                             setTimeout(function() {
 
                                 var nextThing = 'wpstream_step_2';
@@ -492,7 +520,8 @@ const ONBOARD=(function(){
                     button.css('pointer-events','auto');
                 }
             });
-        
+
+	        wpstream_track_onboarding_step('register_account', 'register_step', 'button', 'register_account_button');
     }
 
 
@@ -576,7 +605,8 @@ const ONBOARD=(function(){
             jQuery('.wpstream_onboarding_notification').hide();
             jQuery('.wpstream_on_board_register_wrapper').hide();
             jQuery('.wpstream_on_board_login_wrapper').show();
-            jQuery('#wpstream_onboarding_action_register').show();     
+            jQuery('#wpstream_onboarding_action_register').show();
+			wpstream_track_onboarding_step( 'already_have_account', 'register_step', 'link' );
         });
 
         jQuery('#wpstream_onboarding_action_register').on('click',function(){
@@ -584,14 +614,18 @@ const ONBOARD=(function(){
             jQuery('.wpstream_onboarding_notification').hide();
             jQuery('.wpstream_on_board_login_wrapper').hide();
             jQuery('.wpstream_on_board_register_wrapper').show();
-            jQuery('#wpstream_onboarding_action_login').show();     
+            jQuery('#wpstream_onboarding_action_login').show();
+	        wpstream_track_onboarding_step( 'back_to_registration', 'login_step', 'link' );
         });
 
 
         jQuery('.wpstream_action_next_step').on('click',function(){
             var nextThing = jQuery(this).attr('data-nextthing');
             jQuery('.wpstream_step_wrapper').hide();
-            jQuery('#'+nextThing).show();       
+            jQuery('#'+nextThing).show();
+			var buttonStep = jQuery(this).parent().attr('id');
+
+			wpstream_track_onboarding_step( 'step_button_press', onboarding_step_to_string(buttonStep) + '_step', 'button', onboarding_step_to_string(nextThing) + '_button'  );
         });
     }
 
@@ -637,7 +671,9 @@ const ONBOARD=(function(){
                 if( data.success ) {
                     var new_link = data.link;
                     var decoded = new_link.replace(/&amp;/g, '&');
-                    window.location.href=decodeURI(decoded);
+					var redirectUrl = new URL(decoded, window.location.origin);
+	                redirectUrl.searchParams.append('session_id', sessionId);
+                    window.location.href = redirectUrl.toString();
                 } else {
                     jQuery('#wpstream_onboard_live_notice').empty().addClass('onboarding_error').show().text(wpstream_admin_control_vars.channel_create_error)
                     jQuery('#wpstream_on_board_create_channel').prop('disabled', false);
@@ -648,6 +684,8 @@ const ONBOARD=(function(){
                 jQuery('#wpstream_on_board_create_channel').prop('disabled', false);
             }
         });
+
+	    wpstream_track_onboarding_step( 'create_free_channel_button', 'create_free_channel' );
     }
 
     /*
@@ -707,6 +745,8 @@ const ONBOARD=(function(){
                 jQuery('#wpstream_onboard_live_ppv_action').prop('disabled', false);
             }
         });
+
+		wpstream_track_onboarding_step( 'create_ppv_channel_button', 'create_ppv_channel' );
     }
 
 
@@ -838,6 +878,8 @@ const ONBOARD=(function(){
                 jQuery('#wpstream_onboard_vod_ppv_action').prop('disabled', false);
             }
         });
+
+		wpstream_track_onboarding_step( 'create_ppv_vod', 'create_vod' );
     }
 
     /*
@@ -898,8 +940,15 @@ const ONBOARD=(function(){
       
         jQuery('.wpstream_close_initial_onboarding').on('click',function(){
             var parent_modal=jQuery(this).parent();
+	        parent_modal.find('.wpstream_step_wrapper').each(function() {
+		        if (jQuery(this).css('display') === 'block') {
+			        var current_step = jQuery(this).attr('id');
+			        wpstream_track_onboarding_step( 'close_onboarding', onboarding_step_to_string(current_step) + '_step' );
+		        }
+	        });
             parent_modal.find('.wpstream_close_initial_onboarding,.wpstream_step_wrapper').hide();
             parent_modal.find('.wpstream_close_onboarding_warning').show().html('You can run the wizard again at any time.</br> In the left menu navigate to WpStream -> WpStream Quick Start <div id="wpstrean_close_modal_ack" class="wpstrean_close_modal_ack_action">Okay, Close it now!</div>');
+
             wpstrean_close_modal_ack_function();
         });
     }
@@ -912,6 +961,7 @@ const ONBOARD=(function(){
     function wpstrean_close_modal_ack_function(){
         jQuery('.wpstrean_close_modal_ack_action').on('click',function(){
 
+			wpstream_onboarding_close_modal_logic( 'close_onboarding_acknowledge', 'wpstream_close_notice' );
             var parent_modal=jQuery(this).parent();
             parent_modal.hide();
             jQuery('.wpstream_modal_background_onboard2,.wpstream_modal_background_onboard').hide();
@@ -933,6 +983,9 @@ const ONBOARD=(function(){
             var prev_step = jQuery(this).attr('data-step');
             jQuery('.wpstream_step_wrapper').hide();
             jQuery("#"+prev_step).show();
+
+			var current_step = jQuery(this).parent().parent().attr('id');
+			wpstream_track_onboarding_step( 'prev_button_click' , onboarding_step_to_string(current_step) + '_step' );
         });
 
 
@@ -1121,6 +1174,7 @@ const ONBOARD=(function(){
     }
 
 	function wpstream_onboarding_close_modal_logic(context) {
+		wpstream_track_onboarding_step( 'close_onboarding', 'close_modal_acknowledge' );
 		jQuery('.wpstream_onboard_bubble_finish').hide();
 		var parent_modal=jQuery(context).parent();
 
@@ -1150,8 +1204,10 @@ const ONBOARD=(function(){
             current_bubble_step     =   parseInt(current_bubble_step,10);
             if( jQuery(this).hasClass('wpstream_onboard_bubble_next')){
                 current_bubble_step++;
+	            wpstream_track_onboarding_step( 'onboard_wpstream_navigation_' + branch_to_string(wpstreamonboarding_js_vars.branch), 'onboarding_step_' + current_bubble_step, 'button', 'next' );
             }else{
                 current_bubble_step--;
+				wpstream_track_onboarding_step( 'onboard_wpstream_navigation_' + branch_to_string(wpstreamonboarding_js_vars.branch), 'onboarding_step_' + current_bubble_step, 'button', 'prev' );
             }
         
             if( current_bubble_step<0){ 
@@ -1182,3 +1238,9 @@ const ONBOARD=(function(){
 
     }
 })();
+
+
+window.addEventListener('DOMContentLoaded', function() {
+
+});
+

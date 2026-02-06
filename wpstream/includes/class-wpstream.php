@@ -77,6 +77,7 @@ class Wpstream {
         
         public $wpstream_live_connection;
         public $wpstream_player;
+        public $quota_manager;
         public $xtest;
         public $plugin_admin;
         
@@ -100,17 +101,17 @@ class Wpstream {
 
         $this->wpstream_conection();
         $this->wpstream_player();
+        $this->wpstream_init_quota_manager();
 
 	}
 
-        
-        
-        
-        
+
+
+
+
         public function wpstream_convert_band($megabits){
-            $gigabit    =   $megabits   *   0.001;
-            $gigabit = floatval(sprintf('%.1f', $gigabit));
-            return $gigabit;
+            $gigabit = $megabits * 0.001;
+            return floatval( sprintf( '%.1f', $gigabit ) );
         }
 
 
@@ -131,6 +132,11 @@ class Wpstream {
         private function wpstream_player(){
             require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-player.php';
             $this->wpstream_player = new Wpstream_Player($this->main);
+        }
+
+        private function wpstream_init_quota_manager() {
+            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-quota-manager.php';
+            $this->quota_manager = new Wpstream_Quota_Manager( $this );
         }
 
 
@@ -270,6 +276,8 @@ class Wpstream {
                 $this->loader->add_action( 'wp_ajax_wpstream_complete_multipart_upload', $plugin_admin, 'handle_complete_multipart_upload' );
 
                 $this->loader->add_action( 'admin_notices',                             $plugin_admin,'wpstream_admin_notice' );
+                $this->loader->add_action( 'admin_notices',      $plugin_admin,'wpstream_plugin_update_available_notice' );
+
                 $this->loader->add_action( 'wp_ajax_wpstream_update_cache_notice',      $plugin_admin,'wpstream_update_cache_notice' );
 //		        $this->loader->add_action( 'wp_ajax_wpstream_get_videos_list',  $plugin_admin,'wpstream_get_videos_list' );
 
@@ -449,9 +457,9 @@ class Wpstream {
                 
                 print '<div class="pack_details_wrapper">'
 				    . '<strong>' . __('Your account information: ', 'wpstream') . '</strong> '
-				    . __('You have', 'wpstream') . '<strong> ' . abs( $wpstream_convert_band ) . ' GB</strong> '
-				    . __('available cloud data and', 'wpstream') . ' '
-				    . '<strong>' . $wpstream_convert_storage . ' GB</strong> '
+				    . __('You have ', 'wpstream') . '<strong id="wpstream_available_data">' . abs( $wpstream_convert_band ) . ' GB</strong> '
+				    . __('available cloud data and ', 'wpstream')
+				    . '<strong id="wpstream_available_storage">' . abs( $wpstream_convert_storage ) . ' GB</strong> '
 				    . __('available cloud storage', 'wpstream') . '.';
 
                 print '<a href="https://wpstream.net/pricing/" class="wpstream_upgrade_topbar" target="_blank">'.esc_html__('Upgrade Plan','wpstream').'</a>';
@@ -851,7 +859,7 @@ class Wpstream {
         
         public function wpstream_check_user_can_stream(){
             $current_user       =   wp_get_current_user();
-            
+
             if( !is_user_logged_in() ){
                 return false;
                 exit('user not logged in');
@@ -863,12 +871,15 @@ class Wpstream {
             }
             
             $extra_roles    =   get_option( 'wpstream_stream_role', true );
-            $user_role      =   $current_user->roles[0];
-           
-            if (is_array($extra_roles) && in_array($user_role, $extra_roles)){
+            $user_role = '';
+            if( is_array( $current_user->roles) && count( $current_user->roles ) > 0 ){
+                $user_role = $current_user->roles[0];
+            }
+
+            if ( is_array($extra_roles) && in_array( $user_role, $extra_roles ) ) {
                 return true;
             }
-            
+
             if(function_exists('wpstream_get_option') && intval(wpstream_get_option('allow_streaming_regular_users',''))==1 ){
                 return true;
             }

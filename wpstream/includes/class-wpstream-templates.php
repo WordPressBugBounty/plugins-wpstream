@@ -53,8 +53,8 @@ class WpStream_Template_Loader {
 				}
 			}
 
-			if ( is_post_type_archive( 'wpstream_bundles' ) ) {
-				$template_file = $single_template_path . 'archive-wpstream_bundles.php';
+			if ( is_singular( 'wpstream_bundles' ) ) {
+				$template_file = $single_template_path . 'single-wpstream_bundles.php';
 				if ( file_exists( $template_file ) ) {
 					$template = $template_file;
 				}

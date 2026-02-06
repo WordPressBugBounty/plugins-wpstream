@@ -116,7 +116,7 @@ if ( empty( $preview[0] ) ) {
                         echo wpstream_theme_get_svg_icon( 'play_icon_white.svg' );
                         ?>
                     </span>
-                    <?php echo esc_html__( 'Play Video', 'hello-wpstream' ); ?>
+                    <?php echo esc_html__( 'Watch Now', 'hello-wpstream' ); ?>
                 </a>
 
                 <div class="d-flex align-items-center gap-2">

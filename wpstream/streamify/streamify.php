@@ -21,6 +21,7 @@ function wpstreamify_proxy_handler() {
 
     if ($fileExtension === 'ts' || $fileExtension === 'm3u8') {
         wpstreamify_process_hls_request($fileExtension, $cacheFile, $remoteUrl);
+
     } else {
         wpstreamify_serve_404();
     }
@@ -117,6 +118,9 @@ function wpstreamify_serve_cached_file($fileExtension, $cacheFile, $cacheStatus)
         header('Content-Type: application/vnd.apple.mpegurl');
         header('Cache-Control: public, max-age=2, must-revalidate'); 
         header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 2) . ' GMT');
+        if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+            define( 'DONOTCACHEPAGE', true );
+        }
     }
 
     header("WPS-Cache-Status: $cacheStatus");

@@ -76,6 +76,28 @@
     padding: 10px;
 }
 
+.wpstream-video-container {
+    position: relative;
+}
+.wpstream-pre-load-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -25px 0 0 -25px;
+    opacity: 0.85;
+    border-radius: 40px;
+    border: 6px solid rgba(43, 51, 63, 0.7);
+    border-top-color: white;
+    animation: wpstream-spinner-spin 1.1s linear infinite;
+    z-index: 1;
+}
+
+@keyframes wpstream-spinner-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
 .wpstream_not_live_mess_mess{
     color: #fff;
@@ -145,7 +167,6 @@
 .wpstream_player_wrapper.no_buy{
     position:relative;
     height: 30px;
-    position: relative;
     background: transparent;
     margin-bottom: 15px;
 }
@@ -214,7 +235,7 @@
     opacity: 1;
 }
 
-.video-js.vjs-logo.logo-top .vjs-logo-content {
+.video-js.vjs-logo.logo-top.logo-left .wpestream_live_counting:not(:empty)~.vjs-logo-content {
     top: 30px !important;
 }
 
@@ -228,6 +249,12 @@
 
 .video-js.vjs-has-started .vjs-logo-content img {
     height: auto;
+}
+
+@media only screen and (max-width: 768px) {
+    .vjs-logo-content > img {
+        width: 50%;
+    }
 }
 
 .video-js .vjs-volume-level:before {
