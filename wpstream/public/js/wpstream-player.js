@@ -1338,7 +1338,19 @@ function wpstream_player_initialize_vod(settings) {
   };
 
   player.src({ ...initialSrc, autoplay: true, muted: true });
-  if (titleOverlay){
+
+	if ( settings.captionsUrl ) {
+		const trackObject = player.addRemoteTextTrack({
+			kind: 'captions',
+			src: settings.captionsUrl,
+			srclang: 'en',
+			label: 'English',
+			default: true
+		}, false);
+		trackObject.track.mode = "showing";
+	}
+
+	if (titleOverlay){
     player.el().appendChild(titleOverlay);
   }
 

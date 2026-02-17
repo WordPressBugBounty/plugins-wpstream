@@ -16,59 +16,58 @@ if (!defined('ABSPATH')) exit;
             return;
         }
         $demo_array= array(
-                'main-demo' =>  array(
-                    'import_file_name'              =>  'Main Demo',
-                    'import_file_url'             =>  'https://wpstream.net/downloads/demos/main/demo-content.xml',
-                    'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/main/widgets.wie',
-                    'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/main/customizer.dat',
-                    'import_preview_image_url'      =>  'https://wpstream.net/downloads/demos/main/preview.png'  ,
-                    'import_notice'                 =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
-                    'preview_url'                   =>  'https://theme.wpstream.net/',
-                    
-                ),
-                'esports-demo' =>  array(
-                                'import_file_name'              =>  'ESports Demo',
-                                'import_file_url'             =>  'https://wpstream.net/downloads/demos/esports/esports-demo.xml',
-                                'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/esports/widgets.wie',
-                                'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/esports/customizer.dat',
-                                'import_preview_image_url'      =>  'https://wpstream.net/downloads/demos/esports/preview.png' ,
-                                'import_notice'                 =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
-                                'preview_url'                   =>  'https://esports.wpstream.net/',
-                                
-                ),
-                'church-demo' =>  array(
-                                'import_file_name'              =>  'Church Demo',
-                                'import_file_url'             =>  'https://wpstream.net/downloads/demos/church/church-demo.xml',
-                                'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/church/widgets.wie',
-                                'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/church/customizer.dat',
-                                'import_preview_image_url'      =>  'https://wpstream.net/downloads/demos/church/preview.png' ,
-                                'import_notice'                 =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
-                                'preview_url'                   =>  'https://church.wpstream.net/',
-                                
-                ),
-		        'live-shopping-demo' =>  array(
-			        'import_file_name'            =>  'Live Shopping Demo',
-			        'import_file_url'             =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_content.xml',
-			        'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_widgets.wie',
-			        'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_customizer.dat',
-			        'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/live-shoping/preview.png' ,
-			        'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
-			        'preview_url'                 =>  'https://liveshopping.wpstream.net/',
-		        ),
-	            'believe-demo' => array(
-		            'import_file_name'            =>  'Believe Demo',
-		            'import_file_url'             =>  'https://wpstream.net/downloads/demos/believe/believe-demo.xml',
-		            'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/believe/widgets.wie',
-		            'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/believe/customizer.dat',
-		            'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/believe/preview.png' ,
-		            'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
-		            'preview_url'                 =>  'https://believe.wpstream.net/',
-	            )
-        );
+			'main-demo' =>  array(
+				'import_file_name'            =>  'Main Demo',
+				'import_file_url'             =>  'https://wpstream.net/downloads/demos/main/demo-content.xml',
+				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/main/widgets.wie',
+				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/main/customizer.dat',
+				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/main/preview.png'  ,
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'preview_url'                 =>  'https://theme.wpstream.net/',
 
-        return $demo_array;
-    
-    }
+			),
+			'esports-demo' =>  array(
+				'import_file_name'            =>  'ESports Demo',
+				'import_file_url'             =>  'https://wpstream.net/downloads/demos/esports/esports-demo.xml',
+				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/esports/widgets.wie',
+				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/esports/customizer.dat',
+				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/esports/preview.png' ,
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'preview_url'                 =>  'https://esports.wpstream.net/',
+			),
+			'church-demo' =>  array(
+				'import_file_name'            =>  'Church Demo',
+				'import_file_url'             =>  'https://wpstream.net/downloads/demos/church/church-demo.xml',
+				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/church/widgets.wie',
+				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/church/customizer.dat',
+				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/church/preview.png' ,
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'preview_url'                 =>  'https://church.wpstream.net/',
+
+			),
+			'live-shopping-demo' =>  array(
+				'import_file_name'            =>  'Live Shopping Demo',
+				'import_file_url'             =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_content.xml',
+				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_widgets.wie',
+				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_customizer.dat',
+				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/live-shoping/preview.png' ,
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'preview_url'                 =>  'https://liveshopping.wpstream.net/',
+			),
+			'believe-demo' => array(
+				'import_file_name'            =>  'Believe Demo',
+				'import_file_url'             =>  'https://wpstream.net/downloads/demos/believe/believe-demo.xml',
+				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/believe/widgets.wie',
+				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/believe/customizer.dat',
+				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/believe/preview.png' ,
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'preview_url'                 =>  'https://believe.wpstream.net/',
+			)
+		);
+
+	return $demo_array;
+
+	}
 
 
 
@@ -97,6 +96,9 @@ if (!defined('ABSPATH')) exit;
         update_option( 'page_on_front', $front_page_id->ID );
         update_option( 'page_for_posts', $blog_page_id->ID );
 
+		// disable coming soon mode of WooCommerce
+	    // so users can see the paid channels/VODs after demo import
+	    update_option('woocommerce_coming_soon', 'no');
     }
   
 

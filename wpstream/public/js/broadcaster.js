@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	const statusText = document.getElementById("statusText");
 	const liveIndicatorLive = document.getElementById("videoLiveIndicatorLive");
 	const liveIndicatorError = document.getElementById("videoLiveIndicatorError");
+	const loadSpinner = document.getElementById("wpstream-pre-load-spinner");
 
 	// Resolution mappings from demo
 	const userResolutions = {
@@ -264,6 +265,11 @@ document.addEventListener("DOMContentLoaded", function () {
 			streamingButton.disabled = true;
 		}
 
+		// Show the loading spinner
+		if (loadSpinner) {
+			loadSpinner.style.display = "block";
+		}
+
 		if (input) {
 			input.remove();
 			input = null;
@@ -331,6 +337,9 @@ document.addEventListener("DOMContentLoaded", function () {
 						console.log('connection closed, not reconnecting');
 						// updateInputState(false);
 					}
+					if (loadSpinner) {
+						loadSpinner.style.display = "none";
+					}
 				},
 				iceStateChange: function (state) {
 					console.log("ICE state changed:", state);
@@ -369,6 +378,9 @@ document.addEventListener("DOMContentLoaded", function () {
 						if (streamingButton) {
 							streamingButton.disabled = false;
 						}
+						if (loadSpinner) {
+							loadSpinner.style.display = "none";
+						}
 
 						if ( shouldAutoStart && considerReconnect ) {
 							startStreaming(true);
@@ -380,6 +392,9 @@ document.addEventListener("DOMContentLoaded", function () {
 							showMessage('Failed to access screen sharing.', 'error');
 							considerReconnect = false;
 							updateInputState(false);
+						}
+						if (loadSpinner) {
+							loadSpinner.style.display = "none";
 						}
 					});
 			} else {
@@ -394,6 +409,9 @@ document.addEventListener("DOMContentLoaded", function () {
 						if ( shouldAutoStart && considerReconnect ) {
 							startStreaming(true);
 						}
+						if (loadSpinner) {
+							loadSpinner.style.display = "none";
+						}
 					})
 					.catch(function (error) {
 						console.error('Failed to get user media:', error);
@@ -401,6 +419,9 @@ document.addEventListener("DOMContentLoaded", function () {
 							showMessage('Failed to access camera/microphone.', 'error');
 							considerReconnect = false;
 							updateInputState(false);
+						}
+						if (loadSpinner) {
+							loadSpinner.style.display = "none";
 						}
 					});
 			}
@@ -663,6 +684,25 @@ document.addEventListener("DOMContentLoaded", function () {
 		audioToggle.addEventListener("click", function () {
 			audioEnabled = !audioEnabled;
 			toggleAudio(audioEnabled);
+		});
+	}
+
+	// Mobile video expand toggle
+	const expandToggle = document.getElementById("videoExpandToggle");
+	if (expandToggle) {
+		expandToggle.addEventListener("click", function () {
+			const container = document.querySelector(".video-container");
+			if (container) {
+				container.classList.toggle("expanded");
+				// Sync accessibility attributes with visual state
+				const isExpanded = container.classList.contains("expanded");
+				expandToggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+				// Ensure the toggle references the controlled element
+				if (!container.id) {
+					container.id = "videoContainer";
+				}
+				expandToggle.setAttribute("aria-controls", container.id);
+			}
 		});
 	}
 

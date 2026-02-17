@@ -1343,6 +1343,14 @@ video::-webkit-media-text-track-display {
   cursor: pointer;
   flex: none; }
 
+.video-js .vjs-subs-caps-button .vjs-icon-placeholder:before {
+    line-height: 28px !important;
+}
+
+.vjs-subs-caps-button .vjs-menu .vjs-texttrack-settings {
+    display: none;
+}
+
 .vjs-playback-rate > .vjs-menu-button,
 .vjs-playback-rate .vjs-playback-rate-value {
   position: absolute;

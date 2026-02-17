@@ -206,6 +206,9 @@ class Wpstream_Admin {
                         'video_processing'         => esc_html__( 'The video is still processing', 'wpstream' ),
                         'file_name_text'           => esc_html__('File Name:','wpstream'),
                         'channel_create_error'     => esc_html__('Something did not work. Please try again.', 'wpstream'),
+                        'select_caption_file'      => esc_html__('Select .vtt Captions File', 'wpstream'),
+                        'select_button'            => esc_html__('Select', 'wpstream'),
+                        'remove_button'            => esc_html__('Remove', 'wpstream'),
                     ));
                 
                 wp_enqueue_script('wpstream-recordings-videos-list',   plugin_dir_url( __FILE__ ) .'js/recordings_videos_list.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
@@ -630,7 +633,7 @@ class Wpstream_Admin {
                 $live_data_url                  =   get_post_meta($the_id,'qos_url',true);
               //  $channel_status                 =   esc_html__('Channel is on','wpstream');
             } else {
-                $channel_status                 =   esc_html__('Channel is OFF','wpstream');
+                $channel_status                 = esc_html__('Channel is OFF','wpstream');
                 $button_status                  = esc_html__('TURN ON','wpstream');
             }
 
@@ -2591,7 +2594,8 @@ class Wpstream_Admin {
                 $allowed_keys=array(
                     'wpstream_product_type',
                     'wpstream_free_video',
-                    'wpstream_free_video_external'
+                    'wpstream_free_video_external',
+                    'wpstream_closed_captions_file'
                 );
 
 
@@ -2714,28 +2718,40 @@ class Wpstream_Admin {
                 $video_list =  $this->main->wpstream_live_connection->wpstream_get_videos();
                 
 
-                print '
-                <p class="meta-options video_free">
-                    <label for="wpstream_free_video">'.__('Choose video:','wpstream').' </label><br />
+                print '<div class="meta-options video_free">';
+                print '<p class="meta-option wpstream_free_video">';
+                print '<label for="wpstream_free_video">'.__('Choose video:','wpstream').' </label><br />
                     <select id="wpstream_free_video" name="wpstream_free_video">';
-                        
-                        if(is_array($video_list)){
-                            foreach ($video_list as $key=>$value){
-                                print '<option value="'.$key.'"'; 
-                                if($wpstream_free_video === $key){
-                                   print ' selected ';
-                                }
-                                print '>'.$value.'</option>';
-                            }
+
+                if( is_array( $video_list ) ) {
+                    foreach ($video_list as $key=>$value){
+                        print '<option value="'.$key.'"';
+                        if($wpstream_free_video === $key){
+                            print ' selected ';
                         }
-                        
-                 print'
-                    </select>
-                </p>        
-                ';  
+                        print '>'.$value.'</option>';
+                    }
+                }
+                print'</select>';
+                print '</p> ';
+
+                $wpstream_closed_captions_file = get_post_meta($post->ID, 'wpstream_closed_captions_file', true);
+
+                $button_style = $wpstream_closed_captions_file ? 'style="display:none;"' : '';
+
+                print '<p class="meta-option wpstream_vod_captions_url">';
+                print '<label for="wpstream_vod_captions_url_button">'.__('Captions file (optional):','wpstream').' </label><br />
+                        <input type="hidden" id="wpstream_closed_captions_file" name="wpstream_closed_captions_file" value="'.esc_attr($wpstream_closed_captions_file).'" />
+                        <input id="wpstream_vod_captions_url_button" type="button" class="upload_button button" value="'.esc_html__('Select .vtt Captions File','wpstream').'" '.$button_style.' />
+                        <span class="wpstream_caption_file_display">'.( $wpstream_closed_captions_file ? esc_html( basename( $wpstream_closed_captions_file ) ) : '' ).'</span>';
+                if ( $wpstream_closed_captions_file ) {
+                    print '<input type="button" class="button wpstream_remove_caption" value="'.esc_html__('Remove','wpstream').'" style="margin-left: 5px;" />';
+                }
+                print '</p> ';
+                print '</div>';
 
                 $wpstream_free_video_external=    esc_html(get_post_meta($post->ID, 'wpstream_free_video_external', true));
-                print '<p class="meta-options1 video_free_external">
+                print '<div class="meta-options1 video_free_external">
                         <label for="wpstream_free_video_external">'.__('Video:','wpstream').' </label><br />
 
                         <input id="wpstream_free_video_external" type="text" size="36" name="wpstream_free_video_external" value="'.$wpstream_free_video_external.'" />
@@ -2750,7 +2766,7 @@ class Wpstream_Admin {
                         print '<p '.$show_recording.' class="wpstream_option_vod_source wpstream_show_recording">'.esc_html__('Choose one of your existing recordings.','wpstream').'</p>';
                         print '<p '. $show_external.' class="wpstream_option_vod_source wpstream_show_external">'.esc_html__('Upload a video from your computer or paste the URL of a YouTube/external video.','wpstream').'</p>';
                      
-                print '</p> ';
+                print '</div> ';
         }
         
         
@@ -3325,7 +3341,7 @@ class Wpstream_Admin {
 
             $thumb= plugin_dir_url( dirname( __FILE__ ) ). 'img/logo_onboarding.svg';
             ?>
-
+            <div id="wpstream-onboarding-root"></div>
                 <div class="wpstream_quick_start_wrapper">
                     <img class="wpstream_onboarding_logo" src="<?php echo esc_url($thumb); ?>" />
 
@@ -3455,35 +3471,24 @@ class Wpstream_Admin {
                             </div>
 
                             <div class="wpstream_option">
-                                <label for="wpstream_register_password"><?php esc_html_e('Your Password','wpstream');?></label>
-                                <input id="wpstream_register_password" type="text" size="36"  name="wpstream_register_password" value="<?php echo $this->randomPassword();?>" />
+<!--                                <label for="wpstream_register_password">--><?php //esc_html_e('Your Password','wpstream');?><!--</label>-->
+                                <input id="wpstream_register_password" hidden type="text" size="36"  name="wpstream_register_password" value="<?php echo $this->randomPassword();?>" />
+                                <span class="" ><?php esc_html_e('We\'ll send the password to the email you attached. ', 'wpstream') ?></span>
                             </div>
 
                         
-                            <?php 
-                          
-                            $curl_response_decoded['capthca']='';
-                            $curl_response_decoded['capthca_id']='';
-
-
-                            if( isset($_GET['page']) &&  $_GET['page']==='wpstream_onboard') {                              
-                                $url                    =   'user/getcapthca';
-                                $curl_post_fields       =   array();
-                                $curl_response          =   $this->main->wpstream_live_connection->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-                                $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-                            
-                            }
-
-                            ?>
-                            <div class="wpstream_option">
-                                <?php print '<div id="wpstream_capthca">'.$curl_response_decoded['capthca'].'</div>';?>
-                                <label for="wpstream_register_captcha"><?php esc_html_e('Type the characters above','wpstream');?></label>
-                     
-                                <input id="wpstream_register_captcha" type="text" size="36"  name="wpstream_register_captcha" />
-                                <input id="wpstream_register_captcha_id" type="hidden" size="36"  name="wpstream_register_captcha_id" value="<?php echo esc_html($curl_response_decoded['capthca_id']); ?>" />
+                            <!-- Altcha Widget -->
+                            <script async defer src="https://cdn.jsdelivr.net/gh/altcha-org/altcha/dist/altcha.min.js" type="module"></script>
+                            <div class="wpstream_option" style="display:none;">
+                                <altcha-widget 
+                                    challengeurl="<?php echo esc_url( WPSTREAM_API . '/v2/user/getcaptcha' ); ?>"
+                                    name="altcha"
+                                    auto="onload"
+                                    hidefooter
+                                    hidelogo
+                                    strings='{"label": "<?php esc_html_e('I am not a robot', 'wpstream'); ?>", "error": "<?php esc_html_e('Verification failed', 'wpstream'); ?>", "wait": "<?php esc_html_e('Verifying...', 'wpstream'); ?>"}'
+                                ></altcha-widget>
                             </div>
-
-
 
                             <div class="wpstream_option wpstream_terms_agreement">
                                 <!-- Add "by registering you agree to the privacy terms" checkbox-->
@@ -3542,8 +3547,8 @@ class Wpstream_Admin {
             $alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
             $pass = array(); //remember to declare $pass as an array
             $alphaLength = strlen($alphabet) - 1; //put the length -1 in cache
-            for ($i = 0; $i < 8; $i++) {
-                $n = rand(0, $alphaLength);
+            for ($i = 0; $i < 16; $i++) {
+                $n = random_int(0, $alphaLength);
                 $pass[] = $alphabet[$n];
             }
             return implode($pass); //turn the array into a string
@@ -3562,9 +3567,9 @@ class Wpstream_Admin {
             <div class="wpstream_step_wrapper wpstream_step_2" id="wpstream_step_2"> 
                 <h1>Welcome to <span class="header_special">WpStream</span>! How would you like to start?</h1>
 
-                <div class="wpstream_accordion_header wpstream_action_next_step" data-nextthing="wpstream_step_3" ><?php esc_html_e('Go LIVE!','wpstream');?></div>
+                <div class="wpstream_accordion_header wpstream_action_next_step" data-nextthing="wpstream_step_3a" ><?php esc_html_e('Go LIVE!','wpstream');?></div>
                 <div class="wpstram_or">or</div>
-                <div class="wpstream_accordion_header wpstream_action_next_step" data-nextthing="wpstream_step_4"  ><?php esc_html_e('Create a Video-On-Demand (VOD)','wpstream');?></div>
+                <div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_2_create_vod" data-nextthing="wpstream_step_4a"  ><?php esc_html_e('Create a Video-On-Demand (VOD)','wpstream');?></div>
         
             </div>
 
@@ -3619,7 +3624,7 @@ class Wpstream_Admin {
                 </div>
           
                 <div class="wpstream_initial_onboarding_controls_wrapper">
-                    <span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_3"><?php esc_html_e('Prev','wpstream');?></span>
+                    <span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_2"><?php esc_html_e('Prev','wpstream');?></span>
                 </div>
 
             </div>
@@ -3659,7 +3664,7 @@ class Wpstream_Admin {
 
 
                 <div class="wpstream_initial_onboarding_controls_wrapper">
-                    <span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_3"><?php esc_html_e('Prev','wpstream');?></span>
+                    <span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_2"><?php esc_html_e('Prev','wpstream');?></span>
                 </div>
             </div>
             <?php
@@ -4124,6 +4129,26 @@ class Wpstream_Admin {
             
             }
         }
+
+        /**
+        * @param $challenge
+        * @param $difficulty
+        *
+        * @return int|null
+         */
+        private function solve_pow( $challenge, $difficulty ) {
+            $nonce = 0;
+            $target = str_repeat( "0", $difficulty );
+
+            while ( $nonce < 5000000 ) {
+                $hash = hash( 'sha256', $challenge . $nonce );
+                if ( strpos( $hash, $target ) === 0 ) {
+                    return $nonce;
+                }
+                $nonce++;
+            }
+            return null; // Return null if no solution is found within the max attempts
+        }
        
         /*
         *
@@ -4132,13 +4157,10 @@ class Wpstream_Admin {
         */
         public function wpstream_on_board_register(){
             check_ajax_referer( 'wpstream_onboarding_nonce', 'security' );
-            
             if(current_user_can('administrator')){
                 $wpstream_register_email            = sanitize_text_field($_POST['wpstream_register_email']);
                 $wpstream_register_password         = $_POST['wpstream_register_password'];
-                $wpstream_register_captcha          = sanitize_text_field($_POST['wpstream_register_captcha']);
-                $wpstream_register_captcha_id       = sanitize_text_field($_POST['wpstream_register_captcha_id']);
-                
+
                 $validate = $this->wpstream_validate_onboard_register($wpstream_register_email,$wpstream_register_password);
                 if(!$validate['success']){
                     // cleanup any previous echo before sending json
@@ -4147,21 +4169,27 @@ class Wpstream_Admin {
                     die();
                 }
 
-                $url='user/create';
+                $wpstream_altcha = isset($_POST['wpstream_altcha']) ? $_POST['wpstream_altcha'] : '';
+
+                if ( empty($wpstream_altcha) ) {
+                    echo json_encode(array(
+                            'success' => false,
+                            'message' => esc_html__('Captcha verification failed. Please try again.', 'wpstream')
+                    ));
+                    die();
+                }
+
+                $url='v2/user/create';
                 $curl_post_fields=array(
                     'email'         =>     $wpstream_register_email,
                     'password'      =>     $wpstream_register_password,
-                    'captcha'       =>     $wpstream_register_captcha, 
-                    'captcha_id'    =>     $wpstream_register_captcha_id,         
+                    'solution'      =>     $wpstream_altcha,
+                    'captcha_id'    =>     '',
                 );
-                
-            
                 
                 $curl_response          =   $this->main->wpstream_live_connection->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
                 $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
 
-             
-              
                 if($curl_response_decoded['success']){
 
                     if($curl_response_decoded['request']['registred']){
@@ -4253,7 +4281,7 @@ class Wpstream_Admin {
             if(filter_var($wpstream_register_email,FILTER_VALIDATE_EMAIL) === false) {
                 $return= array(
                     'success'=>  false, 
-                    'message'  =>  esc_html__("The email doesn't look right !",'wpstream')
+                    'message'  =>  esc_html__('The email doesn\'t look right !','wpstream')
                 );
                 return $return;die();
             }
@@ -4263,7 +4291,7 @@ class Wpstream_Admin {
             if( $domain!='' && !checkdnsrr ($domain) ){
                 $return= array(
                     'success'=>  false, 
-                    'message'  =>  esc_html__("The email doesn't look right !",'wpstream')
+                    'message'  =>  esc_html__('The email doesn\'t look right !','wpstream')
                 );
                 return $return;die();
             }

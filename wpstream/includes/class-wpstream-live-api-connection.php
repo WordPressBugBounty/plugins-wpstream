@@ -143,6 +143,9 @@ class Wpstream_Live_Api_Connection  {
                     case 429:
                         $message = "API: Too many Requests";
                         break;
+					case 403:
+						$message = "API: Access Forbidden with response: " . $response . ' and HTTP code: ' . $http_code;
+						break;
                     default:
                         $message = "API - Unexpected response: " . $http_code;
                         break;

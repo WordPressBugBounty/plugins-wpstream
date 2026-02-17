@@ -231,8 +231,9 @@ function wpstream_bind_start_event(button){
                         
                         }else{
                             curent_content.empty();
-                            var counter =  setInterval( function (){ 
-                            wpstream_check_live_connections_on_start(parent,show_id,data.event_data,data)},10000);
+                            var counter =  setInterval( function (){
+								wpstream_check_live_connections_on_start(parent,show_id,data.event_data,data)
+                            },10000);
                             counters['stop'+show_id]=counter;
                     
                         }
@@ -299,7 +300,6 @@ function wpstream_bind_stop_event(button){
             },
             success: function (data) {
 
-                console.log(data);
                 if(data.conected===true){
                     
                     thisButton.unbind('click');
@@ -398,6 +398,13 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
                 parent.parent().find('.wpstream_live_data').attr('href',server_status.live_data_url);         
                 clearInterval( counters["stop"+show_id]);
 
+				if (counters[show_id]) {
+					clearInterval(counters[show_id]);
+				}
+				var server_id   =   jQuery(this).attr('data-server-id');
+				counters[show_id] = setInterval( function (){
+					wpstream_check_live_connections_from_database(parent,show_id,server_id);
+				},60000);
 
                 if (typeof wpstream_integration_notifications === 'function') {
                     wpstream_integration_notifications(show_id);
@@ -405,7 +412,7 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
 
                 
             }else if(server_status.status==='stopped' ){    
-             
+             console.log('stopped status from _on_start');
                 clearInterval( counters["stop"+show_id]);
                 wpstream_event_stopped_make_actions(parent);
 
@@ -537,6 +544,12 @@ function wpstream_event_ready_make_actions_visible(parent){
         }
 
     }
+
+	// console.log('adding pending trigger');
+	// parent.addClass('pending_trigger');
+	// console.log('adding check for status');
+	// // wpstream_check_live_connections();
+	// console.log('parent ' , parent);
 }
 
 function wpstream_event_error_make_actions_visible(parent){
@@ -571,6 +584,30 @@ function wpstream_event_stopped_make_actions(parent){
     parent.find('.wpstream_statistics_channel').addClass('wpstream_inactive_icon');
 
     parent.find('.wpstream_channel_status').text(wpstream_start_streaming_vars.channel_off);
+}
+
+/*
+*
+* Make actions visible on event if stopped
+*
+*
+*/
+function wpstream_event_stopped_after_status_check(parent){
+
+	var actionButton = parent.find('.wpstream_stop_event');
+	actionButton.unbind('click');
+	wpstream_bind_start_event(actionButton);
+	parent.removeClass('wpstream_show_started');
+	actionButton.removeClass('wpstream_turning_on');
+	actionButton.addClass('start_event');
+	actionButton.html( wpstream_start_streaming_vars.start_streaming+'<div class="wpstream_tooltip">'+wpstream_start_streaming_vars.turned_on_tooltip+'</div>');
+
+	parent.find('.wpstream-button-icon').removeClass('wpstream_inactive_icon');
+	parent.find('.wpstream_stream_pro').addClass('wpstream_inactive_icon');
+	parent.find('.start_webcaster').addClass('wpstream_inactive_icon');
+	parent.find('.wpstream_statistics_channel').addClass('wpstream_inactive_icon');
+
+	parent.find('.wpstream_channel_status').text(wpstream_start_streaming_vars.channel_off);
 }
 
 
@@ -942,11 +979,13 @@ function wpstream_check_live_connections(){
         jQuery('.event_list_unit.pending_trigger').each(function(){
             var acesta      =   jQuery(this);
             var show_id     =   jQuery(this).attr('data-show-id');
-            var server_id   =   jQuery(this).attr('data-server-id');            
+            var server_id   =   jQuery(this).attr('data-server-id');
 
             wpstream_check_live_connections_from_database(acesta,show_id,server_id);
             var counter_long     =   '';
-            counter_long =  setInterval( function (){ wpstream_check_live_connections_from_database(acesta,show_id,server_id)},60000);
+            counter_long =  setInterval( function (){
+				wpstream_check_live_connections_from_database(acesta,show_id,server_id)
+            },60000);
             counters[show_id]=counter_long;
 
         });
@@ -968,7 +1007,7 @@ function wpstream_check_live_connections(){
 function wpstream_check_live_connections_from_database( acesta,channel_id,server_id){
     var server_status = wpstream_check_event_status_in_js(channel_id,'wpstream_check_live_connections_from_database',
         function(server_status){
-  
+
             if(server_status.status==='active' ){
                 
                 acesta.find('.wpstream_ready_to_stream .start_webcaster').attr('data-webcaster-url',server_status.webcaster_url);
@@ -980,7 +1019,7 @@ function wpstream_check_live_connections_from_database( acesta,channel_id,server
                 var larix_rtmp= server_status.obs_uri+server_status.obs_stream;
                 acesta.find('.wpstream_larix_rtmp').text(larix_rtmp);
 
-                acesta.find('.larrix_test').text(larix_rtmp); 
+                acesta.find('.larrix_test').text(larix_rtmp);
 
                 var   larix_qr ='larix://set/v1?conn[][url]='+encodeURIComponent(larix_rtmp);
                 acesta.find('.wpstream_start_with_larix_mobile').attr('href',larix_qr); 
@@ -992,6 +1031,9 @@ function wpstream_check_live_connections_from_database( acesta,channel_id,server
                 acesta.find('.wpstream_live_data').attr('href',server_status.live_data_url);
                 clearInterval( counters["stop"+channel_id]);
          
+            }else if(server_status.status==='stopped' ){
+	            clearInterval( counters["stop"+channel_id]);
+	            wpstream_event_stopped_after_status_check(acesta);
             }else if(server_status.status==='error' ){
                 
                 clearInterval( counters["stop"+channel_id]);

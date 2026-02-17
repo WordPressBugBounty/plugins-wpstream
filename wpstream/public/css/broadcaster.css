@@ -123,6 +123,15 @@ body.wpstream-broadcaster-page #wpadminbar {
     overflow: hidden;
 }
 
+@media screen and (max-width: 600px) {
+    .video-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-height: 60vh;
+    }
+}
+
 #localVideo {
     position: relative;
     z-index: 2;
@@ -178,6 +187,12 @@ body.wpstream-broadcaster-page #wpadminbar {
 .wrapper {
     display: flex;
     gap: 15px;
+}
+
+@media screen and (max-width: 768px) {
+    .wrapper {
+        flex-direction: column;
+    }
 }
 
 .status-indicator {
@@ -368,8 +383,41 @@ body.wpstream-broadcaster-page #wpadminbar {
     box-shadow: 0 0 0 1px #2271b1;
 }
 
+/* Code to expand portrait video on mobile */
 .settings-group select:disabled {
     background-color: #f0f0f1;
     cursor: not-allowed;
     opacity: 0.7;
+}
+
+/* Mobile Expand/Collapse Button */
+.video-expand-toggle {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    padding: 6px;
+    cursor: pointer;
+    line-height: 0;
+    transition: background 0.3s;
+}
+
+.video-expand-toggle:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+@media screen and (max-width: 600px) {
+    .video-expand-toggle {
+        display: block;
+    }
+
+    .video-container.expanded {
+        max-height: none !important;
+        height: auto;
+    }
 }

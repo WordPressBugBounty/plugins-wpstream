@@ -12,7 +12,8 @@ jQuery(document).ready(function ($) {
 
     WpStreamUtils.generate_download_link();
     WpStreamUtils.generate_delete_link();
-    wpstream_handle_video_selection();    
+    wpstream_handle_video_selection();
+	wpstream_handle_caption_selection();
     wpstream_upload_images_in_wpadmin();
 
     wpstream_upload_player_logo();
@@ -588,7 +589,52 @@ function wpstream_handle_video_selection(){
     });
 }
 
+/*
+* handle caption selection for recording
+ */
+function wpstream_handle_caption_selection(){
+	jQuery('#wpstream_vod_captions_url_button').on( 'click', function(event) {
+		event.preventDefault();
+		var parent = jQuery(this).parent();
+		var button = jQuery(this);
 
+		var mediaUploader = wp.media({
+			title: wpstream_admin_control_vars.select_caption_file,
+			button: {
+				text: 'Select'
+			},
+			multiple: false,
+			library: {
+				type: 'text/vtt'
+			}
+		});
+
+		mediaUploader.on("select", function(){
+			var attachment = mediaUploader.state().get("selection").first().toJSON();
+			parent.find('#wpstream_closed_captions_file').val(attachment.url);
+			parent.find('.wpstream_caption_file_display').text(attachment.filename);
+
+			button.hide();
+
+			if( parent.find('.wpstream_remove_caption').length === 0 ){
+				parent.append('<input type="button" class="button wpstream_remove_caption" value="' + wpstream_admin_control_vars.remove_button + '" style="margin-left: 5px;" />');
+			}
+		});
+
+		mediaUploader.open();
+	});
+
+	jQuery(document).on('click', '.wpstream_remove_caption', function(e){
+		e.preventDefault();
+		var parent = jQuery(this).parent();
+		parent.find('#wpstream_closed_captions_file').val('');
+		parent.find('.wpstream_caption_file_display').text('');
+
+		parent.find('#wpstream_vod_captions_url_button').show();
+
+		jQuery(this).remove();
+	});
+}
 
 /*
 * return uploaded image

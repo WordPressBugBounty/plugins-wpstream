@@ -364,9 +364,9 @@ const ONBOARD=(function(){
         var nonce   = jQuery('#wpstream_onboarding_video_list_nonce').val();
         var ajaxurl = wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
 
-        jQuery('.wpstream_action_next_step.wpstream_step_4a, .wpstream_action_next_step.wpstream_step_4b').on('click', function() {
+	    jQuery('.wpstream_step_2_create_vod').on('click', function() {
             // check the current object
-            var data_control = jQuery(this).attr('data-control');
+            var data_control = 'wpstream_onboard_vod_free';
             jQuery.ajax({
                 type: 'POST',
                 url: ajaxurl,
@@ -456,14 +456,13 @@ const ONBOARD=(function(){
             var wpstream_register_email         =   jQuery('#wpstream_register_email').val();
             var wpstream_register_password      =   jQuery('#wpstream_register_password').val();
             var ajaxurl                         =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
+            var wpstream_altcha                 =   jQuery('input[name="altcha"]').val();
             var nonce                           =   jQuery('#wpstream_onboarding_nonce').val();
-            var wpstream_register_captcha       =   jQuery('#wpstream_register_captcha').val();
-            var wpstream_register_captcha_id    =   jQuery('#wpstream_register_captcha_id').val();
 			var wpstream_privacy_checkbox       =   jQuery('#wpstream_register_privacy').is(':checked');
 
           
         
-            if(wpstream_register_email ==='' || wpstream_register_password==='' || wpstream_register_captcha===''){
+            if( wpstream_register_email ==='' || wpstream_register_password==='' ){
                 jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text('Please fill all the fields!').show();
                 button.css('pointer-events','auto');
                 return;
@@ -478,7 +477,6 @@ const ONBOARD=(function(){
 
             jQuery('.wpstream_onboarding_notification').removeClass('onboarding_error').text('Sending data. Please Stand by...').show();
         
-         
             jQuery.ajax({
                 type: 'POST',
                 url: ajaxurl,
@@ -487,12 +485,11 @@ const ONBOARD=(function(){
                     'action'                    :   'wpstream_on_board_register',
                     'wpstream_register_email'   :   wpstream_register_email,
                     'wpstream_register_password':   wpstream_register_password,
-                    'wpstream_register_captcha' :   wpstream_register_captcha,
-                    'wpstream_register_captcha_id': wpstream_register_captcha_id,
+	                'wpstream_altcha'           :   wpstream_altcha,
                     'security'                  :   nonce
                 },
                 success: function (data) {     
-                   
+
                     if(data.success){
                         if(data.token==='false' || data.token===false){
                             jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text('We couldn\'t authenticate with your new credentials').show();
@@ -504,14 +501,14 @@ const ONBOARD=(function(){
                                 var nextThing = 'wpstream_step_2';
                                 jQuery('.wpstream_step_wrapper').hide();
                                 jQuery('.wpstream_onboarding_notification').empty().hide();
-                                jQuery('#'+nextThing).show();    
-                            
+                                jQuery('#'+nextThing).show();
+
                             }, 2500);
                         }
                     }else{
                         jQuery('.wpstream_onboarding_notification').addClass('onboarding_error').text(data.message).show();
-                        wpstream_fetchCaptcha();
-                      
+                        // wpstream_fetchCaptcha();
+
                     }
                     button.css('pointer-events','auto');
                 
@@ -531,6 +528,28 @@ const ONBOARD=(function(){
     *
     */
 
+	async function sha256(message) {
+		const msgBuffer = new TextEncoder().encode(message);
+		const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+		const hashArray = Array.from(new Uint8Array(hashBuffer));
+		return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	}
+
+	async function wpstream_solve_pow(challenge, difficulty) {
+		let nonce = 0;
+		const target = "0".repeat(difficulty);
+
+		while (true) {
+			const hash = await sha256(challenge + nonce);
+			if (hash.startsWith(target)) {
+				return nonce;
+			}
+			nonce++;
+			if (nonce > 5000000) {
+				return null;
+			}
+		}
+	}
 
     async function wpstream_fetchCaptcha () {
       
@@ -542,9 +561,22 @@ const ONBOARD=(function(){
           
           fetch("https://baker.wpstream.net/user/getcapthca", requestOptions)
             .then(response => response.json())
-            .then(result => wpstream_process_capthca(result))
-            .catch(error => console.log('error', error));
+            .then( async result => {
+				if ( result.success && result.challenge ) {
+					const solution = await wpstream_solve_pow(result.challenge, result.difficulety || 4);
+					if ( solution !== null) {
+						jQuery('#wpstream_register_captcha').val(solution);
+						jQuery('#wpstream_register_captcha_id').val(result.id);
 
+						jQuery('#wpstream_captcha').hide();
+
+						jQuery('.wpstream_onboard_register').attr('disabled', false);
+					}
+				} else {
+					console.log('Security check init failed', result);
+				}
+	        })
+            .catch(error => console.log('error', error));
     }
 
 

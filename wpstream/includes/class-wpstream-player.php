@@ -41,7 +41,8 @@ class Wpstream_Player{
     */
     
     public function wpstream_player_check_status(){
-		check_ajax_referer('wpstream_player_check_status_nonce', 'nonce');
+		// did not add a nonce check here because this is a call done from the frontend
+	    // and the page might be cached, so the nonce would not be valid
         $channel_id = intval($_POST['channel_id']);
      
         
@@ -940,6 +941,8 @@ class Wpstream_Player{
 		            $player_logo_horizontal_position = 'logo-' . explode( '-', $player_logo_position )[1];
 	            }
 
+				$captionsUrl = get_post_meta( $product_id, 'wpstream_closed_captions_file', true );
+
                 echo '<video id="wpstream-video-vod-'.$now.'" class="'.esc_attr($has_trailer_class).' video-js vjs-default-skin  vjs-fluid kuk wpstream_video_on_demand vjs-wpstream ' . $player_theme .' ' . $player_logo_position_class . ' ' . $player_logo_horizontal_position . '"  data-me="'.esc_attr($usernamestream).'" data-product-id="'.$product_id.'"  playsinline preload="auto"
                   '. $poster_data.' '.$wpstream_data_setup.'>
                         <p class="vjs-no-js">
@@ -990,6 +993,7 @@ class Wpstream_Player{
                                 videoUrl: "'.$video_path_final.'",
                                 autoplay: '.var_export($autoplay, true).',
                                 muted: '.var_export($muted, true).',
+                                captionsUrl: "' . esc_js( $captionsUrl ) . '",
                                 playTrailerButtonElementId: "wpstream_video_on_demand_play_trailer_btn_'.$now.'",
                                 muteTrailerButtonElementId: "wpstream_video_on_demand_mute_trailer_btn_'.$now.'",
                                 unmuteTrailerButtonElementId: "wpstream_video_on_demand_unmute_trailer_btn_'.$now.'",
@@ -1021,6 +1025,7 @@ class Wpstream_Player{
                                 videoUrl: "'.$video_path_final.'",
                                 autoplay: '.var_export($autoplay, true).',
                                 muted: '.var_export($muted, true).',
+                                captionsUrl: "' . esc_js( $captionsUrl ) . '",
                                 playerLogoSettings: {
                                     image: "'. $this->wpstream_get_video_player_logo( $product_id ) . '",
                                     position: "' . esc_html( get_option('wpstream_player_logo_position','top-right') ) . '",
@@ -1138,6 +1143,7 @@ class Wpstream_Player{
                             trailerUrl: "'.$video_trailer.'",
                             autoplay: '.var_export($autoplay, true).',
                             muted: '.var_export($muted, true).',
+                            captionsUrl: "' . esc_js( get_post_meta( $product_id, 'wpstream_closed_captions_file', true ) ) . '",
                             playTrailerButtonElementId: "wpstream_video_on_demand_play_trailer_btn_'.$now.'",
                             muteTrailerButtonElementId: "wpstream_video_on_demand_mute_trailer_btn_'.$now.'",
                             unmuteTrailerButtonElementId: "wpstream_video_on_demand_unmute_trailer_btn_'.$now.'",
