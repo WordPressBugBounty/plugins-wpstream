@@ -166,6 +166,7 @@ var start_onboarding='';
 function wpstream_bind_start_event(button){
    
     button.click(function(event){
+        wpstream_safe_track_onboarding('stream_attempted', 'wpstream_' + post_type);
 		wpstream_safe_track_onboarding('start_stream_clicked', 'wpstream_' + post_type);
         var basicStreaming = jQuery('#wpstream_basic_streaming').val() === 'true';
         if (basicStreaming){
@@ -222,10 +223,12 @@ function wpstream_bind_start_event(button){
                 if(data.conected===true){
              
                         if(data.event_data==='err1'){
+							wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'err1');
                         
                             wpstream_show_error_on_start(wpstream_start_streaming_vars.error1,parent)
                         
                         }else if(data.event_data ==='failed event creation'){
+							wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'failed_event_creation');
                         
                             wpstream_show_error_on_start(wpstream_start_streaming_vars.failed_event_creation,parent)
                         
@@ -240,11 +243,13 @@ function wpstream_bind_start_event(button){
                         
             
                 }else{
+					wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'api_not_connected');
                     wpstream_show_error_on_start(data.error,parent)
                 }
                 
             },
             error: function (jqXHR,textStatus,errorThrown) {             
+				wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'ajax_error');
             }
         });
         
@@ -417,6 +422,7 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
                 wpstream_event_stopped_make_actions(parent);
 
             }else if(server_status.status==='error' ){
+                wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'status_error');
                
                 clearInterval( counters["stop"+show_id]);
                 var curent_content = parent.find('.wpstream_channel_status');
@@ -570,7 +576,7 @@ function wpstream_event_error_make_actions_visible(parent){
 *
 */
 function wpstream_event_stopped_make_actions(parent){
- 
+
     var  actionButton = parent.find('.wpstream_turning_on');
     wpstream_bind_start_event(actionButton);
     parent.removeClass('wpstream_show_started');
@@ -817,6 +823,23 @@ function wpstream_webcaster_actions(){
 	                if ( whipUrl !== '' ) {
 		                // Open the new broadcaster in a new window
 		                var broadcasterUrl = wpstream_start_streaming_vars.broadcaster_url + channelId;
+						if ( wpstream_start_streaming_vars.is_onboarding == 'yes' ) {
+							broadcasterUrl += '/?onboarding=1';
+                            if (pendingPopup) {
+                                var popupSessionId = (new URLSearchParams(window.location.search)).get('session_id') || '';
+                                var popupPayload = {
+                                    wpstream_onboarding_popup_payload: {
+                                        session_id: popupSessionId,
+                                    }
+                                };
+
+                                try {
+                                    pendingPopup.name = JSON.stringify(popupPayload);
+                                } catch (e) {
+                                    pendingPopup.name = '';
+                                }
+                            }
+						}
 		                // window.open(broadcasterUrl, 'wpstream_broadcaster_' + channelId, 'fullscreen=yes');
 		                if (pendingPopup) {
 			                pendingPopup.location.href = broadcasterUrl;

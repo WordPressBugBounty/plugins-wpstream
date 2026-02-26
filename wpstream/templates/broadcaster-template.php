@@ -24,6 +24,9 @@ $obs_uri = get_post_meta($channel_id, 'obs_uri', true);
 $obs_stream = get_post_meta($channel_id, 'obs_stream', true);
 $whip_url = get_post_meta($channel_id, 'whipUrl', true);
 
+$onboarding    = isset( $_GET['onboarding'] ) ? sanitize_text_field( wp_unslash( $_GET['onboarding'] ) ) : '';
+$is_onboarding = ( $onboarding === '1' );
+
 if (empty($whip_url)) {
 	wp_die(__('WHIP URL not available for this channel.', 'wpstream'));
 }
@@ -64,8 +67,22 @@ wp_localize_script(
                 '<a href="https://wpstream.net/pricing/" target="_blank">',
                 '</a>'
         ),
+        'is_onboarding'         => $is_onboarding
 	)
 );
+
+if ( $is_onboarding ) {
+	wp_enqueue_script('wpstream-on-boarding-page-js', plugin_dir_url( __DIR__  ) .'admin/js/wpstream-onboarding-page.js',array(),  WPSTREAM_PLUGIN_VERSION, true);
+	wp_localize_script( 'wpstream-on-boarding-page-js', 'wpstream_onboarding_page_vars',
+		array(
+			'admin_url'      => get_admin_url(),
+			'request_url'    => WPSTREAM_CLICK,
+			'wps_user'       => get_option('wpstream_api_username_from_token'),
+			'current_page'   => 'broadcaster',
+			'plugin_version' => WPSTREAM_PLUGIN_VERSION,
+		)
+	);
+}
 
 ?>
 <!DOCTYPE html>

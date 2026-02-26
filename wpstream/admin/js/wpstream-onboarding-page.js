@@ -1,6 +1,17 @@
 // Initialize transaction ID at the start
 const transactionId = getOrCreateTransactionId();
-console.log(transactionId);
+
+function resolveTrackingSessionId(explicitSessionId = '') {
+	if (explicitSessionId) {
+		return explicitSessionId;
+	}
+
+	if (typeof sessionId !== 'undefined' && sessionId) {
+		return sessionId;
+	}
+
+	return '';
+}
 
 /**
  * Track onboarding steps
@@ -9,8 +20,9 @@ console.log(transactionId);
  * @param {string} step - The button that was pressed
  * @param {string} element_type - The type of the element (optional)
  * @param {string} element_name - The name of the element (optional)
+ * @param {string} tracking_session_id - Session id override (optional)
  */
-function wpstream_track_onboarding_step(action, step, element_type= '', element_name = '') {
+function wpstream_track_onboarding_step(action, step, element_type= '', element_name = '', tracking_session_id = '') {
 	fetch( wpstream_onboarding_page_vars.request_url + '/onboarding/index.php', {
 		method: 'POST',
 		headers: {
@@ -26,7 +38,7 @@ function wpstream_track_onboarding_step(action, step, element_type= '', element_
 				element_name: element_name
 			},
 			plugin_version: wpstream_onboarding_page_vars.plugin_version,
-			session_id: sessionId,
+			session_id: resolveTrackingSessionId(tracking_session_id),
 			transaction_id: transactionId
 		})
 	}).then(res => {
@@ -35,6 +47,8 @@ function wpstream_track_onboarding_step(action, step, element_type= '', element_
 }
 
 window.addEventListener('DOMContentLoaded', async function() {
+	wpstream_track_onboarding_step('onboarding_started', 'onboarding_' + wpstream_onboarding_page_vars.current_page);
+
 	// if it's the create channel page
 	if ( wpstream_onboarding_page_vars.current_page === 'post_edit' ) {
 		switch ( wpstream_onboarding_page_vars.branch ) {
@@ -66,17 +80,18 @@ window.addEventListener('DOMContentLoaded', async function() {
 	}
 });
 
-// make a call to the wpstream_track_onboarding_step function when the user closes the page in browser but not on reload
+// generic unload event (fires on close, refresh, and navigation)
 window.addEventListener('beforeunload', function() {
+	const trackingSessionId = resolveTrackingSessionId();
 	const data = JSON.stringify({
 		website: window.location.origin,
-		action: 'onboarding_closed',
+		action: 'onboarding_unload',
 		wps_user: wpstream_onboarding_page_vars.wps_user,
 		parameters: {
 			step: wpstream_onboarding_page_vars.current_page,
 		},
 		plugin_version: wpstream_onboarding_page_vars.plugin_version,
-		session_id: sessionId,
+		session_id: trackingSessionId,
 		transaction_id: transactionId
 	});
 

@@ -25,6 +25,53 @@ document.addEventListener("DOMContentLoaded", function () {
 	let pendingReconnect = false; // true while waiting to reconnect
 	let pendingReconnectTimeout = null; // timeout handle for scheduled reconnect
 	const reconnectDelayMs = 10000; // 10s delay before attempting to reconnect
+	const BROADCASTER_SESSION_COOKIE = 'broadcasterSessionId';
+
+	function setSessionCookie(name, value) {
+		document.cookie = name + '=' + encodeURIComponent(value) + '; path=/';
+	}
+
+	function getCookie(name) {
+		const value = `; ${document.cookie}`;
+		const parts = value.split(`; ${name}=`);
+		if (parts.length === 2) {
+			return decodeURIComponent(parts.pop().split(';').shift());
+		}
+		return '';
+	}
+
+	function getPopupPayloadFromWindowName() {
+		let payload = {};
+		try {
+			if (window.name) {
+				const parsed = JSON.parse(window.name);
+				if (parsed && parsed.wpstream_onboarding_popup_payload) {
+					payload = parsed.wpstream_onboarding_popup_payload;
+					if (payload.session_id) {
+						setSessionCookie(BROADCASTER_SESSION_COOKIE, payload.session_id);
+					}
+				}
+			}
+		} catch (e) {
+			payload = {};
+		}
+
+		if (!payload.session_id) {
+			const cookieSessionId = getCookie(BROADCASTER_SESSION_COOKIE);
+			if (cookieSessionId) {
+				payload = {
+					session_id: cookieSessionId,
+				};
+			}
+		}
+
+		window.name = '';
+		return payload;
+	}
+
+	const popupPayload = getPopupPayloadFromWindowName();
+	const popupSessionId = popupPayload && popupPayload.session_id ? popupPayload.session_id : '';
+	console.log('Popup session ID:', popupSessionId);
 
 	// Get WHIP URL from config
 	if (wpstream_broadcaster_vars && wpstream_broadcaster_vars.whip_url) {
@@ -335,6 +382,7 @@ document.addEventListener("DOMContentLoaded", function () {
 						liveIndicatorError.innerContent = 'Reconnecting';
 					} else {
 						console.log('connection closed, not reconnecting');
+						wpstream_track_onboarding_step('broadcaster_streaming_stopped', 'wpstream_broadcaster', 'button', 'streaming_stopped', popupSessionId);
 						// updateInputState(false);
 					}
 					if (loadSpinner) {
@@ -346,6 +394,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					if ( state === 'connected' ) {
 						// showMessage("Broadcast started successfully");
 						updateStatus('connected');
+						wpstream_track_onboarding_step('broadcaster_streaming_started', 'wpstream_broadcaster', 'button', 'streaming_started', popupSessionId);
 					}
 
 						if (state === "disconnected" && considerReconnect) {

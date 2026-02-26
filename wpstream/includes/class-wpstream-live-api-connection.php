@@ -1070,20 +1070,7 @@ class Wpstream_Live_Api_Connection  {
         return $ret;
     }
 
-    
-    public function wpstream_get_token_30(){
-        $token =  get_transient('wpstream_token_request_30');
-        if ( false === $token || $token==='' ) {
-            $token = $this->wpstream_club_get_token_30();
-            set_transient( 'wpstream_token_request_30', $token ,600);
-        }
-
-        return $token;
-
-    }
-    
-    
-     /**
+    /**
      * Edited 4.0
      * 
      *  Request auth token from wpstream.net
@@ -1126,68 +1113,6 @@ class Wpstream_Live_Api_Connection  {
      * Return token for api version 3.0
      * 
      */
-    
-    
-    
-    
-    protected function wpstream_club_get_token_30(){
-
-        $client_id      = esc_html ( get_option('wpstream_api_key','') );
-        $client_secret  = esc_html ( get_option('wpstream_api_secret_key','') );
-        $username       = esc_html ( get_option('wpstream_api_username','') );
-        $password       = esc_html ( get_option('wpstream_api_password','') );
-
-        if ( $username=='' || $password==''){
-            return;
-        }
-        
-        
-        $curl = curl_init();
-        
-        $json = array(
-                'grant_type'=>'password',
-                'username'  =>$username,
-                'password'  =>$password,
-                'client_id'=>'qxZ6fCoOMj4cNK8SXRHa5nug6vnswlFWSF37hsW3',
-                'client_secret'=>'L1fzLosJf9TlwnCCTZ5pkKmdqqkHShKEi0d4oFNE'
-            );
-
-        curl_setopt_array($curl, array(
-        CURLOPT_URL => WPSTREAM_CLUBLINKSSL."://www.".WPSTREAM_CLUBLINK."/?oauth=token",
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => "",
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => "POST",
-        CURLOPT_POSTFIELDS=> json_encode($json),
-        CURLOPT_HTTPHEADER => array(
-            "cache-control: no-cache",
-            "content-type: application/json",
-            ),
-        ));
-
-        $response = curl_exec($curl);
-        
-        if(!$response){
-            //
-        }
-        
-        $err = curl_error($curl);
-        
-  
-
-        
-        
-        curl_close($curl);
-        $response= json_decode($response);
-
-        if(isset($response->access_token)){
-            return $response->access_token;
-        }else{
-            return;
-        }
-    }
     
  
     

@@ -271,6 +271,7 @@ class Wpstream_Admin {
                             'wpstream'
                         ),
                         'broadcaster_url'   => esc_url( esc_url(home_url('/broadcaster-page/') ) ),
+                        'is_onboarding'     => isset($_GET['onboard']) && $_GET['onboard'] === 'yes' ? 'yes' : 'no',
                     ));
 
                 wp_enqueue_script('wpstream-settings',   plugin_dir_url( __DIR__  ) .'/admin/js/wpstream_settings.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);

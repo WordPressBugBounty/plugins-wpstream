@@ -2,9 +2,9 @@
 Contributors: wpstream
 Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 7.1
-Stable tag: 4.11
+Stable tag: 4.11.1
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -134,6 +134,9 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.11.1 =
+* Tested up to WordPress 6.9.1
 
 = 4.11 =
 * Feature - Add closed captions option to the VODs
