@@ -172,11 +172,20 @@ function wpstream_plp_uploader(){
         // On erro occur
         uploader.bind('Error', function (up, err) {
             console.log ('Error .....');
-            jQuery('#'+aaiu_upload_imagelist).append("<div>Error: " + err.code +
-                ", Message: " + err.message +
-                (err.file ? ", File: " + err.file.name : "") +
-                "</div>"
-            );
+	        let errorMessage = "An error occurred during upload.";
+			if ( typeof err.response === 'string' && err.response.trim() !== '' ) {
+				try {
+					const parsedResponse = JSON.parse(err.response);
+					if ( parsedResponse && parsedResponse.data && parsedResponse.data.message ) {
+						errorMessage = parsedResponse.data.message;
+					}
+				} catch ( e ) {
+					// If response is not a valid JSON, keep the default error message
+				}
+			}
+			jQuery('#'+aaiu_upload_imagelist).append(
+				`<div>Error: ${err.code}, Message: ${errorMessage} ${err.file ? `, File: ${err.file.name}` : ''}</div>`
+			);
             up.refresh(); // Reposition Flash/Silverlight
         });
 

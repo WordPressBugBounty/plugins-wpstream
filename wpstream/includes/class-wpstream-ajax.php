@@ -135,6 +135,19 @@ class WpStream_Ajax {
 			die();
 		}
 
+		/* Making sure that the channel that's currently selected by the user is the one being updated */
+		$current_user = wp_get_current_user();
+		if ( isset( $_POST['postID'] ) && intval( $_POST['postID'] ) !== 0 ) {
+			$current_editing_channel = get_user_meta( $current_user->ID, 'wpstream_start_streaming_channel', true );
+			if ( intval( $current_editing_channel ) !== intval( $_POST['postID'] ) ) {
+				wp_send_json_error( array( 'error' => 'Can\'t edit this channel.' ) );
+				die();
+			}
+		} else {
+			wp_send_json_error( array( 'error' => 'Invalid channel ID.' ) );
+			die();
+		}
+
 		$thumb_id     = isset( $_POST['thumb_id'] ) ? intval( $_POST['thumb_id'] ) : 0;
 		$title        = sanitize_text_field( $_POST['title'] );
 		$description  = sanitize_text_field( $_POST['description'] );

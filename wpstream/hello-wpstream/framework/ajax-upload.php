@@ -10,8 +10,10 @@ add_action( 'wp_ajax_wpstream_me_upload', 'wpstream_me_upload' );
  * Handles AJAX request for file upload.
  */
 function wpstream_me_upload() {
-	if ( ! is_user_logged_in() ) {
-		exit( 'ko' );
+	check_ajax_referer( 'aaiu_allow', 'nonce' );
+
+	if ( ! is_user_logged_in() || ! current_user_can( 'upload_files' ) ) {
+		wp_send_json_error( array( 'message' => 'You are not allowed to upload files.' ), 403 );
 	}
 
 	$button_id = isset( $_POST['button_id'] ) ? sanitize_text_field( $_POST['button_id'] ) : '';
@@ -24,7 +26,7 @@ function wpstream_me_upload() {
 		'size'     => $_FILES['aaiu_upload_file']['size'],
 	);
 
-	wpstream_fileupload_process( $file, $button_id);
+	wpstream_fileupload_process( $file, $button_id );
 }
 
 /**

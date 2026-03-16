@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.1
-Stable tag: 4.11.1
+Stable tag: 4.11.2
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -134,6 +134,11 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.11.2 =
+* Enhancement - Security improvements on frontend dashboard
+* Fix - Downloads section missing from the My Account dashboard
+* Fix - Terms and Conditions link on the signup form
 
 = 4.11.1 =
 * Tested up to WordPress 6.9.1

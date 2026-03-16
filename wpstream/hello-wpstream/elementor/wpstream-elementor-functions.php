@@ -232,13 +232,19 @@ if ( ! function_exists( 'wpstream_theme_recent_items_top_bar' ) ) :
 			print '<div class="wpstream-shortcode-wrapper wpstream-item-list-with-top-filters-wrapper row">'; //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			print wpstream_compose_ajax_holder_data( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	  		$unit_card_type = wpstream_video_item_card_selector( intval($attributes['video_card']) );
-			
+			$theme_template_path = locate_template( $unit_card_type );
+			$plugin_template_path = WPSTREAM_PLUGIN_PATH . 'hello-wpstream/' . $unit_card_type;
+
 			if ( $query->have_posts() ) :
 				while ( $query->have_posts() ) :
 					$query->the_post();
-					include locate_template( $unit_card_type );
-					endwhile;
-				endif;
+					if ( ! empty( $theme_template_path ) && file_exists( $theme_template_path ) ) {
+						include $theme_template_path;
+					} elseif ( file_exists( $plugin_template_path ) ) {
+						include $plugin_template_path;
+					}
+				endwhile;
+			endif;
 
 			print '</div>';
 			wpstream_return_item_list_pagination( $query, 1 );

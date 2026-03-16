@@ -488,6 +488,7 @@ if ( ! function_exists( 'wpstream_generate_user_menu' ) ) {
 		$svg_icons = [
 			'dashboard' => wpstream_theme_get_svg_icon('dashboard.svg'),
 			'orders' => wpstream_theme_get_svg_icon('orders-icon.svg'),
+			'downloads' => wpstream_theme_get_svg_icon('downloads.svg'),
 			'subscriptions' => wpstream_theme_get_svg_icon('orders-subscription.svg'),
 			'edit-address' => wpstream_theme_get_svg_icon('location-icon.svg'),
 			'edit-account' => wpstream_theme_get_svg_icon('edit-account-icon.svg'),

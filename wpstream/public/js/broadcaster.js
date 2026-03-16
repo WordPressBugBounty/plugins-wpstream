@@ -73,6 +73,12 @@ document.addEventListener("DOMContentLoaded", function () {
 	const popupSessionId = popupPayload && popupPayload.session_id ? popupPayload.session_id : '';
 	console.log('Popup session ID:', popupSessionId);
 
+	function trackOnboardingStepSafe(action, step, elementType = '', elementName = '', trackingSessionId = '') {
+		if (typeof wpstream_track_onboarding_step === 'function') {
+			wpstream_track_onboarding_step(action, step, elementType, elementName, trackingSessionId);
+		}
+	}
+
 	// Get WHIP URL from config
 	if (wpstream_broadcaster_vars && wpstream_broadcaster_vars.whip_url) {
 		whipUrl = wpstream_broadcaster_vars.whip_url;
@@ -382,7 +388,7 @@ document.addEventListener("DOMContentLoaded", function () {
 						liveIndicatorError.innerContent = 'Reconnecting';
 					} else {
 						console.log('connection closed, not reconnecting');
-						wpstream_track_onboarding_step('broadcaster_streaming_stopped', 'wpstream_broadcaster', 'button', 'streaming_stopped', popupSessionId);
+						trackOnboardingStepSafe('broadcaster_streaming_stopped', 'wpstream_broadcaster', 'button', 'streaming_stopped', popupSessionId);
 						// updateInputState(false);
 					}
 					if (loadSpinner) {
@@ -394,7 +400,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					if ( state === 'connected' ) {
 						// showMessage("Broadcast started successfully");
 						updateStatus('connected');
-						wpstream_track_onboarding_step('broadcaster_streaming_started', 'wpstream_broadcaster', 'button', 'streaming_started', popupSessionId);
+						trackOnboardingStepSafe('broadcaster_streaming_started', 'wpstream_broadcaster', 'button', 'streaming_started', popupSessionId);
 					}
 
 						if (state === "disconnected" && considerReconnect) {

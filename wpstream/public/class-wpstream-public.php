@@ -340,6 +340,7 @@ class Wpstream_Public {
                 $items = array(
                     'dashboard'         => __( 'Dashboard', 'wpstream' ),
                     'orders'            => __( 'Orders', 'wpstream' ),
+					'downloads'         => __( 'Downloads', 'wpstream' ),
                     'edit-address'      => __( 'Addresses', 'wpstream' ),
                     'edit-account'      => __( 'Edit Account', 'wpstream' ), 
                     'event-list'        => __( 'My Live Streams', 'wpstream' ),
@@ -352,6 +353,7 @@ class Wpstream_Public {
                  $items = array(
                     'dashboard'         => __( 'Dashboard2', 'wpstream' ),
                     'orders'            => __( 'Orders', 'wpstream' ),
+                    'downloads'         => __( 'Downloads', 'wpstream' ),
                     'edit-address'      => __( 'Addresses', 'wpstream' ),
                     'edit-account'      => __( 'Edit Account', 'wpstream' ), 
                     'event-list'        => __( 'My Live Streams', 'wpstream' ),

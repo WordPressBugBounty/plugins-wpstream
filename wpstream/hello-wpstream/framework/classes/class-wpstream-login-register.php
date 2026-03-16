@@ -755,7 +755,7 @@ class WpStream_Login_Register {
 			?>
 
 
-			<input type="checkbox" name="terms" class="wpstream-theme_user_terms_register"/>
+			<input type="checkbox" name="terms" id="wpstream-theme_user_terms_register" class="wpstream-theme_user_terms_register"/>
 			<label id="user_terms_register_label" for="wpstream-theme_user_terms_register">
 				<?php esc_html_e( 'I agree with ', 'hello-wpstream' ); ?>
 				<a href="<?php print esc_url( $this->terms_conditions_link ); ?>" target="_blank"
