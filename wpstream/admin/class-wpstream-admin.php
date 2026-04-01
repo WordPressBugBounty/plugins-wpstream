@@ -2551,6 +2551,7 @@ class Wpstream_Admin {
         public function wpstream_publish_wpstream_product($post_id,$post){
             if( $post->post_type == 'wpstream_product' ){
                 update_post_meta ($post_id,'local_event_options_test','working_on_'.$post_id);
+                update_post_meta ($post_id, 'use_global_event_options', true);
                 $to_save_option=array();
 
                 $global_options= get_option('wpstream_user_streaming_global_channel_options');

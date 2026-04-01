@@ -9,7 +9,6 @@ window.WebSocket = window.WebSocket || window.MozWebSocket;
 if (!window.WebSocket) {
   console.log("Sorry, but your browser does not support WebSockets");
 }
-
 function wpstream_player_initialize(settings) {
   const player = new WpstreamPlayer(settings);
 }
@@ -62,6 +61,15 @@ class WpstreamPlayer {
     this.liveMessage = new WpstreamLiveMessage(this.wrapper, this.id);
     this.chat = new WpstreamChat();
     this.setRuler(1);
+    if (this.contentUrl && this.statsUri) {
+      this.setContentSrc(this.contentUrl);
+      this.liveConnect.setup(this.statsUri);
+      this.setState("started");
+
+      if (settings.chatUrl) {
+        this.chat.connect(settings.chatUrl);
+      }
+    }
 
     
     let player = this.playback.player;
@@ -470,10 +478,14 @@ class WpstreamPlayback {
       if (!this.playingTrailer) this.qoe.waiting();
     });
     this.player.on("playing", () => {
-      if (!this.playingTrailer)this.qoe.playing();
+      if (!this.playingTrailer) {
+        this.qoe.playing();
+      }
     });
     this.player.on("loadeddata", () => {
-      if (!this.playingTrailer)this.qoe.loadeddata();
+      if (!this.playingTrailer) {
+        this.qoe.loadeddata();
+      }
     });
     this.player.on("resolutionchange", () => {
       if (!this.playingTrailer)this.qoe.resolutionchange();
@@ -923,7 +935,9 @@ class WpstreamLiveMessage {
 
   setCustomMessage(message){
     this.customMessage = message;
-    this.showMessage(this.state);
+	if (this.state === "paused" || this.state === "ended") {
+		this.showMessage("paused");
+	}
   }
 
   showMessage(state) {
@@ -1152,22 +1166,6 @@ function wpstream_read_websocket_info(
     chat.connect(socket_wss_live_conect_views_uri);
   }
 }
-
-jQuery(document).ready(function ($) {
-  console.log("ready!");
-  var event_id;
-  var player_wrapper;
-  jQuery(".wpstream_live_player_wrapper").each(function () {
-    console.log("wrapper: ", this, $(this));
-    if ($(this).hasClass("wpstream_low_latency")) {
-      return;
-    }
-    event_id = jQuery(this).attr("data-product-id");
-    player_wrapper = jQuery(this);
-
-    //wpstream_check_player_status_ticker(player_wrapper,event_id);
-  });
-});
 
 var sldpPlayer;
 

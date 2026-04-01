@@ -129,11 +129,19 @@ class Wpstream_Public {
                                   plugin_dir_url( __FILE__ ).'js/youtube.min.js',
                                   array('video.min'), 
                                   WPSTREAM_PLUGIN_VERSION, true);
+
+                wp_register_script(
+                    'wpstream-player-bootstrap',
+                    plugin_dir_url( __FILE__ ) . 'js/wpstream-player-bootstrap.js',
+                    array(),
+                    WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/wpstream-player-bootstrap.js'),
+                    true
+                );
               
                 wp_register_script(
 					'wpstream-player',
 					plugin_dir_url( __FILE__ ).'js/wpstream-player.js',
-					array('video.min','wpstream-quality-selector'),
+                    array('video.min','wpstream-quality-selector','wpstream-player-bootstrap'),
                     WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/wpstream-player.js'),
 	                true
                 );

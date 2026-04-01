@@ -325,47 +325,7 @@ function wpstream_bb_after_activity_function($activity) {
                     $live_conect_views      =   $wpstream_plugin->main->wpstream_player->remove_http($live_conect_views);
             
                 }
-                $video_trailer='';
-                $now='';
-                $is_muted =false;
-                print '<script type="text/javascript">
-                //<![CDATA[
-                    jQuery(document).ready(function(){
-             
-                        var wrapper = jQuery(".wpstream_live_player_wrapper[data-product-id='.$wpstream_bb_show_id.'] ");
-                        var nowstring=wrapper.attr("data-now");
-                     
-             
-                        wpstream_player_initialize({
-                            videoElementId: nowstring,
-                            trailerUrl: "'.$video_trailer.'",
-                            contentUrl: "'.$hls_playback_url.'",
-                            statsUri:  "'.$live_conect_views.'",
-                            autoplay: '.var_export($autoplay, true).',
-                            muted: '.var_export($is_muted, true).',
-                            playTrailerButtonElementId: "wpstream_live_video_play_trailer_btn_'.$now.'",
-                            muteTrailerButtonElementId: "wpstream_live_video_mute_trailer_btn_'.$now.'",
-                            unmuteTrailerButtonElementId: "wpstream_live_video_unmute_trailer_btn_'.$now.'",
-                        });
-                        ';
-                    print'});
-                //]]>
-                </script>';
-
-
-            
-                if(trim($hls_playback_url) !==''){
-                    print '<script type="text/javascript">
-                        //<![CDATA[
-                            jQuery(document).ready(function(){
-                                var wrapper = jQuery(".wpstream_live_player_wrapper[data-product-id='.$wpstream_bb_show_id.'] ");
-                                var nowstring=wrapper.attr("data-now");
-                                var player_wrapper =   jQuery(".wpstream_live_player_wrapper");
-                                wpstream_read_websocket_info("'.$wpstream_bb_show_id.'","wpstream_live_player_wrapper"+nowstring, player_wrapper ,"'.$chat_url.'", "'.$hls_playback_url.'");
-                            });
-                        //]]>
-                    </script>';
-                }   
+                // Player bootstrap now runs from the external DOMContentLoaded module.
             }
         }
     }
@@ -486,7 +446,21 @@ function wpstream_bb_activity_allowed_tags_callback( $allow_html_tags ) {
         'data-now'=>array(),
         'data-me'=>array(),
         'data-product-id'=>array(),
+        'data-instance-id'=>array(),
+        'data-wpstream-bootstrap'=>array(),
+        'data-video-element-id'=>array(),
+        'data-title-overlay-element-id'=>array(),
+        'data-content-url'=>array(),
+        'data-stats-uri'=>array(),
+        'data-chat-url'=>array(),
+        'data-trailer-url'=>array(),
         'data-autoplay'=>array(),
+        'data-muted'=>array(),
+        'data-event-id'=>array(),
+        'data-play-trailer-button-element-id'=>array(),
+        'data-mute-trailer-button-element-id'=>array(),
+        'data-unmute-trailer-button-element-id'=>array(),
+        'data-play-video-button-element-id'=>array(),
         'playsinline'=>array(),
         'tabindex'=>array(),
         'lang'=>array(),
@@ -500,6 +474,26 @@ function wpstream_bb_activity_allowed_tags_callback( $allow_html_tags ) {
         'id'    => array(),
         'playsinline'=>array(),
         'data-autoplay'=>array(),
+        'data-muted'=>array(),
+        'data-me'=>array(),
+        'data-product-id'=>array(),
+        'data-instance-id'=>array(),
+        'data-wpstream-bootstrap'=>array(),
+        'data-video-element-id'=>array(),
+        'data-title-overlay-element-id'=>array(),
+        'data-video-url'=>array(),
+        'data-trailer-url'=>array(),
+        'data-captions-url'=>array(),
+        'data-play-trailer-button-element-id'=>array(),
+        'data-mute-trailer-button-element-id'=>array(),
+        'data-unmute-trailer-button-element-id'=>array(),
+        'data-play-video-button-element-id'=>array(),
+        'data-player-logo-image'=>array(),
+        'data-player-logo-position'=>array(),
+        'data-player-logo-opacity'=>array(),
+        'data-player-logo-width'=>array(),
+        'data-player-logo-height'=>array(),
+        'data-player-logo-padding'=>array(),
         'controls'=>array(),
         'muted'=>array(),
         'poster'=>array(),
