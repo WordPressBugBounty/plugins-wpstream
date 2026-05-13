@@ -324,56 +324,42 @@ class Wpstream_Public {
      * @since     3.0.1
     */
     public function wpstream_custom_my_account_menu_items( $items ) {
-        if(function_exists('wpstream_is_global_subscription') && wpstream_is_global_subscription()){
-            if(function_exists('wpstream_theme_my_custom_endpoints')){
-                $items = array(
-                    'dashboard'         => __( 'Dashboard', 'wpstream' ),
-                    'orders'            => __( 'Orders', 'wpstream' ),
-                    'edit-address'      => __( 'Addresses', 'wpstream' ),
-                    'edit-account'      => __( 'Edit Account', 'wpstream' ),
-                    'watch-later'       => esc_html__( 'Watch Later', 'wpstream-theme' ),
-                    'customer-logout'   => __( 'Logout', 'wpstream' ),
-                );
-            }else{
-                $items = array(
-                    'dashboard'         => __( 'Dashboard', 'wpstream' ),
-                    'orders'            => __( 'Orders', 'wpstream' ),
-                    'edit-address'      => __( 'Addresses', 'wpstream' ),
-                    'edit-account'      => __( 'Edit Account', 'wpstream' ),
-                    'customer-logout'   => __( 'Logout', 'wpstream' ),
-                );
-            }
-        }else{
-            if(function_exists('wpstream_theme_my_custom_endpoints')){
-                $items = array(
-                    'dashboard'         => __( 'Dashboard', 'wpstream' ),
-                    'orders'            => __( 'Orders', 'wpstream' ),
-					'downloads'         => __( 'Downloads', 'wpstream' ),
-                    'edit-address'      => __( 'Addresses', 'wpstream' ),
-                    'edit-account'      => __( 'Edit Account', 'wpstream' ), 
-                    'event-list'        => __( 'My Live Streams', 'wpstream' ),
-                    'video-list'        => __( 'My Videos', 'wpstream' ),
-                    'start-streaming'   => esc_html__( 'Start Streaming', 'wpstream-theme' ),
-        'watch-later'       => esc_html__( 'Watch Later', 'wpstream-theme' ),
-                    'customer-logout'   => __( 'Logout', 'wpstream' ),
-                );
-            }else{
-                 $items = array(
-                    'dashboard'         => __( 'Dashboard2', 'wpstream' ),
-                    'orders'            => __( 'Orders', 'wpstream' ),
-                    'downloads'         => __( 'Downloads', 'wpstream' ),
-                    'edit-address'      => __( 'Addresses', 'wpstream' ),
-                    'edit-account'      => __( 'Edit Account', 'wpstream' ), 
-                    'event-list'        => __( 'My Live Streams', 'wpstream' ),
-                    'video-list'        => __( 'My Videos', 'wpstream' ),
-                    'customer-logout'   => __( 'Logout', 'wpstream' ),
-                );
-                
-            }
-            
-         
+        $has_theme_endpoints    = function_exists( 'wpstream_theme_my_custom_endpoints' );
+
+        // Keep WooCommerce defaults and remove only plugin-specific entries before rebuilding plugin order.
+        unset( $items['event-list'], $items['video-list'], $items['start-streaming'], $items['watch-later'] );
+
+        $custom_items               = array();
+	    $custom_items['event-list'] = __( 'My Live Streams', 'wpstream' );
+	    $custom_items['video-list'] = __( 'My Videos', 'wpstream' );
+	    if ( $has_theme_endpoints ) {
+		    $custom_items['start-streaming'] = esc_html__( 'Start Streaming', 'wpstream-theme' );
+            $custom_items['watch-later'] = esc_html__( 'Watch Later', 'wpstream-theme' );
         }
-        return $items;
+
+	    if ( empty( $custom_items ) ) {
+            return $items;
+        }
+
+        // Insert custom items before logout to preserve WooCommerce/account plugin menu entries.
+        $result = array();
+        foreach ( $items as $endpoint => $label ) {
+            if ( 'customer-logout' === $endpoint ) {
+                foreach ( $custom_items as $custom_endpoint => $custom_label ) {
+                    $result[ $custom_endpoint ] = $custom_label;
+                }
+            }
+
+            $result[ $endpoint ] = $label;
+        }
+
+        if ( ! isset( $items['customer-logout'] ) ) {
+            foreach ( $custom_items as $custom_endpoint => $custom_label ) {
+                $result[ $custom_endpoint ] = $custom_label;
+            }
+        }
+
+        return $result;
 }
 
 

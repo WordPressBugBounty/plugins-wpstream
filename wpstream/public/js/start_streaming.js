@@ -600,11 +600,14 @@ function wpstream_event_stopped_make_actions(parent){
 */
 function wpstream_event_stopped_after_status_check(parent){
 
-	var actionButton = parent.find('.wpstream_stop_event');
+	var actionButton = parent.find('.wpstream_turning_on');
+	if (actionButton.length === 0) {
+		actionButton = parent.find('.wpstream_stop_event');
+	}
 	actionButton.unbind('click');
 	wpstream_bind_start_event(actionButton);
 	parent.removeClass('wpstream_show_started');
-	actionButton.removeClass('wpstream_turning_on');
+	actionButton.removeClass('wpstream_turning_on wpstream_stop_event');
 	actionButton.addClass('start_event');
 	actionButton.html( wpstream_start_streaming_vars.start_streaming+'<div class="wpstream_tooltip">'+wpstream_start_streaming_vars.turned_on_tooltip+'</div>');
 

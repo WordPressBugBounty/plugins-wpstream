@@ -61,15 +61,6 @@ class WpstreamPlayer {
     this.liveMessage = new WpstreamLiveMessage(this.wrapper, this.id);
     this.chat = new WpstreamChat();
     this.setRuler(1);
-    if (this.contentUrl && this.statsUri) {
-      this.setContentSrc(this.contentUrl);
-      this.liveConnect.setup(this.statsUri);
-      this.setState("started");
-
-      if (settings.chatUrl) {
-        this.chat.connect(settings.chatUrl);
-      }
-    }
 
     
     let player = this.playback.player;

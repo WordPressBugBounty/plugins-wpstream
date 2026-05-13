@@ -199,6 +199,7 @@ jQuery(document).ready(function ($) {
             dataType: 'json',
             data: {
                 'action': 'wpstream_initiate_multipart_upload',
+                'security': wpstream_admin_control_vars.multipart_upload_nonce,
                 'file_name': fileName,
                 'file_size': fileSize,
                 'content_type': file.type,
@@ -333,6 +334,7 @@ jQuery(document).ready(function ($) {
             dataType: 'json',
             data: {
                 'action': 'wpstream_complete_multipart_upload',
+                'security': wpstream_admin_control_vars.multipart_upload_nonce,
                 'parts': totalParts,
                 'file_name': file.name,
                 'handle': handle,

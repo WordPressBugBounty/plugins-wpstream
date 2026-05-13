@@ -319,12 +319,9 @@ function wpstream_bb_after_activity_function($activity) {
                     update_post_meta($wpstream_bb_show_id,'stream_name',$event_status['stream_name']);
                     update_post_meta($wpstream_bb_show_id,'hls_key_retrieval_url',$event_status['hls_key_retrieval_url']);
                     delete_transient(  'free_event_streamName_'.$event_status['stream_name']);
-
-                    $live_conect_array      =   explode('live.streamer.wpstream.net',$hls_playback_url);
-                    $live_conect_views      =   $live_conect_array[0].'live.streamer.wpstream.net';
-                    $live_conect_views      =   $wpstream_plugin->main->wpstream_player->remove_http($live_conect_views);
             
                 }
+                $live_conect_views = $wpstream_plugin->main->wpstream_player->wpstream_get_live_connect_uri($event_status, 'hls_playback_url');
                 // Player bootstrap now runs from the external DOMContentLoaded module.
             }
         }

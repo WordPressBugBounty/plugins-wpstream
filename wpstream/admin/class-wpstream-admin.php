@@ -183,6 +183,7 @@ class Wpstream_Admin {
                 wp_localize_script('wpstream-admin-control', 'wpstream_admin_control_vars', 
                     array( 
                         'admin_url'                => get_admin_url(),
+                        'multipart_upload_nonce'   => wp_create_nonce( 'wpstream_multipart_upload_nonce' ),
                         'loading_url'              => WPSTREAM_PLUGIN_DIR_URL.'/img/loading.gif',
                         'download_mess'            => esc_html__('Click to download!','wpstream'),
                         'uploading'                => esc_html__('We are uploading your file. Do not close this window!','wpstream'),
@@ -644,6 +645,8 @@ class Wpstream_Admin {
             $webcaster_url  =   get_post_meta($the_id,'webcaster_url',true);
             $rtmp_ip_uri    =   '';
 
+            $ajax_nonce = wp_create_nonce( 'wpstream_start_event_nonce' );
+            print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
             print '<div class="event_list_unit '.$live_class.' '.$pending_streaming_class.' event_unit_style_'.esc_attr($is_front).'"  data-show-id="'.intval($the_id).'" data-server-id="'.$server_id.'" data-server-url="'.$rtmp_ip_uri.'"">';
 
                 print '<div class="wpstream_channel_status">'.$channel_status.'</div>';
@@ -663,8 +666,7 @@ class Wpstream_Admin {
                 print '</div>';
             
 
-                $start_event_nonce = wp_create_nonce( 'wpstream_start_event_nonce' );
-                print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'"  data-nonce="' . esc_attr( $start_event_nonce ) . '" > ' . $button_status;
+                print '<div class="start_event wpstream_button wpstream_tooltip_wrapper"  data-show-id="'.$the_id.'"  data-nonce="' . esc_attr( $ajax_nonce ) . '" > ' . $button_status;
                     print '<div class="wpstream_tooltip">'.esc_html__('Channel is now OFF. Click to turn ON.','wpestream').'</div>'; 
                 print '</div>';
                           
@@ -4317,6 +4319,8 @@ class Wpstream_Admin {
      * @since    3.0.1
      */
     public function handle_initiate_multipart_upload() {
+        check_ajax_referer( 'wpstream_multipart_upload_nonce', 'security' );
+
         // Security check - only admins can do this
         if (!current_user_can('administrator')) {
             wp_send_json_error('Unauthorized access');
@@ -4378,6 +4382,8 @@ class Wpstream_Admin {
      * @since    3.0.1
      */
     public function handle_complete_multipart_upload() {
+        check_ajax_referer( 'wpstream_multipart_upload_nonce', 'security' );
+
         // Security check - only admins can do this
         if (!current_user_can('administrator')) {
             wp_send_json_error('Unauthorized access');

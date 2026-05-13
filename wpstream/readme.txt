@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.1
-Stable tag: 4.11.3
+Stable tag: 4.11.4
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -134,6 +134,11 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.11.4 =
+* Enhancement - Hook custom menu items into the WC menu
+* Fix - Start/Stop streaming using the go_live shortcode
+* Fix - Unecessary HLS playback URL
 
 = 4.11.3 =
 * Enhancement - Player loading time
