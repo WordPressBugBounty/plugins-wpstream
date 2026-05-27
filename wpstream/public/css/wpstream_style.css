@@ -181,6 +181,12 @@
     margin-bottom: 15px;
     float: left;
 }
+
+/* Hide featured VOD player by default to prevent first-paint flash. */
+/*.single-wpstream_product_vod .wpstream_featured_banner_vod .wpstream_player_wrapper.wpstream_player_shortcode,*/
+/*.single-wpstream_product_vod .wpstream-featured-player-wrapper .wpstream_player_wrapper.wpstream_player_shortcode {*/
+/*    visibility: hidden;*/
+/*}*/
 .wpstream_player_wrapper.wpstream_player_shortcode.no_buy{
     height: auto;
     float: left;
@@ -233,6 +239,110 @@
 .video-js .vjs-big-play-button:focus .vjs-icon-placeholder, 
 .video-js:hover .vjs-icon-placeholder{
     opacity: 1;
+}
+
+/* Title overlay: match theme "Play Video" row (gradient circle + label) used with .video-js .vjs-big-play-button / .wpstream_video_on_demand_play_video_wrapper. */
+
+.wpstream_title_wrapper_simple button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper {
+    order: unset;
+    z-index: 10;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--white-color, #ffffff);
+    font-size: 20px;
+    font-family: inherit;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.wpstream_title_wrapper_simple button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:hover,
+.wpstream_title_wrapper_simple button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:focus-visible,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:hover,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:focus-visible {
+    color: #60AFFF;
+}
+
+.wpstream_title_wrapper_simple button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:hover .wpstream_video_on_demand_play_video,
+.wpstream_title_wrapper_simple button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:focus-visible .wpstream_video_on_demand_play_video,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:hover .wpstream_video_on_demand_play_video,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper:focus-visible .wpstream_video_on_demand_play_video {
+    background: linear-gradient(
+        var(--wpstream-type-1-button-hover_background-color-gradient-angle, 90deg),
+        var(--wpstream_type_1_button_hover_background_color_gradient_first_color, rgb(78, 46, 229)),
+        var(--wpstream_type_1_button_hover_background_color_gradient_second_color, rgb(89, 125, 250))
+    );
+}
+
+.wpstream_title_wrapper_simple button.wpstream_player_controls .wpstream_video_on_demand_play_video,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls .wpstream_video_on_demand_play_video {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 55px !important;
+    height: 55px !important;
+    margin: 0;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 50%;
+    line-height: 55px;
+    text-align: center;
+    box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.25);
+    transition: background 300ms ease;
+    background: linear-gradient(
+        var(--wpstream-type-1-button-background-color-gradient-angle, 90deg),
+        color-mix(in srgb, var(--wpstream_type_1_button_background_color_gradient_first_color, #597dfa) calc(var(--wpstream-type-2-button-opacity, 0) * 1%), #597dfa),
+        color-mix(in srgb, var(--wpstream_type_1_button_background_color_gradient_second_color, #4e2ee5) calc(var(--wpstream-type-2-button-opacity, 0) * 1%), #4e2ee5)
+    );
+}
+
+.wpstream_title_wrapper_simple button.wpstream_player_controls .wpstream_video_on_demand_play_video:hover,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls .wpstream_video_on_demand_play_video:hover {
+    background: linear-gradient(
+        var(--wpstream-type-1-button-hover_background-color-gradient-angle, 90deg),
+        color-mix(in srgb, var(--wpstream_type_1_button_hover_background_color_gradient_first_color, #597dfa) calc(var(--wpstream-type-2-button-opacity, 0) * 1%), #597dfa),
+        color-mix(in srgb, var(--wpstream_type_1_button_hover_background_color_gradient_second_color, #4e2ee5) calc(var(--wpstream-type-2-button-opacity, 0) * 1%), #4e2ee5)
+    );
+}
+
+.wpstream_title_wrapper_simple button.wpstream_player_controls .wpstream_video_on_demand_play_video svg,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper button.wpstream_player_controls .wpstream_video_on_demand_play_video svg {
+    height: 21px;
+    width: 21px;
+    margin: -1px 0 0 6px;
+}
+
+body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
+    display: none;
+}
+
+.wpstream_title_wrapper_simple .wpstream_video_on_demand_actions_wrapper,
+.wpstream_player_container .wpstream_video_on_demand_actions_wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.wpstream_video_on_demand_actions_wrapper {
+    position: absolute;
+    display: flex;
+    visibility: visible;
+    bottom: 50px;
+    z-index: 999;
+    justify-content: space-between;
+    max-width: calc(var(--wpstream-theme-width-container, 1352px) + var(--bs-gutter-x));
+    margin: auto;
+    left: 0;
+    right: 0;
 }
 
 .video-js.vjs-logo.logo-top.logo-left .wpestream_live_counting:not(:empty)~.vjs-logo-content {
@@ -794,4 +904,23 @@
     opacity: 0;
     transition: all 0.5s ease-in-out;
     z-index: 99;
+}
+
+/* External VOD iframe player (mirror of player/public/iframe_test.html .frame-wrap) */
+.wpstream_player_iframe_wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #000;
+}
+
+.wpstream_player_iframe_wrap iframe.wpstream_video_on_demand_iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
 }

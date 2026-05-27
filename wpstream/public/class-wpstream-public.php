@@ -146,6 +146,14 @@ class Wpstream_Public {
 	                true
                 );
 
+				wp_register_script(
+					'wpstream-player-controls',
+					plugin_dir_url( __FILE__ ) . 'js/player-controls.js',
+					array( 'jquery', 'video.min' ),
+					WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/player-controls.js'),
+					true
+				);
+
 				$abr_enabled = false;
 				$post_meta = get_post_meta( get_the_ID(), 'local_event_options', true );
 				if ( !empty($post_meta) && isset($post_meta['adaptive_bitrate']) && $post_meta['adaptive_bitrate'] == 1 ) {

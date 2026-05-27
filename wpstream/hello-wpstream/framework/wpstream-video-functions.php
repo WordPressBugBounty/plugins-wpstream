@@ -162,7 +162,9 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 		?>
 		
 
-			<div class="wpstream_video_poster_holder wpstream_hide_on_trailer" style="background-image:url('<?php echo esc_attr($poster_url);?>');"></div>
+            <?php if( $poster_url!='' ) {
+			    echo '<div class="wpstream_video_poster_holder wpstream_hide_on_trailer" style="background-image:url(' . esc_attr($poster_url) . ');"></div>';
+            } ?>
 
 
 			<div class="wpstream_player_container_gradient wpstream_hide_on_play"></div>
@@ -172,9 +174,8 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 				<?php
 				if ( 'product' === get_post_type( $post_id )  ) {
 					include WPSTREAM_PLUGIN_PATH . '/hello-wpstream/template-parts/single/product-add-to-cart-section.php';
-				}else{
-					include WPSTREAM_PLUGIN_PATH . '/hello-wpstream/template-parts/single/post-author-content-simple.php';
-					?>
+				} else {
+					include WPSTREAM_PLUGIN_PATH . '/hello-wpstream/template-parts/single/post-author-content-simple.php'; ?>
 					<h1 class="wpstream_title"><?php echo esc_html( get_the_title( $post_id ) ); ?></h1>
 				<?php
 				}
