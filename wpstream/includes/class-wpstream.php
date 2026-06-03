@@ -270,6 +270,8 @@ class Wpstream {
 
                 $this->loader->add_action( 'wp_ajax_wpstream_on_board_login',  $plugin_admin,'wpstream_on_board_login' );
                 $this->loader->add_action( 'wp_ajax_wpstream_on_board_register',  $plugin_admin,'wpstream_on_board_register' );
+				$this->loader->add_action( 'wp_ajax_wpstream_get_captcha_challenge', $plugin_admin, 'wpstream_get_captcha_challenge' );
+				$this->loader->add_action( 'wp_ajax_nopriv_wpstream_get_captcha_challenge', $plugin_admin, 'wpstream_get_captcha_challenge' );
                 
                 // Register AJAX actions for multipart uploads
                 $this->loader->add_action( 'wp_ajax_wpstream_initiate_multipart_upload', $plugin_admin, 'handle_initiate_multipart_upload' );

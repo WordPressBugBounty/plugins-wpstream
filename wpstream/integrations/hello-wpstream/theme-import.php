@@ -54,14 +54,14 @@ if (!defined('ABSPATH')) exit;
 	}
 
 
-    function ocdi_plugin_intro_text( $default_text ) {
+    function wpstream_ocdi_plugin_intro_text( $default_text ) {
         $default_text = '<div class="ocdi__intro-text intro-text_wpstream_theme notice notice-warning "> For speed purposes, demo images are not included in the import.</div>';
 
         return $default_text;
     }
 
 
-    function ocdi_import_files() {
+    function wpstream_ocdi_import_files() {
 
         if(!function_exists( 'wpstream_load_theme_files' )){
             return;
@@ -124,7 +124,7 @@ if (!defined('ABSPATH')) exit;
 
 
 
-    function ocdi_after_import_setup() {
+    function wpstream_ocdi_after_import_setup() {
         // Assign menus to their locations.
         
         $main_menu = get_term_by( 'name', 'Main Menu', 'nav_menu' );

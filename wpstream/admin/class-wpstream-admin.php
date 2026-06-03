@@ -3481,10 +3481,11 @@ class Wpstream_Admin {
                             </div>
 
                         
-                            <!-- Altcha Widget -->
+                            <!-- Altcha Widget (requires HTTPS/secure context) -->
+                            <?php if ( isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ) : ?>
                             <script async defer src="https://cdn.jsdelivr.net/gh/altcha-org/altcha/dist/altcha.min.js" type="module"></script>
                             <div class="wpstream_option" style="display:none;">
-                                <altcha-widget 
+                                <altcha-widget
                                     challengeurl="<?php echo esc_url( WPSTREAM_API . '/v2/user/getcaptcha' ); ?>"
                                     name="altcha"
                                     auto="onload"
@@ -3493,6 +3494,7 @@ class Wpstream_Admin {
                                     strings='{"label": "<?php esc_html_e('I am not a robot', 'wpstream'); ?>", "error": "<?php esc_html_e('Verification failed', 'wpstream'); ?>", "wait": "<?php esc_html_e('Verifying...', 'wpstream'); ?>"}'
                                 ></altcha-widget>
                             </div>
+                            <?php endif; ?>
 
                             <div class="wpstream_option wpstream_terms_agreement">
                                 <!-- Add "by registering you agree to the privacy terms" checkbox-->
@@ -4128,11 +4130,32 @@ class Wpstream_Admin {
 
         
         public function wpstream_register_refresh_capthca(){
-                      
+
             if(current_user_can('administrator')){
-            
+
             }
         }
+
+		/**
+		 * AJAX proxy: fetch a captcha challenge from the baker API and return it.
+		 * Used on HTTP sites where the Altcha widget cannot run (requires Web Crypto / HTTPS).
+		 * The JS side solves the PoW locally and sends back the full base64 Altcha payload.
+		 */
+		public function wpstream_get_captcha_challenge() {
+			$api_url  = WPSTREAM_API . '/v2/user/getcaptcha';
+			$response = wp_remote_get( $api_url, array( 'timeout' => 10 ) );
+
+			if ( is_wp_error( $response ) ) {
+				echo json_encode( array( 'success' => false, 'error' => 'Could not reach captcha service.' ) );
+				die();
+			}
+
+			$body = wp_remote_retrieve_body( $response );
+			// Forward the challenge JSON directly to the browser
+			header( 'Content-Type: application/json' );
+			echo $body;
+			die();
+		}
 
         /**
         * @param $challenge
@@ -4173,13 +4196,16 @@ class Wpstream_Admin {
                     die();
                 }
 
-                $wpstream_altcha = isset($_POST['wpstream_altcha']) ? $_POST['wpstream_altcha'] : '';
+                $wpstream_altcha = isset($_POST['wpstream_altcha']) ? trim( $_POST['wpstream_altcha'] ) : '';
+                $is_https = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 
                 if ( empty($wpstream_altcha) ) {
-                    echo json_encode(array(
-                            'success' => false,
-                            'message' => esc_html__('Captcha verification failed. Please try again.', 'wpstream')
-                    ));
+                    if ( $is_https ) {
+                        $message = esc_html__('Captcha verification failed. Please try again.', 'wpstream');
+                    } else {
+                        $message = esc_html__('Security check not ready yet. Please wait a moment and try again.', 'wpstream');
+                    }
+                    echo json_encode( array( 'success' => false, 'message' => $message ) );
                     die();
                 }
 

@@ -1,8 +1,16 @@
 let sessionId = '';
+let wpstreamCaptchaPayload = '';
 
 const urlParams = new URLSearchParams(window.location.search);
 if ( urlParams.get('page') === 'wpstream_onboard' ) {
-	sessionId = crypto.randomUUID();
+	if ( typeof crypto !== 'undefined' && crypto.randomUUID ) {
+		sessionId = crypto.randomUUID();
+	} else {
+		sessionId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, function( c ) {
+			var r = Math.random() * 16 | 0;
+			return ( c === 'x' ? r : ( r & 0x3 | 0x8 ) ).toString( 16 );
+		} );
+	}
 } else {
 	sessionId = urlParams.get('session_id');
 }
@@ -234,6 +242,10 @@ const ONBOARD=(function(){
    
     function init(){
 	    wpstream_policy_privacy_checkbox();
+	    if ( window.location.protocol !== 'https:' ) {
+		    jQuery('.wpstream_onboard_register').attr('disabled', true);
+		    wpstream_fetchCaptcha();
+	    }
         wpstream_by_pass_login();
         wpstream_onboard_login();
         wpstream_get_videos_list();
@@ -254,8 +266,11 @@ const ONBOARD=(function(){
 		jQuery('.wpstream_onboard_register').attr('disabled', true);
 
 		jQuery('#wpstream_register_privacy').on('change', function() {
-			jQuery('.wpstream_onboard_register').attr('disabled', !this.checked);
-		})
+			var powReady = window.location.protocol !== 'https:'
+				? wpstreamCaptchaPayload !== ''
+				: true;
+			jQuery('.wpstream_onboard_register').attr('disabled', !this.checked || !powReady );
+		});
 	}
     
     /*
@@ -456,7 +471,9 @@ const ONBOARD=(function(){
             var wpstream_register_email         =   jQuery('#wpstream_register_email').val();
             var wpstream_register_password      =   jQuery('#wpstream_register_password').val();
             var ajaxurl                         =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
-            var wpstream_altcha                 =   jQuery('input[name="altcha"]').val();
+			var wpstream_altcha = window.location.protocol !== 'https:'
+				? wpstreamCaptchaPayload
+			: jQuery('input[name="altcha"]').val();
             var nonce                           =   jQuery('#wpstream_onboarding_nonce').val();
 			var wpstream_privacy_checkbox       =   jQuery('#wpstream_register_privacy').is(':checked');
 
@@ -529,55 +546,145 @@ const ONBOARD=(function(){
     */
 
 	async function sha256(message) {
-		const msgBuffer = new TextEncoder().encode(message);
-		const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-	}
-
-	async function wpstream_solve_pow(challenge, difficulty) {
-		let nonce = 0;
-		const target = "0".repeat(difficulty);
-
-		while (true) {
-			const hash = await sha256(challenge + nonce);
-			if (hash.startsWith(target)) {
-				return nonce;
-			}
-			nonce++;
-			if (nonce > 5000000) {
-				return null;
+		if ( typeof crypto !== 'undefined' && crypto.subtle ) {
+			const msgBuffer = new TextEncoder().encode(message);
+			const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+		}
+		// Pure-JS SHA-256 fallback for non-secure (HTTP) contexts
+		function rightRotate(value, amount) {
+			return (value >>> amount) | (value << (32 - amount));
+		}
+		var mathPow = Math.pow;
+		var maxWord = mathPow(2, 32);
+		var i, j;
+		var result = '';
+		var words = [];
+		var asciiBitLength = message.length * 8;
+		var hash = sha256.h = sha256.h || [];
+		var k = sha256.k = sha256.k || [];
+		var primeCounter = k.length;
+		var isComposite = {};
+		for (var candidate = 2; primeCounter < 64; candidate++) {
+			if (!isComposite[candidate]) {
+				for (i = 0; i < 313; i += candidate) {
+					isComposite[i] = candidate;
+				}
+				hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
+				k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
 			}
 		}
+		message += '\x80';
+		while (message.length % 64 - 56) message += '\x00';
+		for (i = 0; i < message.length; i++) {
+			j = message.charCodeAt(i);
+			if (j >> 8) return '';
+			words[i >> 2] |= j << ((3 - i) % 4) * 8;
+		}
+		words[words.length] = ((asciiBitLength / maxWord) | 0);
+		words[words.length] = (asciiBitLength | 0);
+		for (j = 0; j < words.length;) {
+			var w = words.slice(j, j += 16);
+			var oldHash = hash.slice(0);
+			hash = sha256.h.slice(0);
+			for (i = 0; i < 64; i++) {
+				var i2 = i + j - 16;
+				var w15 = w[i - 15], w2 = w[i - 2];
+				var a = hash[0], e = hash[4];
+				var temp1 = hash[7]
+					+ (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+					+ ((e & hash[5]) ^ (~e & hash[6]))
+					+ k[i]
+					+ (w[i] = (i < 16) ? w[i] : (
+						w[i - 16]
+						+ (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
+						+ w[i - 7]
+						+ (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))
+					) | 0);
+				var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+					+ ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+				hash = [(temp1 + temp2) | 0].concat(hash);
+				hash[4] = (hash[4] + temp1) | 0;
+				hash.length = 8;
+			}
+			for (i = 0; i < 8; i++) {
+				hash[i] = (hash[i] + oldHash[i]) | 0;
+			}
+		}
+		for (i = 0; i < 8; i++) {
+			for (j = 3; j + 1; j--) {
+				var b = (hash[i] >> (j * 8)) & 255;
+				result += ((b < 16) ? 0 : '') + b.toString(16);
+			}
+		}
+		return result;
 	}
 
-    async function wpstream_fetchCaptcha () {
-      
-        var result;
-        var requestOptions = {
-            method: 'POST',
-            redirect: 'follow'
-          };
-          
-          fetch("https://baker.wpstream.net/user/getcapthca", requestOptions)
-            .then(response => response.json())
-            .then( async result => {
-				if ( result.success && result.challenge ) {
-					const solution = await wpstream_solve_pow(result.challenge, result.difficulety || 4);
-					if ( solution !== null) {
-						jQuery('#wpstream_register_captcha').val(solution);
-						jQuery('#wpstream_register_captcha_id').val(result.id);
+	async function wpstream_solve_pow(salt, challenge, maxNumber) {
+		// Altcha PoW: find a number where sha256(salt + number) === challenge
+		for ( var number = 0; number <= maxNumber; number++ ) {
+			var hash = await sha256( salt + number );
+			if ( hash === challenge ) {
+				return number;
+			}
+		}
+		return null;
+	}
 
-						jQuery('#wpstream_captcha').hide();
-
-						jQuery('.wpstream_onboard_register').attr('disabled', false);
+	async function wpstream_fetchCaptcha () {
+		fetch( wpstream_admin_control_vars.admin_url + 'admin-ajax.php?action=wpstream_get_captcha_challenge' )
+			.then( response => response.json() )
+			.then( async function( result ) {
+				if ( result.algorithm && result.challenge && result.salt && result.signature ) {
+					const solution = await wpstream_solve_pow( result.salt, result.challenge, 50000 );
+					if ( solution !== null ) {
+						var altchaPayload = {
+							algorithm : result.algorithm,
+							challenge : result.challenge,
+							number    : solution,
+							salt      : result.salt,
+							signature : result.signature
+						};
+						// URL-safe base64 so http_build_query doesn't corrupt + characters
+						var payloadBase64 = btoa( JSON.stringify( altchaPayload ) )
+							.replace( /\+/g, '-' )
+							.replace( /\//g, '_' )
+							.replace( /=+$/, '' );
+						wpstreamCaptchaPayload = payloadBase64;
+						if ( jQuery('#wpstream_register_privacy').is(':checked') ) {
+							jQuery('.wpstream_onboard_register').attr( 'disabled', false );
+						}
+					} else {
+						console.log( 'Security check: could not solve PoW challenge' );
+						wpstream_captcha_show_retry();
 					}
 				} else {
-					console.log('Security check init failed', result);
+					console.log( 'Security check init failed', result );
+					wpstream_captcha_show_retry();
 				}
-	        })
-            .catch(error => console.log('error', error));
-    }
+			} )
+			.catch( function( error ) {
+				console.log( 'Security check error', error );
+				wpstream_captcha_show_retry();
+			} );
+	}
+
+	function wpstream_captcha_show_retry() {
+		jQuery('.wpstream_onboard_register').attr( 'disabled', true );
+		if ( jQuery('#wpstream_captcha_retry').length === 0 ) {
+			jQuery('.wpstream_onboard_register').before(
+				'<div id="wpstream_captcha_retry" style="margin-bottom:8px;color:#c00;">' +
+				'Security check failed. <a href="#" id="wpstream_captcha_retry_link">Click here to retry.</a>' +
+				'</div>'
+			);
+			jQuery(document).on( 'click', '#wpstream_captcha_retry_link', function(e) {
+				e.preventDefault();
+				jQuery('#wpstream_captcha_retry').remove();
+				wpstream_fetchCaptcha();
+			});
+		}
+	}
 
 
     function wpstream_process_capthca(response){
