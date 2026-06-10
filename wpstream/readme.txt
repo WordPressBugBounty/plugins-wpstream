@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.12.1
+Stable tag: 4.12.2
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 Stable: trunk
@@ -134,6 +134,9 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.12.2 =
+* Enhancement - Use a new structure on live channels, for a loading time and quality
 
 = 4.12.1 =
 * Enhancement - Register/login form on Quick Start wizard

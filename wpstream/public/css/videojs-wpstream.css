@@ -53,6 +53,10 @@
     margin-top: 0 !important;
 }
 
+.wpstream-featured-player-wrapper .hide_on_play {
+    display: none;
+}
+
 .vjs-wpstream .vjs-volume-panel .vjs-volume-control {
     margin: 0px 0px 0px 0px;
 }

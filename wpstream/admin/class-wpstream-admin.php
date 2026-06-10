@@ -3150,7 +3150,8 @@ class Wpstream_Admin {
 			$plugin_slug = 'wpstream/wpstream.php';
 			$update_data = get_site_transient('update_plugins');
 
-			if ( property_exists( $update_data, 'response' ) &&
+			if ( is_object( $update_data ) &&
+				property_exists( $update_data, 'response' ) &&
 				is_array($update_data->response) &&
 				key_exists($plugin_slug, $update_data->response)
 			) {
@@ -4098,6 +4099,8 @@ class Wpstream_Admin {
                 $password       = $_POST['api_password'];
                 update_option('wpstream_api_username',$username);
                 update_option('wpstream_api_password',$password);
+
+                delete_transient( 'wpstream_token_api' );
 
                 $token          =   $this->main->wpstream_live_connection->wpstream_get_token();
                 $videos_list    =   $this->main->wpstream_live_connection->wpstream_get_videos();

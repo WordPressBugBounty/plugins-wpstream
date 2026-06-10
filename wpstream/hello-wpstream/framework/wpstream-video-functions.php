@@ -182,6 +182,82 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 				?>
 			</div>
 
+        <?php
+		$now                              = time().rand(0,1000000);
+		$mute_trailer_button_element_id   = 'wpstream_live_video_mute_trailer_btn_' . $now;
+		$unmute_trailer_button_element_id = 'wpstream_live_video_unmute_trailer_btn_' . $now;
+		$trailer_attachment_id = intval (get_post_meta( $post_id, 'video_trailer', true ));;
+
+        if( function_exists('wpstream_theme_not_live_section' ) && 'wpstream_product' === get_post_type( $post_id ) ) {
+            echo '<div class="wpstream_live_channel_actions_wrapper">';
+                print wpstream_theme_not_live_section( $post_id );
+                if ( $trailer_attachment_id !== 0 ) {
+                    echo '<button type="button" class="wpstream_player_controls wpstream_video_on_demand_play_trailer" aria-label="' . esc_attr__( 'Play Trailer', 'wpstream' ) . '">
+                        <svg width="30" height="24" viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M26.6667 1.5H3.33337C2.50495 1.5 1.83337 2.17157 1.83337 3V21C1.83337 21.8284 2.50495 22.5 3.33338 22.5H26.6667C27.4951 22.5 28.1667 21.8284 28.1667 21V3C28.1667 2.17157 27.4951 1.5 26.6667 1.5ZM3.33337 0C1.67652 0 0.333374 1.34315 0.333374 3V21C0.333374 22.6569 1.67652 24 3.33338 24H26.6667C28.3236 24 29.6667 22.6569 29.6667 21V3C29.6667 1.34315 28.3236 0 26.6667 0H3.33337ZM4.83337 4C4.55723 4 4.33337 4.22386 4.33337 4.5V6.16667C4.33337 6.44281 4.55723 6.66667 4.83337 6.66667H6.50004C6.77618 6.66667 7.00004 6.44281 7.00004 6.16667V4.5C7.00004 4.22386 6.77618 4 6.50004 4H4.83337ZM23.5 4C23.2239 4 23 4.22386 23 4.5V6.16667C23 6.44281 23.2239 6.66667 23.5 6.66667H25.1667C25.4428 6.66667 25.6667 6.44281 25.6667 6.16667V4.5C25.6667 4.22386 25.4428 4 25.1667 4H23.5ZM4.33337 11.167C4.33337 10.8909 4.55723 10.667 4.83337 10.667H6.50004C6.77618 10.667 7.00004 10.8909 7.00004 11.167V12.8337C7.00004 13.1098 6.77618 13.3337 6.50004 13.3337H4.83337C4.55723 13.3337 4.33337 13.1098 4.33337 12.8337V11.167ZM23.5001 10.667C23.224 10.667 23.0001 10.8909 23.0001 11.167V12.8337C23.0001 13.1098 23.224 13.3337 23.5001 13.3337H25.1668C25.4429 13.3337 25.6668 13.1098 25.6668 12.8337V11.167C25.6668 10.8909 25.4429 10.667 25.1668 10.667H23.5001ZM4.33337 17.833C4.33337 17.5569 4.55723 17.333 4.83337 17.333H6.50004C6.77618 17.333 7.00004 17.5569 7.00004 17.833V19.4997C7.00004 19.7758 6.77618 19.9997 6.50004 19.9997H4.83337C4.55723 19.9997 4.33337 19.7758 4.33337 19.4997V17.833ZM23.5001 17.333C23.224 17.333 23.0001 17.5569 23.0001 17.833V19.4997C23.0001 19.7758 23.224 19.9997 23.5001 19.9997H25.1668C25.4429 19.9997 25.6668 19.7758 25.6668 19.4997V17.833C25.6668 17.5569 25.4429 17.333 25.1668 17.333H23.5001ZM19.0677 13.0997L13.4077 16.5087C13.0434 16.7281 12.6092 16.7094 12.2661 16.5091C11.9218 16.3081 11.6666 15.9224 11.6666 15.4086V8.59072C11.6666 8.07698 11.9218 7.69125 12.2661 7.49026C12.6092 7.28999 13.0434 7.27126 13.4077 7.49064L19.0677 10.8996C19.8663 11.3805 19.8663 12.6188 19.0677 13.0997Z"/>
+                        </svg>
+                        ' . esc_html__( 'Play Trailer', 'wpstream' ) . '
+                    </button>';
+                    echo '<div id="' . esc_attr( $mute_trailer_button_element_id ) . '" style="display: none;" class="wpstream_video_on_demand_mute_trailer">
+                        <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M1.32143 10.0789H8.69499L18.8964 0L21.1428 0.921053V35.1316L18.8964 36L8.69499 25.8684H1.32143L0 24.5526V11.3947L1.32143 10.0789ZM10.175 23.6842L18.5 31.9474V4.10526L10.175 12.3158L9.24999 12.7105H2.64286V23.2368H9.24999L10.175 23.6842ZM37 17.9737C37.0069 22.2216 35.5329 26.3401 32.8295 29.6263L30.9478 27.7579C33.1613 24.9734 34.3629 21.5249 34.3571 17.9737C34.3571 14.2895 33.0885 10.8974 30.9637 8.21053L32.8454 6.34211C35.5382 9.62494 37.0062 13.735 37 17.9737ZM31.7143 17.9737C31.7193 20.8255 30.7895 23.6011 29.0661 25.8789L27.1738 23.9947C28.4127 22.2295 29.0752 20.1272 29.0714 17.9737C29.0751 15.8287 28.4174 13.7344 27.1871 11.9737L29.0793 10.0895C30.7338 12.2868 31.7143 15.0158 31.7143 17.9737ZM26.4286 17.9737C26.4286 19.4842 26.0057 20.8947 25.2657 22.0947L23.3126 20.1526C23.6249 19.4729 23.7876 18.7345 23.7899 17.9869C23.7922 17.2394 23.634 16.5001 23.3258 15.8184L25.2789 13.8737C26.0083 15.0684 26.4286 16.4737 26.4286 17.9737Z" fill="white"/>
+                        </svg>
+                    </div>';
+                    echo '<div id="' . esc_attr( $unmute_trailer_button_element_id ) . '" style="display: none;" class="wpstream_video_on_demand_unmute_trailer">
+                        <svg width="33" height="32" viewBox="0 0 33 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M1.15625 8.85688H7.60813L16.5344 0L18.5 0.809375V30.8719L16.5344 31.635L7.60813 22.7319H1.15625L0 21.5756V10.0131L1.15625 8.85688ZM8.90313 20.8125L16.1875 28.0738V3.6075L8.90313 10.8225L8.09375 11.1694H2.3125V20.4194H8.09375L8.90313 20.8125ZM30.5967 11.3127L32.2316 12.9477L28.2287 16.9506L32.2316 20.9559L30.5967 22.5908L26.5938 18.5856L22.5885 22.5908L20.9536 20.9559L24.9588 16.9506L20.9513 12.95L22.5862 11.3151L26.5938 15.3157L30.5967 11.3127Z" fill="white"/>
+                        </svg>
+                    </div>';
+                }
+                echo '</div>';
+        }
+        ?>
+
+		<?php
+		if ( 'wpstream_product_vod' === get_post_type( $post_id ) ) {
+			$muted = false;
+			$wpstream_vod_start_muted   =   intval ( get_option('wpstream_vod_start_muted','') );
+			if($wpstream_vod_start_muted===1){
+				$muted=true;
+			}
+
+			$autoplay = false;
+			$wpstream_vod_autoplay      =   intval  ( get_option('wpstream_vod_autoplay','') );
+			if($wpstream_vod_autoplay===1){
+				$autoplay=true;
+			}
+
+			echo '<div class="wpstream_video_on_demand_actions_wrapper" data-trailer-muted-default="' . ( $muted ? '1' : '0' ) . '"' . ( $autoplay && $trailer_attachment_id !== 0 ? ' data-autoplay-trailer="1"' : '' ) . '>';
+			echo '<button type="button" class="wpstream_player_controls wpstream_video_on_demand_play_video_wrapper" aria-label="' . esc_attr__( 'Play Video', 'wpstream' ) . '">
+						<span class="wpstream_video_on_demand_play_video">
+							<svg width="29" height="30" viewBox="0 0 29 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+								<path fill-rule="evenodd" clip-rule="evenodd" d="M6.1808 28.9035L26.274 18.1652C29.1087 16.6503 29.1087 12.7497 26.274 11.2348L6.1808 0.496557C4.88769 -0.194506 3.34623 -0.1355 2.1283 0.495357C0.906043 1.12846 1.0095e-06 2.34351 9.38766e-07 3.96179L0 25.4382C-7.07369e-08 27.0565 0.906042 28.2715 2.1283 28.9046C3.34622 29.5355 4.88769 29.5945 6.1808 28.9035ZM24.8221 13.8026C25.5742 14.2045 25.5742 15.1955 24.8221 15.5974L4.72891 26.3356C3.94628 26.7539 3.01386 26.2165 3.01386 25.4382L3.01386 3.96179C3.01386 3.18347 3.94628 2.6461 4.72891 3.06436L24.8221 13.8026Z" fill="#F1F1F1"></path>
+							</svg>
+						</span>
+						' . esc_html__( 'Play Video', 'wpstream' ) . '
+					</button>';
+			if ( $trailer_attachment_id !== 0 ) {
+				echo '<button type="button" class="wpstream_player_controls wpstream_video_on_demand_play_trailer" aria-label="' . esc_attr__( 'Play Trailer', 'wpstream' ) . '">
+							<svg width="30" height="24" viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+								<path fill-rule="evenodd" clip-rule="evenodd" d="M26.6667 1.5H3.33337C2.50495 1.5 1.83337 2.17157 1.83337 3V21C1.83337 21.8284 2.50495 22.5 3.33338 22.5H26.6667C27.4951 22.5 28.1667 21.8284 28.1667 21V3C28.1667 2.17157 27.4951 1.5 26.6667 1.5ZM3.33337 0C1.67652 0 0.333374 1.34315 0.333374 3V21C0.333374 22.6569 1.67652 24 3.33338 24H26.6667C28.3236 24 29.6667 22.6569 29.6667 21V3C29.6667 1.34315 28.3236 0 26.6667 0H3.33337ZM4.83337 4C4.55723 4 4.33337 4.22386 4.33337 4.5V6.16667C4.33337 6.44281 4.55723 6.66667 4.83337 6.66667H6.50004C6.77618 6.66667 7.00004 6.44281 7.00004 6.16667V4.5C7.00004 4.22386 6.77618 4 6.50004 4H4.83337ZM23.5 4C23.2239 4 23 4.22386 23 4.5V6.16667C23 6.44281 23.2239 6.66667 23.5 6.66667H25.1667C25.4428 6.66667 25.6667 6.44281 25.6667 6.16667V4.5C25.6667 4.22386 25.4428 4 25.1667 4H23.5ZM4.33337 11.167C4.33337 10.8909 4.55723 10.667 4.83337 10.667H6.50004C6.77618 10.667 7.00004 10.8909 7.00004 11.167V12.8337C7.00004 13.1098 6.77618 13.3337 6.50004 13.3337H4.83337C4.55723 13.3337 4.33337 13.1098 4.33337 12.8337V11.167ZM23.5001 10.667C23.224 10.667 23.0001 10.8909 23.0001 11.167V12.8337C23.0001 13.1098 23.224 13.3337 23.5001 13.3337H25.1668C25.4429 13.3337 25.6668 13.1098 25.6668 12.8337V11.167C25.6668 10.8909 25.4429 10.667 25.1668 10.667H23.5001ZM4.33337 17.833C4.33337 17.5569 4.55723 17.333 4.83337 17.333H6.50004C6.77618 17.333 7.00004 17.5569 7.00004 17.833V19.4997C7.00004 19.7758 6.77618 19.9997 6.50004 19.9997H4.83337C4.55723 19.9997 4.33337 19.7758 4.33337 19.4997V17.833ZM23.5001 17.333C23.224 17.333 23.0001 17.5569 23.0001 17.833V19.4997C23.0001 19.7758 23.224 19.9997 23.5001 19.9997H25.1668C25.4429 19.9997 25.6668 19.7758 25.6668 19.4997V17.833C25.6668 17.5569 25.4429 17.333 25.1668 17.333H23.5001ZM19.0677 13.0997L13.4077 16.5087C13.0434 16.7281 12.6092 16.7094 12.2661 16.5091C11.9218 16.3081 11.6666 15.9224 11.6666 15.4086V8.59072C11.6666 8.07698 11.9218 7.69125 12.2661 7.49026C12.6092 7.28999 13.0434 7.27126 13.4077 7.49064L19.0677 10.8996C19.8663 11.3805 19.8663 12.6188 19.0677 13.0997Z"/>
+							</svg>
+							' . esc_html__( 'Play Trailer', 'wpstream' ) . '
+						</button>';
+				echo '<div id="' . esc_attr( $mute_trailer_button_element_id ) . '" style="display: none;" class="wpstream_video_on_demand_mute_trailer">
+							<svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path fill-rule="evenodd" clip-rule="evenodd" d="M1.32143 10.0789H8.69499L18.8964 0L21.1428 0.921053V35.1316L18.8964 36L8.69499 25.8684H1.32143L0 24.5526V11.3947L1.32143 10.0789ZM10.175 23.6842L18.5 31.9474V4.10526L10.175 12.3158L9.24999 12.7105H2.64286V23.2368H9.24999L10.175 23.6842ZM37 17.9737C37.0069 22.2216 35.5329 26.3401 32.8295 29.6263L30.9478 27.7579C33.1613 24.9734 34.3629 21.5249 34.3571 17.9737C34.3571 14.2895 33.0885 10.8974 30.9637 8.21053L32.8454 6.34211C35.5382 9.62494 37.0062 13.735 37 17.9737ZM31.7143 17.9737C31.7193 20.8255 30.7895 23.6011 29.0661 25.8789L27.1738 23.9947C28.4127 22.2295 29.0752 20.1272 29.0714 17.9737C29.0751 15.8287 28.4174 13.7344 27.1871 11.9737L29.0793 10.0895C30.7338 12.2868 31.7143 15.0158 31.7143 17.9737ZM26.4286 17.9737C26.4286 19.4842 26.0057 20.8947 25.2657 22.0947L23.3126 20.1526C23.6249 19.4729 23.7876 18.7345 23.7899 17.9869C23.7922 17.2394 23.634 16.5001 23.3258 15.8184L25.2789 13.8737C26.0083 15.0684 26.4286 16.4737 26.4286 17.9737Z" fill="white"/>
+							</svg>
+						</div>';
+				echo '<div id="' . esc_attr( $unmute_trailer_button_element_id ) . '" style="display: none;" class="wpstream_video_on_demand_unmute_trailer">
+							<svg width="33" height="32" viewBox="0 0 33 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path fill-rule="evenodd" clip-rule="evenodd" d="M1.15625 8.85688H7.60813L16.5344 0L18.5 0.809375V30.8719L16.5344 31.635L7.60813 22.7319H1.15625L0 21.5756V10.0131L1.15625 8.85688ZM8.90313 20.8125L16.1875 28.0738V3.6075L8.90313 10.8225L8.09375 11.1694H2.3125V20.4194H8.09375L8.90313 20.8125ZM30.5967 11.3127L32.2316 12.9477L28.2287 16.9506L32.2316 20.9559L30.5967 22.5908L26.5938 18.5856L22.5885 22.5908L20.9536 20.9559L24.9588 16.9506L20.9513 12.95L22.5862 11.3151L26.5938 15.3157L30.5967 11.3127Z" fill="white"/>
+							</svg>
+						</div>';
+			}
+			echo '</div>';
+		}
+		?>
+
 			<?php
 			if ( $wpstream_plugin->main->wpstream_player->wpstream_check_if_player_can_dsplay_theme( $post_id ) ) {
 
@@ -333,16 +409,38 @@ function wpstream_video_cards_column_class( $per_row ) {
 function wpstream_theme_not_live_section( $channel_id ) {
     $transient_name = 'event_data_to_return_'.   $channel_id;
     $event_data = get_transient( $transient_name );
+	$status = isset( $event_data['status'] ) ? $event_data['status'] : '';
+    $embedUrl = isset( $event_data['embedUrl'] ) ? $event_data['embedUrl'] : '';
 
-	$return_string  = '<div class="wpstream_not_live_mess wpstream_theme_not_live_section " style="display: none"><div class="wpstream_not_live_mess_back"></div>';
-	$return_string .= '<div class="wpstream_not_live_mess_mess">';
+    if ( $embedUrl ) {
+	    $return_string   = '<div class="wpstream_not_live_mess wpstream_live_channel_status"><div class="wpstream_not_live_mess_back"></div>';
+	    $message_classes = array( 'wpstream_live_channel_status_message' );
+	    if ( in_array( $status, array( 'stopped', 'stopping', 'starting' ) ) || $status === '' ) {
+		    $message_classes[] = 'wpstream_not_live_mess_mess';
+	    }
+	    if ( in_array( $status, array( 'active' ) ) ) {
+		    $message_classes[] = 'wpstream_player_state_init_class wpstream_not_live_mess_mess';
+	    }
 
-	if ( ( isset( $event_data['status']) &&
-		   in_array( $event_data['status'], array( 'stopped', 'stopping', 'starting' ) ) ) ||
-		 ( isset($event_data['error']) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ){
-		$return_string  .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );;
-	} else {
-        $return_string .= '<div classs="wpstream_loading_spinner vjs-loading-spinner" style="display: block;"></div>';
+	    $return_string .= '<div class="' . esc_attr( implode( ' ', $message_classes ) ) . '">';
+	    if ( ( in_array( $status, array( 'stopped', 'stopping', 'starting' ) ) || $status === '' ) ||
+	         ( isset( $event_data['error'] ) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ) {
+		    $return_string .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );;
+	    }
+	    if ( in_array( $status, array( 'active' ) ) ) {
+		    $return_string .= esc_html__( 'The live stream has not yet started', 'hello-wpstream' );
+	    }
+    } else {
+	    $return_string  = '<div class="wpstream_not_live_mess wpstream_theme_not_live_section " style="display: none"><div class="wpstream_not_live_mess_back"></div>';
+	    $return_string .= '<div class="wpstream_not_live_mess_mess">';
+
+	    if ( ( isset( $event_data['status']) &&
+	           in_array( $event_data['status'], array( 'stopped', 'stopping', 'starting' ) ) ) ||
+	         ( isset($event_data['error']) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ){
+		    $return_string  .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );;
+	    } else {
+		    $return_string .= '<div classs="wpstream_loading_spinner vjs-loading-spinner" style="display: block;"></div>';
+	    }
     }
 
 	$return_string .= '</div>';

@@ -305,6 +305,9 @@ class Wpstream_Live_Api_Connection  {
                     update_post_meta($channel_id,'obs_uri',$obs_uri);
                     update_post_meta($channel_id,'obs_stream',$obs_stream);   
                     update_post_meta($channel_id,'broadcast_url',$response['broadcast_url']);
+					if ( isset( $response['embedKey'] ) && $response['embedKey'] != '' ) {
+						update_post_meta( $channel_id,'embedKey',$response['embedKey'] );
+					}
 
                 }
                 
@@ -363,6 +366,7 @@ class Wpstream_Live_Api_Connection  {
             'access_token'  =>  $access_token,
             'channel_id'    =>  $channel_id,
             'domain'        =>  $domain['host'],
+			'embed'         => true,
             'notes'         =>  $notes
         );
             
@@ -1086,28 +1090,22 @@ class Wpstream_Live_Api_Connection  {
             return;
         }
        
-        $url='access_token';
-        $curl_post_fields=array(
-            'grant_type'    =>  'password',
-            'username'      =>  $username,
-            'password'      =>  $password
+        $url              = 'access_token';
+        $curl_post_fields = array(
+            'grant_type' => 'password',
+            'username'   => $username,
+            'password'   => $password
         );
-        
-    
-        
-        $curl_response=$this->wpstream_baker_do_curl_base($url,$curl_post_fields, true);
-            
-        $response= json_decode($curl_response);
+        $curl_response    = $this->wpstream_baker_do_curl_base($url, $curl_post_fields, true);
+		$response         = json_decode($curl_response);
 
-        if( isset($response->access_token) && $response->access_token!='' ){
+        if( isset( $response->access_token ) && $response->access_token != '' ) {
             return $response->access_token;
-        }else{        
+        } else {
              return false;
         }
     }
-    
- 
-    
+
     /*
      * 
      * Return token for api version 3.0

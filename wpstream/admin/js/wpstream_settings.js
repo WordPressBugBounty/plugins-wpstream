@@ -42,7 +42,6 @@ function wpstream_save_default_channel_options() {
                 },
                 success: function (data) {
                     jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','hidden');
-                    console.log(data);
                 },
                 error: function (jqXHR,textStatus,errorThrown) {
                     wpstream_show_error_message(jQuery('.theme_options_tab_wpstream .wpstream-save-settings'));

@@ -446,7 +446,7 @@
 		}
 		const scopeRoot =
 			trailerIframe.closest(
-				".wpstream_player_wrapper.wpstream_player_shortcode"
+				".row"
 			) ||
 			trailerIframe.parentElement;
 		if (!scopeRoot) {
@@ -521,6 +521,92 @@
 		});
 	}
 
+	function initLiveUpdateEventsFromHost() {
+		const frames = findVodFrameSet(null);
+		if (!frames.content || !frames.content.src) {
+			console.log('fames not found');
+			return;
+		}
+		receivePlayerEvent(frames.content, function (eventName, details) {
+			switch( eventName ) {
+				case "video_playing":
+					revealFeaturedVodPlayer(frames.content);
+					setFrameVisibility(frames.content, true);
+					setFrameVisibility(frames.trailer, false);
+					applyPlayingContentDecorNearby(frames.content);
+					hideActionsWrapperNearby(frames.content);
+					dispatchPlaybackState(frames.content, "playing_content");
+					break;
+				case "live_update":
+					// here we check for status update
+					if ( details ) {
+						if ( Object.hasOwn(details, 'update') ) {
+							if ( Object.hasOwn(details.update, 'status') ) {
+								console.log(details.update.status)
+								changeStatusMessage(details.update.status);
+							}
+						}
+					}
+					break;
+				case "live_update_ended":
+					break;
+				case "live_update_open":
+					break;
+				case "live_update_error":
+					break;
+				case "live_update_closed":
+					break;
+				default:
+					break;
+			}
+		});
+	}
+
+	function changeStatusMessage(status) {
+		const liveStrings =
+			window.wpstreamLiveIframeSessionApi &&
+			typeof window.wpstreamLiveIframeSessionApi === "object"
+				? window.wpstreamLiveIframeSessionApi
+				: {};
+		if ( !liveStrings.isThemeActive ) {
+			return;
+		}
+		const statusEl = document.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status');
+		statusEl.style.display = "block";
+		const messageEl = document.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status .wpstream_live_channel_status_message');
+		switch ( status ) {
+			case "stopped":
+				messageEl.textContent =
+					liveStrings.wpstream_player_state_stopped_msg ||
+					'We are not live at this moment';
+				messageEl.classList.remove('wpstream_player_state_init_class');
+				break;
+			case "init":
+				messageEl.textContent =
+					liveStrings.wpstream_player_state_init_msg ||
+					'The live stream has not yet started';
+				statusEl.classList.add('wpstream_player_state_init_class');
+				break;
+			case "startup":
+				messageEl.textContent =
+					liveStrings.wpstream_player_state_startup_msg ||
+					'The live stream is starting...';
+				break;
+			case "onair":
+				// select all with .wpstream_hide_on_play class
+				document.querySelector('.wpstream-featured-player-wrapper .wpstream_hide_on_play').classList.add('hide_on_play');
+				document.querySelector('.wpstream-featured-player-wrapper .wpstream_video_poster_holder.wpstream_hide_on_trailer').classList.add('hide_on_play');
+				break;
+			case "paused":
+				document.querySelector('.wpstream-featured-player-wrapper .wpstream_hide_on_play').classList.remove('hide_on_play');
+				document.querySelector('.wpstream-featured-player-wrapper .wpstream_title_wrapper_simple.wpstream_hide_on_trailer').classList.remove('hide_on_play');
+				messageEl.textContent =
+					liveStrings.wpstream_player_state_paused_msg ||
+					'The live stream is paused';
+				break;
+		}
+	}
+
 	function sendPlaybackSessionToFrame(iframe, playbackSession) {
 		if (!iframe || !iframe.contentWindow) {
 			return;
@@ -556,10 +642,18 @@
 	}
 
 	async function hydrateVodPlaybackSessionsIfNeeded() {
+		const cfgCandidates = [
+			window.wpstreamVodIframeSessionApi,
+			window.wpstreamLiveIframeSessionApi,
+		];
 		const cfg =
-			typeof wpstreamVodIframeSessionApi === "undefined"
-				? null
-				: wpstreamVodIframeSessionApi;
+			cfgCandidates.find(function (candidate) {
+				return (
+					candidate &&
+					typeof candidate === "object" &&
+					candidate.requirePlaybackSession
+				);
+			}) || null;
 		if (!cfg || !cfg.requirePlaybackSession) {
 			return;
 		}
@@ -615,6 +709,7 @@
 		initAutoplayTrailerFromHost();
 		initTrailerIframeEndedFromHost();
 		initIframeHoverOverlayFromHost();
+		initLiveUpdateEventsFromHost();
 		hydrateVodPlaybackSessionsIfNeeded();
 	}
 
