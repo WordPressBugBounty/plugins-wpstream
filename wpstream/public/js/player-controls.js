@@ -524,7 +524,6 @@
 	function initLiveUpdateEventsFromHost() {
 		const frames = findVodFrameSet(null);
 		if (!frames.content || !frames.content.src) {
-			console.log('fames not found');
 			return;
 		}
 		receivePlayerEvent(frames.content, function (eventName, details) {
@@ -536,16 +535,17 @@
 					applyPlayingContentDecorNearby(frames.content);
 					hideActionsWrapperNearby(frames.content);
 					dispatchPlaybackState(frames.content, "playing_content");
+					// this is added so that when the streaming is currently live, the status message get hidden
+					changeStatusMessage("onair");
 					break;
 				case "live_update":
 					// here we check for status update
-					if ( details ) {
-						if ( Object.hasOwn(details, 'update') ) {
-							if ( Object.hasOwn(details.update, 'status') ) {
-								console.log(details.update.status)
-								changeStatusMessage(details.update.status);
-							}
-						}
+					const status =
+						details && details.update
+							? details.update.status
+							: null;
+					if (typeof status === "string" && status) {
+						changeStatusMessage(status);
 					}
 					break;
 				case "live_update_ended":
@@ -564,16 +564,19 @@
 
 	function changeStatusMessage(status) {
 		const liveStrings =
-			window.wpstreamLiveIframeSessionApi &&
-			typeof window.wpstreamLiveIframeSessionApi === "object"
-				? window.wpstreamLiveIframeSessionApi
+			window.wpstreamLiveUiConfig &&
+			typeof window.wpstreamLiveUiConfig === "object"
+				? window.wpstreamLiveUiConfig
 				: {};
 		if ( !liveStrings.isThemeActive ) {
 			return;
 		}
 		const statusEl = document.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status');
-		statusEl.style.display = "block";
 		const messageEl = document.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status .wpstream_live_channel_status_message');
+		if ( !statusEl || !messageEl ) {
+			return;
+		}
+		statusEl.style.display = "block";
 		switch ( status ) {
 			case "stopped":
 				messageEl.textContent =
@@ -585,7 +588,7 @@
 				messageEl.textContent =
 					liveStrings.wpstream_player_state_init_msg ||
 					'The live stream has not yet started';
-				statusEl.classList.add('wpstream_player_state_init_class');
+				messageEl.classList.add('wpstream_player_state_init_class');
 				break;
 			case "startup":
 				messageEl.textContent =
@@ -593,13 +596,16 @@
 					'The live stream is starting...';
 				break;
 			case "onair":
-				// select all with .wpstream_hide_on_play class
-				document.querySelector('.wpstream-featured-player-wrapper .wpstream_hide_on_play').classList.add('hide_on_play');
-				document.querySelector('.wpstream-featured-player-wrapper .wpstream_video_poster_holder.wpstream_hide_on_trailer').classList.add('hide_on_play');
+				document.querySelectorAll('.wpstream-featured-player-wrapper .wpstream_hide_on_play, .wpstream-featured-player-wrapper .wpstream_video_poster_holder.wpstream_hide_on_trailer').forEach(function (el) {
+					el.classList.add('hide_on_play');
+				});
+				messageEl.classList.add('hide_on_play');
 				break;
 			case "paused":
-				document.querySelector('.wpstream-featured-player-wrapper .wpstream_hide_on_play').classList.remove('hide_on_play');
-				document.querySelector('.wpstream-featured-player-wrapper .wpstream_title_wrapper_simple.wpstream_hide_on_trailer').classList.remove('hide_on_play');
+				document.querySelectorAll('.wpstream-featured-player-wrapper .wpstream_hide_on_play, .wpstream-featured-player-wrapper .wpstream_video_poster_holder.wpstream_hide_on_trailer').forEach(function (el) {
+					el.classList.remove('hide_on_play');
+				});
+				messageEl.classList.remove('hide_on_play');
 				messageEl.textContent =
 					liveStrings.wpstream_player_state_paused_msg ||
 					'The live stream is paused';

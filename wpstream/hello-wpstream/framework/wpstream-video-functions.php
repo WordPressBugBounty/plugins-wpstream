@@ -189,7 +189,7 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 		$trailer_attachment_id = intval (get_post_meta( $post_id, 'video_trailer', true ));;
 
         if( function_exists('wpstream_theme_not_live_section' ) && 'wpstream_product' === get_post_type( $post_id ) ) {
-            echo '<div class="wpstream_live_channel_actions_wrapper">';
+            echo '<div class="wpstream_live_channel_actions_wrapper wpstream_video_on_demand_actions_wrapper">';
                 print wpstream_theme_not_live_section( $post_id );
                 if ( $trailer_attachment_id !== 0 ) {
                     echo '<button type="button" class="wpstream_player_controls wpstream_video_on_demand_play_trailer" aria-label="' . esc_attr__( 'Play Trailer', 'wpstream' ) . '">
@@ -410,7 +410,7 @@ function wpstream_theme_not_live_section( $channel_id ) {
     $transient_name = 'event_data_to_return_'.   $channel_id;
     $event_data = get_transient( $transient_name );
 	$status = isset( $event_data['status'] ) ? $event_data['status'] : '';
-    $embedUrl = isset( $event_data['embedUrl'] ) ? $event_data['embedUrl'] : '';
+    $embedUrl = get_post_meta( $channel_id, 'embedUrl', true );
 
     if ( $embedUrl ) {
 	    $return_string   = '<div class="wpstream_not_live_mess wpstream_live_channel_status"><div class="wpstream_not_live_mess_back"></div>';
@@ -437,9 +437,9 @@ function wpstream_theme_not_live_section( $channel_id ) {
 	    if ( ( isset( $event_data['status']) &&
 	           in_array( $event_data['status'], array( 'stopped', 'stopping', 'starting' ) ) ) ||
 	         ( isset($event_data['error']) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ){
-		    $return_string  .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );;
+		    $return_string  .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );
 	    } else {
-		    $return_string .= '<div classs="wpstream_loading_spinner vjs-loading-spinner" style="display: block;"></div>';
+		    $return_string .= '<div class="wpstream_loading_spinner vjs-loading-spinner" style="display: block;"></div>';
 	    }
     }
 

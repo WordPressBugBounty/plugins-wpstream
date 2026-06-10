@@ -475,6 +475,25 @@ class Wpstream_Player{
         wp_enqueue_script('wpstream-player');
 		wp_enqueue_script( 'wpstream-player-controls' );
 
+	    wp_localize_script(
+		    'wpstream-player-controls',
+		    'wpstreamLiveUiConfig',
+		    array(
+			    'wpstream_player_state_stopped_msg' => esc_html(
+					get_option(
+						'wpstream_you_are_not_live',
+						__( 'We are not live at this moment', 'wpstream' )
+					),
+			    ),
+			    'wpstream_player_state_init_msg'    => esc_html__( 'The live stream has not yet started', 'wpstream' ),
+			    'wpstream_player_state_startup_msg' => esc_html__( 'The live stream is starting...', 'wpstream' ),
+			    'wpstream_player_state_paused_msg'  => esc_html__( 'The live stream is paused', 'wpstream' ),
+			    'wpstream_player_state_ended_msg'   => esc_html__( 'The live stream has ended', 'wpstream' ),
+			    'wpstream_player_state_error_msg'   => esc_html__( 'Something went wrong', 'wpstream' ),
+			    'isThemeActive'                     => get_template() === 'hello-wpstream',
+		    )
+	    );
+
 	    $player_theme = $this->wpstream_get_player_theme( $channel_id );
         $now                =   time().rand(0,1000000);
         $overlay_video_div_id = "random_id_".$now;
@@ -656,8 +675,8 @@ class Wpstream_Player{
 
 			usleep( 10000 );
 		} else {
-			$live_channel_frame_base = WPSTREAM_PLAYER . "/player/live?";
-			$channel_id              = get_post_meta( $channel_id, 'channelId', true );
+			$live_channel_frame_base               = WPSTREAM_PLAYER . "/player/live?";
+			$live_channel_id                       = get_post_meta( $channel_id, 'channelId', true );
 
 			$local_event_options                   = get_option( 'wpstream_user_streaming_global_channel_options' );
 			$wpstream_session_encryption           = false;
@@ -674,13 +693,13 @@ class Wpstream_Player{
 				$wpstream_live_channel_autoplay = true;
 			}
 
-			$live_channel_validate_url = '';
+			$wpstream_live_channel_validate_url = '';
 			if ( $wpstream_session_encryption ) {
-				$live_channel_validate_url = esc_url_raw(
+				$wpstream_live_channel_validate_url = esc_url_raw(
 					apply_filters(
 						'wpstream_live_channel_validate_playback_session_url',
-						$this->playback_session->wpstream_get_default_vod_validate_playback_session_url(),
-						$channel_id
+						$this->playback_session->wpstream_get_default_validate_playback_session_url(),
+						$live_channel_id
 					)
 				);
 				wp_localize_script(
@@ -691,62 +710,52 @@ class Wpstream_Player{
 						'nonce'                             => wp_create_nonce( 'wpstream_playback_session_issue' ),
 						'productId'                         => (int) $channel_id,
 						'ajaxUrl'                           => admin_url( 'admin-ajax.php' ),
-						'wpstream_player_state_stopped_msg' => esc_html__( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ), 'wpstream' ),
-						'wpstream_player_state_init_msg'    => esc_html__( 'The live stream has not yet started', 'wpstream' ),
-						'wpstream_player_state_startup_msg' => esc_html__( 'The live stream is starting...', 'wpstream' ),
-						'wpstream_player_state_paused_msg'  => esc_html__( 'The live stream is paused', 'wpstream' ),
-						'wpstream_player_state_ended_msg'   => esc_html__( 'The live stream has ended', 'wpstream' ),
-						'wpstream_player_state_error_msg'   => esc_html__( 'Something went wrong', 'wpstream' ),
-						'isThemeActive'                     => get_template() == 'hello-wpstream',
 					)
 				);
 			}
 
 			$local_event_options                   = get_option( 'wpstream_user_streaming_global_channel_options' );
-			$wpstream_love_channel_lock_to_website = 0;
+			$wpstream_live_channel_lock_to_website = 0;
+			$wpstream_live_channel_encrypt         = 0;
+			$wpstream_live_channel_abr             = 0;
+			$wpstream_live_channel_muted           = 0;
+
 			if ( isset( $local_event_options['domain_lock'] ) && intval( $local_event_options['domain_lock'] ) == 1 ) {
-				$wpstream_love_channel_lock_to_website = 1;
+				$wpstream_live_channel_lock_to_website = 1;
 			}
-			$wpstream_live_channel_encrypt = 0;
 			if ( isset( $local_event_options['encrypt'] ) && intval( $local_event_options['encrypt'] ) == 1 ) {
 				$wpstream_live_channel_encrypt = 1;
 			}
-			$wpstream_live_channel_encrypt = 0;
-			if ( isset( $local_event_options['ses_encrypt'] ) && intval( $local_event_options['ses_encrypt'] ) == 1 ) {
-				$wpstream_live_channel_encrypt = 1;
-			}
-			$wpstream_live_channel_abr = 0;
 			if ( isset( $local_event_options['adaptive_bitrate'] ) && intval( $local_event_options['adaptive_bitrate'] ) == 1 ) {
 				$wpstream_live_channel_abr = 1;
 			}
-			$wpstream_live_channel_muted = 0;
 			if ( isset( $local_event_options['mute'] ) && intval( $local_event_options['mute'] ) == 1 ) {
 				$wpstream_live_channel_muted = 1;
 			}
 
 			$live_channel_embed_ancestor = '';
-			if ( $wpstream_love_channel_lock_to_website ) {
+			if ( $wpstream_live_channel_lock_to_website ) {
 				$live_channel_embed_ancestor = esc_url_raw(
 					apply_filters(
-						'wpstream_vod_embed_ancestor',
+						'wpstream_live_channel_embed_ancestor',
 						$this->wpstream_get_site_origin_for_embed(),
-						$channel_id
+						$live_channel_id
 					)
 				);
 			}
 
 			$wpstream_live_channel_embed_key = $this->wpstream_generate_player_embed_key(
-				$channel_id,
-				$live_channel_validate_url,
+				$live_channel_id,
+				$wpstream_live_channel_validate_url,
 				$live_channel_embed_ancestor,
 				$wpstream_live_channel_encrypt ? 'yes' : ''
 			);
 			if ( '' === $wpstream_live_channel_embed_key ) {
-				$vod_iframe_embed_key = (string) get_post_meta( $channel_id, 'embed_key', true );
+				$wpstream_live_channel_embed_key = (string) get_post_meta( $channel_id, 'embed_key', true );
 			}
 			$wpstream_live_channel_trailer_embed_key = $this->wpstream_generate_player_embed_key(
 				$video_trailer,
-				$live_channel_validate_url,
+				$wpstream_live_channel_validate_url,
 				$live_channel_embed_ancestor,
 				$wpstream_live_channel_encrypt ? 'yes' : ''
 			);
@@ -762,38 +771,12 @@ class Wpstream_Player{
 
 			$wpstream_poster_image = get_the_post_thumbnail_url( $channel_id, 'full' );
 
-			$wpstream_live_channel_validate_url = '';
-			if ( $wpstream_session_encryption ) {
-				$wpstream_live_channel_validate_url = esc_url_raw( apply_filters( 'wpstream_vod_validate_playback_session_url', $this->playback_session->wpstream_get_default_vod_validate_playback_session_url(), $channel_id ) );
-				wp_localize_script(
-					'wpstream-player-controls',
-					'wpstreamVodIframeSessionApi',
-					array(
-						'requirePlaybackSession' => true,
-						'nonce'                  => wp_create_nonce( 'wpstream_playback_session_issue' ),
-						'productId'              => (int) $channel_id,
-						'ajaxUrl'                => admin_url( 'admin-ajax.php' ),
-					)
-				);
-			}
-
-			$live_channel_embed_ancestor = '';
-			if ( $wpstream_live_channel_lock_to_website ) {
-				$live_channel_embed_ancestor = esc_url_raw(
-					apply_filters(
-						'wpstream_vod_embed_ancestor',
-						$this->wpstream_get_site_origin_for_embed(),
-						$channel_id
-					)
-				);
-			}
-
 			$wpstream_player_logo_data       = $this->wpstream_get_player_logo_data( $channel_id );
 			$wpstream_player_logo_image      = $wpstream_player_logo_data['player_logo_src'];
 
 			$live_channel_query_args = array_filter(
 				array(
-					'channel'                    => $channel_id,
+					'channel'                    => $live_channel_id,
 					'posterImage'                => $wpstream_poster_image,
 					'embedKey'                   => $wpstream_live_channel_embed_key,
 					'autoplay'                   => $wpstream_live_channel_autoplay ? true : '',
@@ -1167,11 +1150,7 @@ class Wpstream_Player{
         public function wpstream_video_on_demand_player($product_id){
 			wp_enqueue_script('video.min');
             wp_enqueue_script('wpstream-player');
-
-	        $hello_wpstream_theme_active = get_template() == 'hello-wpstream';
-	        if ( $hello_wpstream_theme_active ) {
-		        wp_enqueue_script( 'wpstream-player-controls' );
-	        }
+	        wp_enqueue_script( 'wpstream-player-controls' );
 
 			$player_theme = $this->wpstream_get_player_theme( $product_id );
 
@@ -1284,7 +1263,13 @@ class Wpstream_Player{
 				 */
 				$vod_validate_url = '';
 				if ( $wpstream_session_encryption ) {
-					$vod_validate_url = esc_url_raw( apply_filters( 'wpstream_vod_validate_playback_session_url', $this->playback_session->wpstream_get_default_vod_validate_playback_session_url(), $product_id ) );
+					$vod_validate_url = esc_url_raw(
+						apply_filters(
+							'wpstream_vod_validate_playback_session_url',
+							$this->playback_session->wpstream_get_default_validate_playback_session_url(),
+							$product_id
+						)
+					);
 					wp_localize_script(
 						'wpstream-player-controls',
 						'wpstreamVodIframeSessionApi',
@@ -1323,7 +1308,7 @@ class Wpstream_Player{
 						$vod_iframe_video = substr( $vod_iframe_video, 1, -1 );
 					}
 				}
-	            $vod_iframe_embed_key         = $this->wpstream_generate_player_embed_key(
+	            $vod_iframe_embed_key = $this->wpstream_generate_player_embed_key(
 					$vod_iframe_video,
 					$vod_validate_url,
 					$vod_embed_ancestor,
@@ -1392,7 +1377,7 @@ class Wpstream_Player{
 							allowfullscreen 
 							allow="autoplay; fullscreen">
 					</iframe>';
-					if ( $trailer_attachment_id != 0 && $hello_wpstream_theme_active ) {
+					if ( $trailer_attachment_id != 0 && get_template() == 'hello-wpstream' ) {
 						echo '<iframe id="playerFrameTrailer" 
 							class="wpstream_video_on_demand_iframe wpstream_video_on_demand_iframe_trailer" 
 							title="' . esc_attr__( 'Embedded trailer content', 'wpstream' ) . '" 

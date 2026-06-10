@@ -22,11 +22,10 @@ class Wpstream_Playback_Session {
 
 	/**
 	 * Base URL embedded as validatePlaybackSessionUrl (presence server verifies via GET).
-	 * Override globally with option wpstream_vod_validate_playback_session_url or filter wpstream_vod_validate_playback_session_url.
 	 *
 	 * @return string
 	 */
-	public function wpstream_get_default_vod_validate_playback_session_url() {
+	public function wpstream_get_default_validate_playback_session_url() {
 		return esc_url_raw( rest_url( 'wpstream/v1/playback-session-verify' ) );
 	}
 
