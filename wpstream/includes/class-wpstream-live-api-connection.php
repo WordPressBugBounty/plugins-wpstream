@@ -1,11 +1,15 @@
 <?php
 
+require_once dirname( __FILE__ ) . '/class-wpstream-user-quota-service.php';
+
 class Wpstream_Live_Api_Connection  {
 
-    
+    private $user_quota_service;
 
     
     public function __construct() {
+		$this->user_quota_service = new Wpstream_User_Quota_Service( $this );
+
         add_action( 'wp_ajax_wpstream_give_me_live_uri', array($this,'wpstream_give_me_live_uri') );  
         add_action( 'wp_ajax_wpstream_turn_of_channel',  array($this,'wpstream_turn_of_channel') );  
         add_action( 'wp_ajax_wpstream_update_local_event_settings',array($this,'wpstream_update_local_event_settings'));
@@ -270,11 +274,26 @@ class Wpstream_Live_Api_Connection  {
 
 
             $response           =   $this->wpstream_check_event_status_api_call($channel_id,$notes);
-       
-       
+
+		    $previous_status = get_post_meta( $channel_id, 'status', true );
 
             if( isset($response['success']) && $response['success']){
                 $this->api20_wpstream_update_event($response,$channel_id);
+
+	            if (
+		            isset( $response['status'] )
+		            && $response['status'] === 'active'
+		            && $previous_status !== 'active'
+	            ) {
+		            /**
+		             * Fires when a channel becomes active and is ready to stream.
+		             *
+		             * @param int   $channel_id Channel post ID.
+		             * @param array $response   API response data.
+		             * @param string $notes     Caller context from JS (e.g. wpstream_check_live_connections_on_start).
+		             */
+		            do_action( 'wpstream_channel_became_active', $channel_id, $response, $notes );
+	            }
                 
                 if( isset($response['broadcast_url']) && isset($response['status']) && $response['status']==='active' ){
                     
@@ -826,7 +845,10 @@ class Wpstream_Live_Api_Connection  {
 
 
         $channel_id  =   intval($_POST['show_id']);
-		$basic_streaming = filter_var($_POST['basic_streaming'], FILTER_VALIDATE_BOOLEAN);
+
+		$pack_details = $wpstream_plugin->main->quota_manager->force_quota_update();
+		$basic_streaming = $wpstream_plugin->main->quota_manager->is_basic_streaming_mode( $pack_details );
+
         $on_boarding =   '';
         if(isset($_POST['start_onboarding'])){
             $on_boarding =   sanitize_text_field($_POST['start_onboarding']);
@@ -1123,31 +1145,12 @@ class Wpstream_Live_Api_Connection  {
     */
     
     public function wpstream_request_pack_data_per_user($context = ''){
-		$url          = 'user/quota';
-		$access_token = $this->wpstream_get_token();
-
-		// do not make the call if no token is available
-		if (!$access_token) return false;
-
-		$curl_post_fields=array(
-			'access_token'=>$access_token,
-			'context'     => $context,
-			'plugin_version' => WPSTREAM_PLUGIN_VERSION
-		);
-
-		$curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true, false, WPSTREAM_TIMEOUT_CONST);
-		$curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-
-		if( isset($curl_response_decoded['success']) && $curl_response_decoded['success']===true   ){
-			set_transient( 'wpstream_request_pack_data_per_user_transient', $curl_response_decoded, 60 );
-
-			update_option('wpstream_api_username_from_token',$curl_response_decoded['username']);
-			return $curl_response_decoded;
-		} else {
-			return false;
-		}
-
+		return $this->user_quota_service->request_pack_data_per_user( $context );
     }
+
+	public function get_user_quota_service() {
+		return $this->user_quota_service;
+	}
     
 
 	public function wpstream_check_user_quota() {

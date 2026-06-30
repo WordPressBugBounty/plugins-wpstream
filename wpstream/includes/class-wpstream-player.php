@@ -459,6 +459,32 @@ class Wpstream_Player{
         
         return $local_event_options;
     }
+
+	/**
+	 * Localized strings for live player UI (parent overlay + iframe postMessage).
+	 *
+	 * @return array<string,string|bool>
+	 */
+	private function wpstream_get_player_i18n_config() {
+		return array(
+			'wpstream_player_state_stopped_msg'      => esc_html(
+				get_option(
+					'wpstream_you_are_not_live',
+					__( 'We are not live at this moment', 'wpstream' )
+				)
+			),
+			'wpstream_player_state_init_msg'         => esc_html__( 'The live stream has not yet started', 'wpstream' ),
+			'wpstream_player_state_startup_msg'      => esc_html__( 'The live stream is starting...', 'wpstream' ),
+			'wpstream_player_state_paused_msg'       => esc_html__( 'The live stream is paused', 'wpstream' ),
+			'wpstream_player_state_ended_msg'        => esc_html__( 'The live stream has ended', 'wpstream' ),
+			'wpstream_player_state_error_msg'        => esc_html__( 'Something went wrong', 'wpstream' ),
+			'wpstream_player_offair_default_msg'     => esc_html__( 'Live stream is not on air.', 'wpstream' ),
+			'wpstream_player_max_viewers_msg'        => esc_html__( 'Max viewers reached. Please wait', 'wpstream' ),
+			'wpstream_player_max_viewers_wait_msg'   => esc_html__( 'Max viewers reached. Please wait for %d to leave', 'wpstream' ),
+			'wpstream_player_invalid_session_msg'    => esc_html__( 'Invalid session. Please refresh and start playback again.', 'wpstream' ),
+			'isThemeActive'                          => get_template() === 'hello-wpstream',
+		);
+	}
     
     
     
@@ -478,20 +504,7 @@ class Wpstream_Player{
 	    wp_localize_script(
 		    'wpstream-player-controls',
 		    'wpstreamLiveUiConfig',
-		    array(
-			    'wpstream_player_state_stopped_msg' => esc_html(
-					get_option(
-						'wpstream_you_are_not_live',
-						__( 'We are not live at this moment', 'wpstream' )
-					),
-			    ),
-			    'wpstream_player_state_init_msg'    => esc_html__( 'The live stream has not yet started', 'wpstream' ),
-			    'wpstream_player_state_startup_msg' => esc_html__( 'The live stream is starting...', 'wpstream' ),
-			    'wpstream_player_state_paused_msg'  => esc_html__( 'The live stream is paused', 'wpstream' ),
-			    'wpstream_player_state_ended_msg'   => esc_html__( 'The live stream has ended', 'wpstream' ),
-			    'wpstream_player_state_error_msg'   => esc_html__( 'Something went wrong', 'wpstream' ),
-			    'isThemeActive'                     => get_template() === 'hello-wpstream',
-		    )
+		    $this->wpstream_get_player_i18n_config()
 	    );
 
 	    $player_theme = $this->wpstream_get_player_theme( $channel_id );
@@ -1060,7 +1073,7 @@ class Wpstream_Player{
 		 * Return data about the logo
 		 */
 		private function wpstream_get_player_logo_data( $product_id ): array {
-			$player_logo_position            = get_option( 'wpstream_player_logo_position', 'top-right' );
+			$player_logo_position            = get_option( 'wpstream_player_logo_position', 'top-left' );
 			$player_logo_position_class      = '';
 			$player_logo_horizontal_position = '';
 			if ( $player_logo_position && $player_logo_position != '' ) {
@@ -1152,6 +1165,12 @@ class Wpstream_Player{
             wp_enqueue_script('wpstream-player');
 	        wp_enqueue_script( 'wpstream-player-controls' );
 
+			wp_localize_script(
+				'wpstream-player-controls',
+				'wpstreamLiveUiConfig',
+				$this->wpstream_get_player_i18n_config()
+			);
+
 			$player_theme = $this->wpstream_get_player_theme( $product_id );
 
             $uri_details        =   $this->wpstream_video_on_demand_player_uri_request($product_id);
@@ -1203,7 +1222,7 @@ class Wpstream_Player{
             $video_type = intval( get_post_meta($product_id, 'wpstream_product_type', true));
 
 
-            if ( (isset($pack['available_data_mb']) && $pack['available_data_mb']>0) || $video_type === 3 ) {
+            if ( $this->main->quota_manager->can_stream_vod( $pack ) || $video_type === 3 ) {
 
                 if($video_path_final==''){
                     if( $uri_details['post_type']=='wpstream_product_vod'  && $uri_details['free_video_type']==3 ){
@@ -1763,18 +1782,22 @@ class Wpstream_Player{
                 return;
             }
             global $product;
-            $product_id     =       $product->get_id();
-            $current_user           =       wp_get_current_user();
+            $product_id   = $product->get_id();
+            $current_user = wp_get_current_user();
+            $term_list    = wp_get_post_terms($product_id, 'product_type');
+
+			$is_simple_subscription = get_post_meta($product_id, '_subscript_live_event');
+			if ( $term_list[0]->name == 'subscription' && ! empty( $is_simple_subscription ) && $is_simple_subscription[0] == 'none' ) {
+				return;
+			}
 
             if ( is_user_logged_in() ) {
-                
-           
                 if($this->wpstream_check_if_player_can_dsplay($product_id) ){
             
                     echo '<div class="wpstream_player_wrapper "><div class="wpstream_player_container">';
 
                     $is_subscription_live_event =   esc_html(get_post_meta($product_id,'_subscript_live_event',true));
-                    $term_list                  =   wp_get_post_terms($product_id, 'product_type');
+
                    
 
                     if( $term_list[0]->name=='live_stream' || ($term_list[0]->name=='subscription' && $is_subscription_live_event=='yes' )  ){
@@ -1784,12 +1807,8 @@ class Wpstream_Player{
                         $this->wpstream_video_on_demand_player($product_id);
                     }
                     echo '</div></div>';
-                }else{
-      
-                    
-                    $term_list                  =   wp_get_post_terms($product_id, 'product_type');
-              
-                    if( $term_list[0]->name=='subscription' ){
+                } else {
+                    if( $term_list[0]->name=='subscription'  ){
               
                         if( !wcs_user_has_subscription( $current_user->ID, $product_id ,'active') ) {
                             $this->wpstream_display_no_buy_message('nobuy',$product_id);
@@ -1939,12 +1958,6 @@ class Wpstream_Player{
                     echo '</div></div>';
                 }
             }
-            
-            
-            
-
-                    
-                    
         }
 
 	/**
@@ -1977,7 +1990,7 @@ class Wpstream_Player{
 		$cached_data = get_transient( 'wpstream_user_pack_data' );
 
 		if ( $force_refresh || $cached_data === false ) {
-			$fresh_data = $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_get_cached_pack_data');
+			$fresh_data = $this->main->user_quota_service->request_pack_data_per_user( 'wpstream_get_cached_pack_data' );
 			set_transient( 'wpstream_user_pack_data', $fresh_data, 60);
 
 			return $fresh_data;

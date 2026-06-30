@@ -927,6 +927,7 @@ class WpStream_Ajax {
 		$quota_data = $this->main->quota_manager->get_live_quota_data( 'wpstream_get_live_quota_data' );
 
 		if ( $quota_data ) {
+			$quota_data['is_basic_streaming'] = $this->main->quota_manager->is_basic_streaming_mode( $quota_data );
 			wp_send_json_success( $quota_data );
 		} else {
 			wp_send_json_error( 'Could not retrieve quota data.' );

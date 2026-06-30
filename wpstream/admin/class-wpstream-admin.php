@@ -192,6 +192,7 @@ class Wpstream_Admin {
                         'upload_complete'          => esc_html__('Upload Complete!','wpstream'),
                         'no_band'                  => esc_html__('Not enough streaming data.','wpsteam'),
                         'no_band_no_store'         => esc_html__('Not enough streaming data or storage.','wpsteam'),
+                        'no_streaming_hours'       => esc_html__('Not enough streaming hours.','wpstream'),
                         'exceeding_limit'          => esc_html__('File size exceeds 5GB. Initiating multipart upload...','wpsteam'),
                         'upload_failed'            => esc_html__('Upload Failed!','wpstream'),
                         'upload_failed2'           => esc_html__('Upload Failed! Please Try again!','wpstream'),
@@ -210,6 +211,7 @@ class Wpstream_Admin {
                         'select_caption_file'      => esc_html__('Select .vtt Captions File', 'wpstream'),
                         'select_button'            => esc_html__('Select', 'wpstream'),
                         'remove_button'            => esc_html__('Remove', 'wpstream'),
+                        'use_streaming_hours'      => $this->wpstream_is_use_streaming_hours(),
                     ));
                 
                 wp_enqueue_script('wpstream-recordings-videos-list',   plugin_dir_url( __FILE__ ) .'js/recordings_videos_list.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
@@ -262,11 +264,19 @@ class Wpstream_Admin {
                             '- If your channel is configured with Auto TURN ON, it will turn back on as soon as there is a broadcast.',
                             'wpstream'
                         ),
+                        'is_basic_streaming'      => $this->wpstream_is_basic_streaming_mode(),
+                        'use_streaming_hours'     => $this->wpstream_is_use_streaming_hours(),
                         'basic_streaming_warning' => esc_html__(
+                            'You’ve used all available broadcast or viewer hours.' . PHP_EOL . PHP_EOL .
+                            'Some live channel features will be limited, including recording, viewer count, browser broadcasting, and content protection.' . PHP_EOL . PHP_EOL .
+                            'Top up your resources or upgrade your plan to use all features, or choose OK to start anyway.',
+                            'wpstream'
+                        ),
+                        'basic_streaming_warning_traffic' => esc_html__(
                             'Your account is now in BASIC STREAMING mode.' . PHP_EOL . PHP_EOL .
-                'Instead of offloading to the WpStream Cloud, this mode relies on WordPress and hosting resources to process and deliver video. In some WP environments, streaming may be unreliable.' . PHP_EOL . 
+                            'Instead of offloading to the WpStream Cloud, this mode relies on WordPress and hosting resources to process and deliver video. In some WP environments, streaming may be unreliable.' . PHP_EOL .
                             'Certain features, such as recording, viewer count, browser broadcasting, and content protection are unavailable.' . PHP_EOL . PHP_EOL .
-                            '- To take advantage of all features, please choose Cancel and upgrade your plan.' . PHP_EOL . 
+                            '- To take advantage of all features, please choose Cancel and upgrade your plan.' . PHP_EOL .
                             '- Otherwise, choose OK to start your channel with these limitations.' . PHP_EOL . PHP_EOL .
                             'ARE YOU SURE you want to continue with Basic Streaming?',
                             'wpstream'
@@ -440,12 +450,6 @@ class Wpstream_Admin {
             $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
             print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
 
-            $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_new_general_set' );
-            if( isset($pack_details['available_data_mb'])){
-                if ($pack_details['available_data_mb'] <= 0){
-                    print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
-                }
-            }
             $current_user       =   wp_get_current_user();
             $allowded_html      =   array();
             $userID             =   $current_user->ID;
@@ -982,18 +986,40 @@ class Wpstream_Admin {
 
 		public function wpstream_basic_stream_mode_message() {
 			print '<div class="basic-mode-notice">';
+			if ( $this->wpstream_is_use_streaming_hours() ) {
+					print sprintf(
+						wp_kses(
+							__(
+							'You’ve used all available broadcast or viewer hours. Default channel settings will be used for now. To edit channel settings, <a href="%s" target="_blank">top up</a> your resources or <a href="%s" target="_blank">upgrade</a> your plan.',
+							'wpstream'
+							 ),
+							 array( 'a' => array(
+								'href'   => array(),
+								'target' => array()
+								)
+							 )
+						),
+						esc_url( 'https://wpstream.net/pricing/' ),
+						esc_url( 'https://wpstream.net/pricing/' )
+					);
+			} else {
 				print sprintf(
 					wp_kses(
 						__(
 						'You are currently in Basic Streaming Mode. The default channel settings will be used instead. Please <a href="%s" target="_blank">upgrade</a> your plan to edit the channel settings.',
 						'wpstream'
 						 ),
-						 array( 'a' => array( 'href' => array() ) )
+						 array(
+							'a' => array(
+								'href' => array()
+							)
+						 )
 					),
 					esc_url( 'https://wpstream.net/pricing/' )
 				);
-				print '</div>';
-        }
+			}
+			print '</div>';
+		}
 
         /*
         *
@@ -2328,7 +2354,7 @@ class Wpstream_Admin {
         */     
 
         public function wpstream_media_management(){
-            $pack_details           =    $this->main->wpstream_live_connection->wpstream_request_pack_data_per_user('wpstream_media_management');
+            $pack_details           =    $this->main->user_quota_service->request_pack_data_per_user( 'wpstream_media_management' );
 
             $this->main->show_user_data($pack_details);
 
@@ -2401,8 +2427,13 @@ class Wpstream_Admin {
          */  
         public function wpstream_present_media_upload(){
             $to_return='';
+
+            if ( ! $this->main->quota_manager->has_storage_quota( null, 'recordings_screen' ) ) {
+                return '<div class="wpstream_upload_alert">'.esc_html__('You don\'t have enough cloud storage or data to upload a new item. Please delete some videos or upgrade your plan.','wpstream').'</div>';
+            }
+
             $formInputs=$this->main->wpstream_live_connection->wpstream_get_signed_form_upload_data();
-           
+
             if( !$formInputs['success'] ){
                 if ($formInputs['error'] == 'not_connected'){
                     $to_return.='<div class="wpstream_upload_container">'.esc_html__('Not connected. Please connect to WpStream to upload videos.','wpstream').'</div>';
@@ -2631,8 +2662,7 @@ class Wpstream_Admin {
                                   
             add_meta_box(  'add_wpstream_product_metaboxes-sectionid',  esc_html__( 'Video On Demand Settings', 'wpstream' ),array($this,'display_meta_options'),'wpstream_product_vod' ,'normal','default');
             add_meta_box( 'custom_metabox_video_collection',            esc_html__( 'Video Collection', 'wpstream' ), 'wpstream_bundle_custom_metabox_callback', 'wpstream_bundles', 'normal', 'high' );
-            add_meta_box( 'woocommerce-product-data',                   esc_html__( 'Product Data', 'wpstream' ), 'woocommerce_product_data_box', 'product', 'normal', 'default' );
-            
+
             if(function_exists('wc_get_product')):
                 $product = wc_get_product( $post_id );
                 if ( $product ) {
@@ -2812,12 +2842,56 @@ class Wpstream_Admin {
         * Js action to do when user pick live stream or video on demand
         *
         * @since    3.0.1
-        */ 
-        
+        */
+
+        /**
+         * Whether WpStream WooCommerce product UI should load for this product.
+         *
+         * Skips simple, course, and other non-WpStream types so LearnDash and
+         * other integrations can use the General product data tab without conflict.
+         *
+         * @param int $post_id Product post ID. Uses global $post when 0.
+         * @return bool
+         */
+        public function wpstream_is_wpstream_wc_product_context( $post_id = 0 ) {
+            if ( isset( $_GET['new_stream'] ) || isset( $_GET['new_video_name'] ) ) {
+                return true;
+            }
+
+            if ( ! $post_id ) {
+                global $post;
+                $post_id = ( $post && isset( $post->ID ) ) ? (int) $post->ID : 0;
+            }
+
+            if ( ! $post_id || ! function_exists( 'wc_get_product' ) ) {
+                return false;
+            }
+
+            $product = wc_get_product( $post_id );
+            if ( ! $product ) {
+                return false;
+            }
+
+            return in_array(
+                $product->get_type(),
+                array( 'live_stream', 'video_on_demand', 'wpstream_bundle', 'subscription' ),
+                true
+            );
+        }
+
+        /**
+         * Js action to do when user pick live stream or video on demand
+         *
+         * @since    3.0.1
+         */
         public function wpstream_products_custom_js() {
             if ( 'product' != get_post_type() ) :
                 return;
             endif;
+
+            if ( ! $this->wpstream_is_wpstream_wc_product_context() ) {
+                return;
+            }
 
             ?>
             <script type='text/javascript'>
@@ -2891,16 +2965,18 @@ class Wpstream_Admin {
         */ 
         
         public function wpstream_add_custom_general_fields() {
-            
-
             global $woocommerce, $post;
+
+            if ( ! $this->wpstream_is_wpstream_wc_product_context( isset( $post->ID ) ? (int) $post->ID : 0 ) ) {
+                return;
+            }
             if(function_exists('wcs_user_has_subscription')){
-                echo '<div class="options_group   show_if_subscription">';  
+                echo '<div class="options_group   show_if_subscription">';
                     woocommerce_wp_select( 
                         array( 
                             'id'      =>    '_subscript_live_event', 
                             'label'   =>    __( 'Is a subscription based live channel ?', 'woocommerce' ), 
-                            'options' =>    array("yes"=>"yes","no"=>"no")
+                            'options' =>    array("yes"=>"yes","no"=>"no", "none" => "none")
                             )
                         );
                 echo '</div>';
@@ -3004,6 +3080,9 @@ class Wpstream_Admin {
         */ 
         
         public function wpstream_add_custom_general_fields_save( $post_id ){
+            if ( ! $this->wpstream_is_wpstream_wc_product_context( (int) $post_id ) ) {
+                return;
+            }
 
             $permited_values = array(
                 '_movie_url',
@@ -3257,13 +3336,14 @@ class Wpstream_Admin {
             if( get_post_status( $post->ID ) === 'publish' ) {
                 $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
                 print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
-                $pack_details = $this->main->quota_manager->get_live_quota_data('wpstream_start_stream_meta');
-                if( isset($pack_details['available_data_mb'])){
-                    if ($pack_details['available_data_mb'] <= 0){
-                        print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
-                    }
+
+                 $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_new_general_set' );
+            if( isset($pack_details['available_data_mb'])){
+                if ($pack_details['available_data_mb'] <= 0){
+                    print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
                 }
-    
+            }
+
                 $this->wpstream_live_stream_unit($post->ID);
                 print '<div class="wpstream_modal_background"></div>';
                 print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er1</div>
@@ -3276,13 +3356,12 @@ class Wpstream_Admin {
 
 
     public function wpstream_is_basic_streaming_mode(){
-        $pack_details = $this->main->quota_manager->get_live_quota_data('wpstream_is_basic_streaming_mode');
-        if( isset($pack_details['available_data_mb'] ) ) {
-            if ( $pack_details['available_data_mb'] <= 0 ){
-                return true;
-            }
-        }
-        return false;
+        return $this->main->quota_manager->is_basic_streaming_mode( null, 'wpstream_is_basic_streaming_mode' );
+    }
+
+    public function wpstream_is_use_streaming_hours() {
+        $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_start_channel' );
+        return $this->main->quota_manager->uses_streaming_hours( $pack_details );
     }
 
 

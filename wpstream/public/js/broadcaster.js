@@ -273,6 +273,26 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 	}
 
+	function showHtmlMessage(html, type = "error") {
+		if (!messageContainer) return;
+
+		const messageElement = document.createElement("div");
+		messageElement.className = type + "-message";
+		messageElement.innerHTML = html;
+
+		const dismissButton = document.createElement("button");
+		dismissButton.className = 'dismiss-message';
+		dismissButton.innerHTML = '&times;';
+		dismissButton.addEventListener('click', function() {
+			messageElement.remove();
+		});
+
+		messageElement.appendChild(dismissButton);
+
+		messageContainer.innerHTML = "";
+		messageContainer.appendChild(messageElement);
+	}
+
 	function updateStatus(status) {
 		if (!statusIndicator || !statusText) return;
 
@@ -494,17 +514,20 @@ document.addEventListener("DOMContentLoaded", function () {
 				const userQuotaValid = results[1];
 
 				if (!channelActive) {
+					showMessage(wpstream_broadcaster_vars.channel_off, 'error');
 					resetStreamingUI();
 					considerReconnect = false;
-					return; // Channel is not active, do not proceed with streaming
+					return;
 				}
 
 				if (!userQuotaValid) {
+					showHtmlMessage(wpstream_broadcaster_vars.not_enough_traffic, 'error');
 					resetStreamingUI();
 					considerReconnect = false;
-					return; // User quota is not valid, do not proceed with streaming
+					return;
 				}
 
+				resetMessages();
 				proceedWithStreaming(isReconnect);
 			});
 	}
@@ -829,10 +852,8 @@ document.addEventListener("DOMContentLoaded", function () {
 					try {
 						const parsedResponse = JSON.parse(response);
 						if (parsedResponse.status === 'active') {
-							messageContainer.innerHTML = "";
 							resolve(true);
 						} else {
-							showMessage(wpstream_broadcaster_vars.channel_off, 'error');
 							resolve(false);
 						}
 					} catch (e) {
@@ -851,6 +872,22 @@ document.addEventListener("DOMContentLoaded", function () {
 		})
 	}
 
+	function hasBroadcastQuota(quotaData) {
+		if (!quotaData || quotaData.success === false) {
+			return false;
+		}
+
+		if (quotaData.use_streaming_hours === true && quotaData.available_broadcast_hours !== undefined) {
+			return parseFloat(quotaData.available_broadcast_hours) > 0;
+		}
+
+		if (quotaData.available_data_mb !== undefined) {
+			return parseFloat(quotaData.available_data_mb) > 0;
+		}
+
+		return false;
+	}
+
 	function checkUserQuota() {
 		return new Promise((resolve, reject) => {
 			if (!wpstream_broadcaster_vars.ajax_url) {
@@ -867,15 +904,9 @@ document.addEventListener("DOMContentLoaded", function () {
 				success: function(response) {
 					try {
 						const parsedResponse = JSON.parse(response);
-						if (parsedResponse.available_data_mb > 0) {
-							messageContainer.innerHTML = '';
+						if (hasBroadcastQuota(parsedResponse)) {
 							resolve(true);
 						} else {
-							const messageElement = document.createElement("div");
-							messageElement.className = "error-message";
-							messageElement.innerHTML = wpstream_broadcaster_vars.not_enough_traffic;
-							messageContainer.innerHTML = "";
-							messageContainer.appendChild(messageElement);
 							resolve(false);
 						}
 					} catch (e) {

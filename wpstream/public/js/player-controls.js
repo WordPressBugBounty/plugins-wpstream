@@ -613,6 +613,44 @@
 		}
 	}
 
+	function sendI18nToFrame(iframe) {
+		if (!iframe || !iframe.contentWindow || !window.wpstreamLiveUiConfig) {
+			return;
+		}
+		try {
+			const origin = new URL(iframe.src).origin;
+			iframe.contentWindow.postMessage(
+				{
+					source: "host.harness",
+					type: "player.command",
+					command: "set_i18n",
+					strings: window.wpstreamLiveUiConfig,
+				},
+				origin
+			);
+		} catch (_e) {}
+	}
+
+	function wireI18nAfterLoad(iframe) {
+		if (!iframe) {
+			return;
+		}
+		const send = function () {
+			sendI18nToFrame(iframe);
+		};
+		iframe.addEventListener("load", send, { once: true });
+		window.setTimeout(send, 400);
+		window.setTimeout(send, 1200);
+	}
+
+	function initPlayerI18nFromHost() {
+		document
+			.querySelectorAll(
+				"iframe.wpstream_live_channel_iframe, iframe.wpstream_video_on_demand_iframe"
+			)
+			.forEach(wireI18nAfterLoad);
+	}
+
 	function sendPlaybackSessionToFrame(iframe, playbackSession) {
 		if (!iframe || !iframe.contentWindow) {
 			return;
@@ -716,6 +754,7 @@
 		initTrailerIframeEndedFromHost();
 		initIframeHoverOverlayFromHost();
 		initLiveUpdateEventsFromHost();
+		initPlayerI18nFromHost();
 		hydrateVodPlaybackSessionsIfNeeded();
 	}
 

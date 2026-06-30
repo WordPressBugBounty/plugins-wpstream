@@ -94,4 +94,79 @@
 		 // If transient is empty, fetch fresh data
 		 return $this->api_connection->wpstream_request_pack_data_per_user( $context );
 	 }
+
+	 public function uses_streaming_hours( $pack_details ) {
+		 return is_array( $pack_details )
+			 && isset( $pack_details['use_streaming_hours'] )
+			 && $pack_details['use_streaming_hours'];
+	 }
+
+	 public function is_basic_streaming_mode( $pack_details = null, $context = 'is_basic_streaming_mode' ) {
+		 if ( null === $pack_details ) {
+			 $pack_details = $this->get_live_quota_data( $context );
+		 }
+
+		 if ( ! is_array( $pack_details ) ) {
+			 return false;
+		 }
+
+		 if ( $this->uses_streaming_hours( $pack_details ) ) {
+			 return ( isset( $pack_details['available_broadcast_hours'] ) &&
+				  $pack_details['available_broadcast_hours'] <= 0 ) ||
+				( isset( $pack_details['available_viewer_hours'] ) &&
+				  $pack_details['available_viewer_hours'] <= 0 );
+		 }
+
+		 return isset( $pack_details['available_data_mb'] )
+			 && $pack_details['available_data_mb'] <= 0;
+	 }
+
+	 public function has_storage_quota( $pack_details = null, $context = 'has_storage_quota' ) {
+		 if ( null === $pack_details ) {
+			 $pack_details = $this->get_live_quota_data( $context );
+		 }
+
+		 if ( ! is_array( $pack_details ) ) {
+			 return false;
+		 }
+
+		 if ( $this->uses_streaming_hours( $pack_details ) ) {
+			 if ( ! isset( $pack_details['available_storage_hours'] ) ) {
+				 return true;
+			 }
+
+			 return $pack_details['available_storage_hours'] > 0;
+		 }
+
+		 if ( isset( $pack_details['available_storage_mb'] ) ) {
+			 return $pack_details['available_storage_mb'] > 0;
+		 }
+
+		 if ( isset( $pack_details['available_storage'] ) ) {
+			 return $pack_details['available_storage'] > 0;
+		 }
+
+		 return true;
+	 }
+
+	 public function can_stream_vod( $pack_details = null, $context = 'can_stream_vod' ) {
+		 if ( null === $pack_details ) {
+			 $pack_details = $this->get_live_quota_data( $context );
+		 }
+
+		 if ( ! is_array( $pack_details ) ) {
+			 return false;
+		 }
+
+		 if ( $this->uses_streaming_hours( $pack_details ) ) {
+			 return ( isset( $pack_details['available_viewer_hours'] ) &&
+				  $pack_details['available_viewer_hours'] > 0 );
+		 }
+
+		 if ( isset( $pack_details['available_data_mb'] ) ) {
+			 return $pack_details['available_data_mb'] > 0;
+		 }
+
+		 return false;
+	 }
 }

@@ -168,14 +168,17 @@ function wpstream_bind_start_event(button){
     button.click(function(event){
         wpstream_safe_track_onboarding('stream_attempted', 'wpstream_' + post_type);
 		wpstream_safe_track_onboarding('start_stream_clicked', 'wpstream_' + post_type);
-        var basicStreaming = jQuery('#wpstream_basic_streaming').val() === 'true';
-        if (basicStreaming){
-            console.log("doing basic streaming");
-            if(!confirm(wpstream_start_streaming_vars.basic_streaming_warning)){
-                return false;
-            }
+        if (wpstream_start_streaming_vars.is_basic_streaming) {
+	        if (wpstream_start_streaming_vars.use_streaming_hours) {
+		        if (!confirm(wpstream_start_streaming_vars.basic_streaming_warning)) {
+			        return false;
+		        }
+	        } else {
+		        if (!confirm(wpstream_start_streaming_vars.basic_streaming_warning_traffic)) {
+			        return false;
+		        }
+	        }
         }
-        
         event.preventDefault();
         button.unbind('click');
         var ajaxurl             =   wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
@@ -211,7 +214,6 @@ function wpstream_bind_start_event(button){
                 'show_id'           :   show_id,
                 'is_record'         :   is_record,
                 'is_encrypt'        :   is_encrypt,
-                'basic_streaming'   :   basicStreaming,
                 'start_onboarding'  :   start_onboarding,
                
                 

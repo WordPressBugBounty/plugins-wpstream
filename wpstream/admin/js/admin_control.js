@@ -117,14 +117,22 @@ jQuery(document).ready(function ($) {
                 var file = data.files[0];
                 var fileSizeInBytes = file.size;
                 var file_size = (parseInt(fileSizeInBytes, 10))/1000000;
-                var user_storage = jQuery('#wpstream_storage').val();
-                var user_band = jQuery('#wpstream_band').val();
+				if ( wpstream_admin_control_vars.use_streaming_hours ) {
+					var user_storage_hours = jQuery('#wpstream_storage_hours').val();
+					if ( parseFloat(user_storage_hours) <= 0 ) {
+						jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.no_streaming_hours);
+						return;
+					}
+				} else {
+					var user_storage = jQuery('#wpstream_storage').val();
+					var user_band = jQuery('#wpstream_band').val();
 
-                if(file_size > user_storage || file_size > user_band){
-                    jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.no_band_no_store);
-                    return;
-                }
-                
+					if(file_size > user_storage || file_size > user_band){
+						jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.no_band_no_store);
+						return;
+					}
+				}
+
                 // Update UI
                 $('#wpstream_label_action').text(wpstream_admin_control_vars.uploading);
                 $('#wpstream_upload').prop('disabled', true);

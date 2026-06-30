@@ -78,6 +78,7 @@ class Wpstream {
         public $wpstream_live_connection;
         public $wpstream_player;
         public $quota_manager;
+        public $user_quota_service;
         public $xtest;
         public $plugin_admin;
         
@@ -114,6 +115,20 @@ class Wpstream {
             return floatval( sprintf( '%.1f', $gigabit ) );
         }
 
+        /**
+         * Floor a number to a given number of decimal places.
+         *
+         * @param float $value    The number to floor.
+         * @param int   $decimals Number of decimal places.
+         * @return float
+         */
+        public function wpstream_floor_decimals( $value, $decimals = 2 ) {
+            $decimals = max( 0, (int) $decimals );
+            $factor   = pow( 10, $decimals );
+
+            return floatval( sprintf( '%.' . $decimals . 'f', floor( (float) $value * $factor ) / $factor ) );
+        }
+
 
         public $wpstream_ajax;
 
@@ -126,6 +141,7 @@ class Wpstream {
         private function wpstream_conection(){
             require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-live-api-connection.php';
             $this->wpstream_live_connection = new Wpstream_Live_Api_Connection();
+            $this->user_quota_service = $this->wpstream_live_connection->get_user_quota_service();
         }
         
         
@@ -324,7 +340,7 @@ class Wpstream {
                     $this->loader->add_filter( 'woocommerce_product_data_tabs', $plugin_admin, 'wpstream_hide_attributes_data_panel',10,1 );
                     $this->loader->add_filter( 'woocommerce_is_purchasable',    $plugin_admin, 'wpstream_hide_buy_now_subscription_mode',10,2);
                     
-                    $this->loader->add_filter( 'woocommerce_product_options_general_product_data',$plugin_admin, 'wpstream_add_custom_general_fields', 10,1);
+                    $this->loader->add_action( 'woocommerce_product_options_general_product_data', $plugin_admin, 'wpstream_add_custom_general_fields', 20 );
                     $this->loader->add_filter( 'woocommerce_process_product_meta',$plugin_admin, 'wpstream_add_custom_general_fields_save',10,1 );
                     $this->loader->add_action( 'woocommerce_live_stream_add_to_cart', $plugin_admin, 'wpstream_add_to_cart',10,1);
                     $this->loader->add_action( 'woocommerce_video_on_demand_add_to_cart', $plugin_admin, 'wpstream_add_to_cart',10,1);
@@ -348,7 +364,10 @@ class Wpstream {
 		$plugin_public = new Wpstream_Public( $this->get_plugin_name(), $this->get_version(), $this->main );
 
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
+		// Registered on `wp` (not `wp_enqueue_scripts`/`wp_head`) because block themes render
+		// the Post Content block - and thus our `the_content` filter that enqueues/localizes
+		// these scripts - before `wp_head` ever fires, leaving the handles unregistered.
+		$this->loader->add_action( 'wp', $plugin_public, 'enqueue_scripts' );
 
 		$this->loader->add_action( 'init', $plugin_public,'wpstream_my_custom_endpoints' );
 		$this->loader->add_filter( 'query_vars',$plugin_public, 'wpstream_my_custom_query_vars', 0 );
@@ -446,31 +465,68 @@ class Wpstream {
 
       
         public function show_user_data($pack_details){
-            if( isset($pack_details['available_data_mb']) && isset( $pack_details['available_storage_mb']) ){
-                $wpstream_convert_band = $this->wpstream_convert_band($pack_details['available_data_mb']);
-                if( $wpstream_convert_band < 0 ) {
-                    $wpstream_convert_band = 0;
-                }
+			if ( ! isset( $pack_details['use_streaming_hours'] ) || $pack_details['use_streaming_hours'] !== true ) {
+				if ( isset( $pack_details['available_data_mb'] ) && isset( $pack_details['available_storage_mb'] ) ) {
+					$wpstream_convert_band = $this->wpstream_convert_band( $pack_details['available_data_mb'] );
+					if ( $wpstream_convert_band < 0 ) {
+						$wpstream_convert_band = 0;
+					}
 
-                $wpstream_convert_storage = $this->wpstream_convert_band($pack_details['available_storage_mb']);
-                if( $wpstream_convert_storage < 0 ) {
-                    $wpstream_convert_storage = 0;
-                }
-                
-                print '<div class="pack_details_wrapper">'
-				    . '<strong>' . __('Your account information: ', 'wpstream') . '</strong> '
-				    . __('You have ', 'wpstream') . '<strong id="wpstream_available_data">' . abs( $wpstream_convert_band ) . ' GB</strong> '
-				    . __('available cloud data and ', 'wpstream')
-				    . '<strong id="wpstream_available_storage">' . abs( $wpstream_convert_storage ) . ' GB</strong> '
-				    . __('available cloud storage', 'wpstream') . '.';
+					$wpstream_convert_storage = $this->wpstream_convert_band( $pack_details['available_storage_mb'] );
+					if ( $wpstream_convert_storage < 0 ) {
+						$wpstream_convert_storage = 0;
+					}
 
-                print '<a href="https://wpstream.net/pricing/" class="wpstream_upgrade_topbar" target="_blank">'.esc_html__('Upgrade Plan','wpstream').'</a>';
-                print '</div>';
-                print'<input type="hidden" id="wpstream_band" value="'.$pack_details['available_data_mb'].'">';
-                print'<input type="hidden" id="wpstream_storage" value="'.$pack_details['available_storage_mb'].'">';
+					print '<div class="pack_details_wrapper">'
+						  . '<strong>' . __( 'Your account information: ', 'wpstream' ) . '</strong> '
+						  . __( 'You have ', 'wpstream' ) . '<strong id="wpstream_available_data">' . abs( $wpstream_convert_band ) . ' GB</strong> '
+						  . __( 'available cloud data and ', 'wpstream' )
+						  . '<strong id="wpstream_available_storage">' . abs( $wpstream_convert_storage ) . ' GB</strong> '
+						  . __( 'available cloud storage', 'wpstream' ) . '.';
 
-            }
-        }
+					print '<a href="https://wpstream.net/pricing/" class="wpstream_upgrade_topbar" target="_blank">' . esc_html__( 'Upgrade Plan', 'wpstream' ) . '</a>';
+					print '</div>';
+					print '<input type="hidden" id="wpstream_band" value="' . esc_attr( $pack_details['available_data_mb'] ) . '">';
+					print '<input type="hidden" id="wpstream_storage" value="' . esc_attr( $pack_details['available_storage_mb'] ) . '">';
+				}
+			} else {
+				if ( isset( $pack_details['available_viewer_hours'] ) && isset( $pack_details['available_broadcast_hours'] ) && isset( $pack_details['available_storage_hours'] ) ) {
+					$available_viewer_hours = floatval( $pack_details['available_viewer_hours'] );
+					if ( $available_viewer_hours < 0 ) {
+						$available_viewer_hours = 0;
+					}
+
+					$available_broadcast_hours = floatval( $pack_details['available_broadcast_hours'] );
+					if ( $available_broadcast_hours < 0 ) {
+						$available_broadcast_hours = 0;
+					}
+
+					$available_storage_hours = floatval( $pack_details['available_storage_hours'] );
+					if ( $available_storage_hours < 0 ) {
+						$available_storage_hours = 0;
+					}
+
+					$formatted_viewer_hours    = $this->wpstream_floor_decimals( $available_viewer_hours, 2 );
+					$formatted_broadcast_hours = $this->wpstream_floor_decimals( $available_broadcast_hours, 2 );
+					$formatted_storage_hours   = $this->wpstream_floor_decimals( $available_storage_hours, 2 );
+
+					print '<div class="pack_details_wrapper">'
+						  . '<strong>' . __( 'Your account information: ', 'wpstream' ) . '</strong> '
+						  . __( 'You have ', 'wpstream' ) . '<strong id="wpstream_available_viewer_hours">' . abs( $formatted_viewer_hours ) . ' hours</strong> '
+						  . __( 'available viewer time, ', 'wpstream' )
+						  . '<strong id="wpstream_available_broadcast_hours">' . abs( $formatted_broadcast_hours ) . ' hours</strong> '
+						  . __( 'available broadcast time, and ', 'wpstream' )
+						  . '<strong id="wpstream_available_storage_hours">' . $formatted_storage_hours . ' hours</strong> '
+						  . __( 'available storage time', 'wpstream' ) . '.';
+
+					print '<a href="https://wpstream.net/pricing/" class="wpstream_upgrade_topbar" target="_blank">' . esc_html__( 'Upgrade Plan', 'wpstream' ) . '</a>';
+					print '</div>';
+					print '<input type="hidden" id="wpstream_viewer_hours" value="' . esc_attr( $pack_details['available_viewer_hours'] ) . '">';
+					print '<input type="hidden" id="wpstream_broadcast_hours" value="' . esc_attr( $pack_details['available_broadcast_hours'] ) . '">';
+					print '<input type="hidden" id="wpstream_storage_hours" value="' . esc_attr( $pack_details['available_storage_hours'] ) . '">';
+				}
+			}
+		}
 
         
         /**
