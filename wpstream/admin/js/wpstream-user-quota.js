@@ -56,13 +56,13 @@ function wpstream_fetch_and_update_quota() {
 			if (data.success === true) {
 				if ( data.data.use_streaming_hours === true ) {
 					if ( data.data.available_viewer_hours !== undefined ) {
-						jQuery('#wpstream_available_viewer_hours').text( wpstream_format_hours( data.data.available_viewer_hours ) + ' hours');
+						jQuery('#wpstream_available_viewer_hours').text( wpstream_format_hours( data.data.available_viewer_hours ) + ' viewer');
 					}
 					if ( data.data.available_broadcast_hours !== undefined ) {
-						jQuery('#wpstream_available_broadcast_hours').text( wpstream_format_hours( data.data.available_broadcast_hours ) + ' hours');
+						jQuery('#wpstream_available_broadcast_hours').text( wpstream_format_hours( data.data.available_broadcast_hours ) + ' broadcast');
 					}
 					if ( data.data.available_storage_hours !== undefined ) {
-						jQuery('#wpstream_available_storage_hours').text( wpstream_format_hours( data.data.available_storage_hours ) + ' hours');
+						jQuery('#wpstream_available_storage_hours').text( wpstream_format_hours( data.data.available_storage_hours ) + ' storage');
 					}
 				} else {
 					jQuery('#wpstream_available_data').text( wpstream_convert_mb_to_gb( data.data.available_data_mb ) + ' GB');

@@ -2606,6 +2606,36 @@ class Wpstream_Admin {
             }
         }
 
+        public function wpstream_create_remote_channel_on_publish( $post_id, $post ) {
+            $is_free_channel = $post->post_type == 'wpstream_product';
+            $is_paid_channel = $post->post_type == 'product' && has_term( 'live_stream', 'product_type', $post_id );
+
+            if ( !$is_free_channel && !$is_paid_channel ) {
+                return;
+            }
+
+            if ( defined( 'DOING_AUTOSAVE') && DOING_AUTOSAVE ) {
+                return;
+            }
+            if ( wp_is_post_revision( $post_id ) ) {
+                return;
+            }
+            if ( get_post_meta( $post_id, '_wpstream_remote_channel_created', true ) ) {
+                return;
+            }
+
+            $response = $this->main->wpstream_live_connection->wpstream_create_channel( $post_id );
+            error_log('channel/create response for post ' . $post_id . ' is ' . print_r($response, true));
+
+            if ( $response && ! empty( $response['success'] ) ) {
+                if ( isset($response['channel_id']) && $response['channel_id'] !== '' ) {
+                    update_post_meta( $post_id, 'channelId', $response['channel_id'] );
+                    update_post_meta( $post_id, 'embedUrl', LIVE_PLAYER_URL_PREFIX . '?' . http_build_query( array( 'channelId' => $response['channel_id'] ) ) );
+                    update_post_meta( $post_id, '_wpstream_remote_channel_created', 1 );
+                }
+            }
+        }
+
         /**
          * save meta options
          *

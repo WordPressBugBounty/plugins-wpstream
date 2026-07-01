@@ -4,10 +4,9 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.12.4
+Stable tag: 4.12.5
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-Stable: trunk
 
 WpStream is a Video Streaming Plugin that lets you broadcast live events and helps you sell tickets or recordings via WooCommerce.
 
@@ -134,6 +133,9 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.12.5 =
+* Fix - Live channel player state when the channel was never started
 
 = 4.12.4 =
 * Fix - Subscription products work without WpStream posts

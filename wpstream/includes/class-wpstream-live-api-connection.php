@@ -1,14 +1,17 @@
 <?php
 
-require_once dirname( __FILE__ ) . '/class-wpstream-user-quota-service.php';
+require_once dirname( __FILE__ ) . '/api/class-wpstream-user-quota-service.php';
+require_once dirname( __FILE__ ) . '/api/class-wpstream-channel-service.php';
 
 class Wpstream_Live_Api_Connection  {
 
     private $user_quota_service;
+    private $channel_service;
 
     
     public function __construct() {
 		$this->user_quota_service = new Wpstream_User_Quota_Service( $this );
+		$this->channel_service    = new Wpstream_Channel_Service( $this );
 
         add_action( 'wp_ajax_wpstream_give_me_live_uri', array($this,'wpstream_give_me_live_uri') );  
         add_action( 'wp_ajax_wpstream_turn_of_channel',  array($this,'wpstream_turn_of_channel') );  
@@ -1050,11 +1053,10 @@ class Wpstream_Live_Api_Connection  {
                 'allow_key_access_from' =>  $domain_ip,
                 'metadata'              =>  json_encode($metadata_array),
                 'autostart'             =>  $basic_streaming ? $is_autostart : 'false',
-                'basic_streaming'       =>  $basic_streaming,
               //  'fakeError'             =>  'init'
             );
-            
-         
+
+
             $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);       
             $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
             // $curl_response_decoded['curl_post_fields']=$curl_post_fields;
@@ -1150,6 +1152,14 @@ class Wpstream_Live_Api_Connection  {
 
 	public function get_user_quota_service() {
 		return $this->user_quota_service;
+	}
+
+	public function get_channel_service() {
+		return $this->channel_service;
+	}
+
+	public function wpstream_create_channel( $channel_id, $domain = null ) {
+		return $this->channel_service->create_channel( $channel_id, $domain );
 	}
     
 

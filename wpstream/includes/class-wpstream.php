@@ -265,6 +265,8 @@ class Wpstream {
                 $this->loader->add_action( 'add_meta_boxes',    $plugin_admin, 'add_wpstream_product_metaboxes' );
                 $this->loader->add_action( 'save_post',     $plugin_admin, 'wpstream_free_product_update_post',1,2 );
                 $this->loader->add_action( 'publish_wpstream_product',     $plugin_admin, 'wpstream_publish_wpstream_product',1,2 );
+                $this->loader->add_action( 'publish_wpstream_product',     $plugin_admin, 'wpstream_create_remote_channel_on_publish',20,2 );
+		        $this->loader->add_action( 'publish_product', $plugin_admin, 'wpstream_create_remote_channel_on_publish', 20, 2 );
 
 
 
@@ -511,13 +513,13 @@ class Wpstream {
 					$formatted_storage_hours   = $this->wpstream_floor_decimals( $available_storage_hours, 2 );
 
 					print '<div class="pack_details_wrapper">'
-						  . '<strong>' . __( 'Your account information: ', 'wpstream' ) . '</strong> '
-						  . __( 'You have ', 'wpstream' ) . '<strong id="wpstream_available_viewer_hours">' . abs( $formatted_viewer_hours ) . ' hours</strong> '
-						  . __( 'available viewer time, ', 'wpstream' )
-						  . '<strong id="wpstream_available_broadcast_hours">' . abs( $formatted_broadcast_hours ) . ' hours</strong> '
-						  . __( 'available broadcast time, and ', 'wpstream' )
-						  . '<strong id="wpstream_available_storage_hours">' . $formatted_storage_hours . ' hours</strong> '
-						  . __( 'available storage time', 'wpstream' ) . '.';
+						  . __( 'Available streaming resources: ', 'wpstream' )
+						  . '<strong id="wpstream_available_viewer_hours">' . abs( $formatted_viewer_hours ) . ' viewer</strong> '
+						  . __( 'hours, ', 'wpstream' )
+						  . '<strong id="wpstream_available_broadcast_hours">' . abs( $formatted_broadcast_hours ) . ' broadcast</strong> '
+						  . __( 'hours, ', 'wpstream' )
+						  . '<strong id="wpstream_available_storage_hours">' . $formatted_storage_hours . ' storage</strong> '
+						  . __( 'hours', 'wpstream' ) . '.';
 
 					print '<a href="https://wpstream.net/pricing/" class="wpstream_upgrade_topbar" target="_blank">' . esc_html__( 'Upgrade Plan', 'wpstream' ) . '</a>';
 					print '</div>';
