@@ -95,6 +95,44 @@
 		 return $this->api_connection->wpstream_request_pack_data_per_user( $context );
 	 }
 
+	 /**
+	  * Read cached quota only — never calls the API.
+	  *
+	  * @return array|false
+	  */
+	 public function get_cached_quota_data() {
+		 $cached_data = get_transient( self::TRANSIENT_KEY );
+
+		 if ( $this->is_valid_quota_data( $cached_data ) ) {
+			 return $cached_data;
+		 }
+
+		 return false;
+	 }
+
+	 /**
+	  * Start-streaming UI flags from cache only (for script localization).
+	  * Avoids user/quota API calls on every page load; channel start still
+	  * validates via get_live_quota_data() when the user turns a channel on.
+	  *
+	  * @return array{is_basic_streaming: bool, use_streaming_hours: bool}
+	  */
+	 public function get_streaming_ui_flags_from_cache() {
+		 $pack_details = $this->get_cached_quota_data();
+
+		 if ( ! is_array( $pack_details ) ) {
+			 return array(
+				 'is_basic_streaming'  => false,
+				 'use_streaming_hours' => false,
+			 );
+		 }
+
+		 return array(
+			 'is_basic_streaming'  => $this->is_basic_streaming_mode( $pack_details ),
+			 'use_streaming_hours' => $this->uses_streaming_hours( $pack_details ),
+		 );
+	 }
+
 	 public function uses_streaming_hours( $pack_details ) {
 		 return is_array( $pack_details )
 			 && isset( $pack_details['use_streaming_hours'] )

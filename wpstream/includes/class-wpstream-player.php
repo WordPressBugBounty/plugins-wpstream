@@ -1980,25 +1980,6 @@ class Wpstream_Player{
 		return '';
 	}
 
-	/**
-	 * Get cached pack data or request fresh pack data
-	 *
-	 * @param bool $force_refresh Force a refresh of the cached data
-	 * @return array Pack data
-	 */
-	private function wpstream_get_cached_pack_data( $force_refresh = false ) {
-		$cached_data = get_transient( 'wpstream_user_pack_data' );
-
-		if ( $force_refresh || $cached_data === false ) {
-			$fresh_data = $this->main->user_quota_service->request_pack_data_per_user( 'wpstream_get_cached_pack_data' );
-			set_transient( 'wpstream_user_pack_data', $fresh_data, 60);
-
-			return $fresh_data;
-		}
-
-		return $cached_data;
-	}
-
 	/*
 	 * Check if the user is on a basic subscription
 	 *

@@ -211,7 +211,7 @@ class Wpstream_Admin {
                         'select_caption_file'      => esc_html__('Select .vtt Captions File', 'wpstream'),
                         'select_button'            => esc_html__('Select', 'wpstream'),
                         'remove_button'            => esc_html__('Remove', 'wpstream'),
-                        'use_streaming_hours'      => $this->wpstream_is_use_streaming_hours(),
+                        'use_streaming_hours'      => $this->wpstream_get_start_streaming_localization_flags()['use_streaming_hours'],
                     ));
                 
                 wp_enqueue_script('wpstream-recordings-videos-list',   plugin_dir_url( __FILE__ ) .'js/recordings_videos_list.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
@@ -230,6 +230,7 @@ class Wpstream_Admin {
 
                 $modified_start_streaming_file_time = gmdate( 'YmdHi', filemtime( WPSTREAM_PLUGIN_PATH . 'public/js/start_streaming.js' ) );
                 wp_enqueue_script('wpstream-start-streaming_admin',   plugin_dir_url( __DIR__  ) .'public/js/start_streaming.js', array(), $modified_start_streaming_file_time, true);
+				$streaming_localization_flags = $this->wpstream_get_start_streaming_localization_flags();
                 wp_localize_script('wpstream-start-streaming_admin', 'wpstream_start_streaming_vars', 
                     array( 
                         'admin_url'             =>  get_admin_url(),
@@ -264,8 +265,8 @@ class Wpstream_Admin {
                             '- If your channel is configured with Auto TURN ON, it will turn back on as soon as there is a broadcast.',
                             'wpstream'
                         ),
-                        'is_basic_streaming'      => $this->wpstream_is_basic_streaming_mode(),
-                        'use_streaming_hours'     => $this->wpstream_is_use_streaming_hours(),
+                        'is_basic_streaming'      => $streaming_localization_flags['is_basic_streaming'],
+                        'use_streaming_hours'     => $streaming_localization_flags['use_streaming_hours'],
                         'basic_streaming_warning' => esc_html__(
                             'You’ve used all available broadcast or viewer hours.' . PHP_EOL . PHP_EOL .
                             'Some live channel features will be limited, including recording, viewer count, browser broadcasting, and content protection.' . PHP_EOL . PHP_EOL .
@@ -2354,7 +2355,7 @@ class Wpstream_Admin {
         */     
 
         public function wpstream_media_management(){
-            $pack_details           =    $this->main->user_quota_service->request_pack_data_per_user( 'wpstream_media_management' );
+            $pack_details           =    $this->main->quota_manager->get_live_quota_data( 'wpstream_media_management' );
 
             $this->main->show_user_data($pack_details);
 
@@ -3393,6 +3394,15 @@ class Wpstream_Admin {
         $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_start_channel' );
         return $this->main->quota_manager->uses_streaming_hours( $pack_details );
     }
+
+	/**
+	 * Cached-only flags for start_streaming.js localization (no API on cold cache).
+	 *
+	 * @return array{is_basic_streaming: bool, use_streaming_hours: bool}
+	 */
+	public function wpstream_get_start_streaming_localization_flags() {
+		return $this->main->quota_manager->get_streaming_ui_flags_from_cache();
+	}
 
 
 

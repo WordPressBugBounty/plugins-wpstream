@@ -516,11 +516,6 @@ function wpstream_event_ready_make_actions_visible(parent){
 	if ( stopEventButton.css('display', 'none') ) {
 		stopEventButton.fadeIn(200);
 	}
-    var webcasterUrl = parent.find('.start_webcaster').attr('data-webcaster-url');
-    if (webcasterUrl === ""){
-        parent.find('.start_webcaster').addClass('wpstream_inactive_icon');
-        parent.find('.start_webcaster .wpstream_tooltip_disabled').text('Browser Broadcasting is not Available for your plan.');
-    }
 
     //for onboarding
     var check_against='3';

@@ -205,6 +205,7 @@ class Wpstream_Public {
                 
                 $modified_start_streaming_file_time = gmdate( 'YmdHi', filemtime( WPSTREAM_PLUGIN_PATH . 'public/js/start_streaming.js' ) );
                 wp_enqueue_script('wpstream-start-streaming',   plugin_dir_url( __FILE__ ) .'js/start_streaming.js',array(), $modified_start_streaming_file_time, true);
+				$streaming_localization_flags = $this->wpstream_get_start_streaming_localization_flags();
                 wp_localize_script('wpstream-start-streaming', 'wpstream_start_streaming_vars', 
                     array( 
                         'admin_url'             =>  get_admin_url(),
@@ -235,8 +236,8 @@ class Wpstream_Public {
                         'channel_on'            =>  esc_html__('Channel is ON','wpstream'),
                         'channel_off'           =>  esc_html__('Channel is OFF','wpstream'),
                         'turn_off_confirm'      =>  esc_html__('ARE YOU SURE you\'d like to TURN OFF the channel now? '.PHP_EOL.PHP_EOL.'Channels TURN OFF automatically after 1 hour of inactivity (no active broadcast).'.PHP_EOL.PHP_EOL.'Manual TURN OFF is only useful if you require to change the channel settings immediately.'.PHP_EOL.PHP_EOL.'Statistics may be unavailable or incomplete for up to an hour.'.PHP_EOL.PHP_EOL.'If your channel is configured with Auto TURN ON, it will turn back on as soon as there is a broadcast.','wpstream'),
-                        'is_basic_streaming'      => $this->main->quota_manager->is_basic_streaming_mode( null, 'wpstream_is_basic_streaming_mode' ),
-                        'use_streaming_hours'     => $this->wpstream_is_use_streaming_hours(),
+                        'is_basic_streaming'      => $streaming_localization_flags['is_basic_streaming'],
+                        'use_streaming_hours'     => $streaming_localization_flags['use_streaming_hours'],
                         'basic_streaming_warning' => esc_html__(
 	                        'You’ve used all available broadcast or viewer hours.' . PHP_EOL . PHP_EOL .
 	                        'Some live channel features will be limited, including recording, viewer count, browser broadcasting, and content protection.' . PHP_EOL . PHP_EOL .
@@ -292,6 +293,23 @@ class Wpstream_Public {
 	public function wpstream_is_use_streaming_hours() {
 		$pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_start_channel' );
 		return $this->main->quota_manager->uses_streaming_hours( $pack_details );
+	}
+
+	/**
+	 * Cached-only flags for start_streaming.js (no API on cold cache).
+	 * Skips work entirely for visitors who cannot stream.
+	 *
+	 * @return array{is_basic_streaming: bool, use_streaming_hours: bool}
+	 */
+	public function wpstream_get_start_streaming_localization_flags() {
+		if ( ! is_user_logged_in() || ! $this->main->wpstream_check_user_can_stream() ) {
+			return array(
+				'is_basic_streaming'  => false,
+				'use_streaming_hours' => false,
+			);
+		}
+
+		return $this->main->quota_manager->get_streaming_ui_flags_from_cache();
 	}
         
       

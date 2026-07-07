@@ -10,6 +10,12 @@ class Wpstream_User_Quota_Service {
 		$this->api_connection = $api_connection;
 	}
 
+	/**
+	 * Fetch user quota/pack data from the WPStream API and cache successful responses.
+	 *
+	 * @param string $context Caller context for API logging/analytics.
+	 * @return array|false Decoded API response on success, or false when no token or request fails.
+	 */
 	public function request_pack_data_per_user( $context = '' ) {
 		$url          = 'user/quota';
 		$access_token = $this->api_connection->wpstream_get_token();

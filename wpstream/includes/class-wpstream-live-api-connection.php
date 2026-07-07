@@ -849,7 +849,7 @@ class Wpstream_Live_Api_Connection  {
 
         $channel_id  =   intval($_POST['show_id']);
 
-		$pack_details = $wpstream_plugin->main->quota_manager->force_quota_update();
+		$pack_details    = $wpstream_plugin->main->quota_manager->get_live_quota_data( 'wpstream_give_me_live_uri' );
 		$basic_streaming = $wpstream_plugin->main->quota_manager->is_basic_streaming_mode( $pack_details );
 
         $on_boarding =   '';
@@ -1164,7 +1164,8 @@ class Wpstream_Live_Api_Connection  {
     
 
 	public function wpstream_check_user_quota() {
-		$pack_data = $this->wpstream_request_pack_data_per_user('wpstream_check_user_quota');
+		global $wpstream_plugin;
+		$pack_data = $wpstream_plugin->main->quota_manager->get_live_quota_data( 'wpstream_check_user_quota' );
 		if ( ! $pack_data || ! isset( $pack_data['success'] ) || ! $pack_data['success'] ) {
 			print json_encode(
 				array(

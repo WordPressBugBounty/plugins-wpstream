@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.12.5
+Stable tag: 4.13
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -133,6 +133,9 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.13 =
+* Fix - Updated the way the user quota is retrieved
 
 = 4.12.5 =
 * Fix - Live channel player state when the channel was never started
