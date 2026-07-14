@@ -889,6 +889,11 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	function checkUserQuota() {
+		// We add this here so that the user can always stream, no matter the quota
+		return Promise.resolve(true);
+
+		// Leaving this here if we want to ever return to
+		// checking the user quota and restrict streaming
 		return new Promise((resolve, reject) => {
 			if (!wpstream_broadcaster_vars.ajax_url) {
 				resolve(true);
@@ -921,7 +926,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					reject(false);
 				}
 			})
-		})
+		});
 	}
 
 	function proceedWithStreaming(isReconnect) {

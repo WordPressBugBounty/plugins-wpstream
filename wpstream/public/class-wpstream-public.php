@@ -153,6 +153,11 @@ class Wpstream_Public {
 					WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/player-controls.js'),
 					true
 				);
+			    wp_localize_script(
+				    'wpstream-player-controls',
+				    'wpstreamLiveUiConfig',
+				    $this->wpstream_get_player_i18n_config()
+			    );
 
 				$abr_enabled = false;
 				$post_meta = get_post_meta( get_the_ID(), 'local_event_options', true );
@@ -289,6 +294,28 @@ class Wpstream_Public {
 		    )
 	    );
     }
+
+
+	public function wpstream_get_player_i18n_config() {
+		return array(
+			'wpstream_player_state_stopped_msg'      => esc_html(
+				get_option(
+					'wpstream_you_are_not_live',
+					__( 'We are not live at this moment', 'wpstream' )
+				)
+			),
+			'wpstream_player_state_init_msg'         => esc_html__( 'The live stream has not yet started', 'wpstream' ),
+			'wpstream_player_state_startup_msg'      => esc_html__( 'The live stream is starting...', 'wpstream' ),
+			'wpstream_player_state_paused_msg'       => esc_html__( 'The live stream is paused', 'wpstream' ),
+			'wpstream_player_state_ended_msg'        => esc_html__( 'The live stream has ended', 'wpstream' ),
+			'wpstream_player_state_error_msg'        => esc_html__( 'Something went wrong', 'wpstream' ),
+			'wpstream_player_offair_default_msg'     => esc_html__( 'Live stream is not on air.', 'wpstream' ),
+			'wpstream_player_max_viewers_msg'        => esc_html__( 'Max viewers reached. Please wait', 'wpstream' ),
+			'wpstream_player_max_viewers_wait_msg'   => esc_html__( 'Max viewers reached. Please wait for %d to leave', 'wpstream' ),
+			'wpstream_player_invalid_session_msg'    => esc_html__( 'Invalid session. Please refresh and start playback again.', 'wpstream' ),
+			'isThemeActive'                          => get_template() === 'hello-wpstream',
+		);
+	}
 
 	public function wpstream_is_use_streaming_hours() {
 		$pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_start_channel' );

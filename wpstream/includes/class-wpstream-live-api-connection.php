@@ -721,7 +721,7 @@ class Wpstream_Live_Api_Connection  {
             'allow_access_from'     =>  $corsorigin,
             'record'                =>  $to_record,
             'encrypt'               =>  boolval($to_save_option['encrypt']),
-            'autostart'             =>  boolval($to_save_option['autostart']),
+            'autostart'             =>  'true',
             'low_latency'           =>  boolval($to_save_option['low_latency']),
             'abr'                   =>  $abr,
             'hls_keys_url_prefix'   =>  get_site_url().'?wpstream_livedrm=',
@@ -866,7 +866,7 @@ class Wpstream_Live_Api_Connection  {
 		    $local_event_options = get_option('wpstream_user_streaming_global_channel_options') ;
 	    }
 
-	    $is_autostart="false";
+	    $is_autostart="true";
 	    $is_encrypt="false";
 	    $low_latency="false";
 	    $adaptive_bitrate="false";
@@ -874,10 +874,6 @@ class Wpstream_Live_Api_Connection  {
 	    $corsorigin='*';
 
 	    if ( is_array($local_event_options) ) {
-		    if ( isset($local_event_options['autostart']) &&
-		         intval( $local_event_options['autostart']) == 1 ) {
-			    $is_autostart = "true";
-		    }
 
 		    if ( isset($local_event_options['encrypt']) &&
 		         intval( $local_event_options['encrypt']) == 1 ) {
@@ -1052,7 +1048,7 @@ class Wpstream_Live_Api_Connection  {
                 'hls_keys_url_prefix'   =>  get_site_url().'?wpstream_livedrm=',
                 'allow_key_access_from' =>  $domain_ip,
                 'metadata'              =>  json_encode($metadata_array),
-                'autostart'             =>  $basic_streaming ? $is_autostart : 'false',
+                'autostart'             =>  'true',
               //  'fakeError'             =>  'init'
             );
 

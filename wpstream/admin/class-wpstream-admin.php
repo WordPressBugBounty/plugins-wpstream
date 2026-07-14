@@ -120,11 +120,11 @@ class Wpstream_Admin {
                 'details'   =>  esc_html__('If enabled, encryption key distribution will be checked against valid user sessions. Setting may malfunction or lead to reduced website performance under certain configurations. ','wpstream'),
                 'defaults'  =>  'no',
             ),
-            'autostart'    =>array(
-                'name'      =>  esc_html__('Auto TURN ON','wpstream'),
-                'details'   =>  esc_html__('If enabled, channel will TURN ON automatically when broadcasting with an External Streaming App (RTMP Encoder/Broadcaster)','wpstream'),
-                'defaults'  =>  'no',
-            ),
+//            'autostart'    =>array(
+//                'name'      =>  esc_html__('Auto TURN ON','wpstream'),
+//                'details'   =>  esc_html__('If enabled, channel will TURN ON automatically when broadcasting with an External Streaming App (RTMP Encoder/Broadcaster)','wpstream'),
+//                'defaults'  =>  'no',
+//            ),
         );
     }
 
@@ -2911,37 +2911,57 @@ class Wpstream_Admin {
         }
 
         /**
-         * Js action to do when user pick live stream or video on demand
+         * WooCommerce product types that use the core Regular price field.
          *
-         * @since    3.0.1
+         * @return string[]
          */
-        public function wpstream_products_custom_js() {
-            if ( 'product' != get_post_type() ) :
-                return;
-            endif;
+        public function wpstream_get_wc_product_types_with_pricing() {
+            return array( 'live_stream', 'video_on_demand', 'wpstream_bundle' );
+        }
 
-            if ( ! $this->wpstream_is_wpstream_wc_product_context() ) {
+        /**
+         * Add show_if_* classes to the pricing panel for WpStream product types.
+         *
+         * WooCommerce renders .options_group.pricing with show_if_simple only. Custom
+         * types rely on show_if_{type} classes so meta-boxes-product.js can toggle them
+         * when the product type dropdown changes, including on unsaved new products.
+         *
+         * @param string $hook Admin screen hook suffix.
+         */
+        public function wpstream_enqueue_wc_product_pricing_visibility( $hook ) {
+            if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
                 return;
             }
 
-            ?>
-            <script type='text/javascript'>
-                jQuery( document ).ready( function() {
-                    jQuery('.options_group.pricing' ).addClass ( 'show_if_live_stream' ).show();
-                    jQuery('.options_group.pricing' ).addClass ( 'show_if_video_on_demand' ).show();
-                    jQuery('.options_group.pricing' ).addClass ( 'show_if_wpstream_bundle' ).show();
-                    
-                    jQuery('._sold_individually_field').parent().addClass('show_if_live_stream').show();
-                    jQuery('._sold_individually_field').parent().addClass('show_if_video_on_demand').show();
-                    jQuery('._sold_individually_field').parent().addClass('show_if_wpstream_bundle').show();
-                                
-                    jQuery('._sold_individually_field').show();
-             
-                    var selected = jQuery('#product-type').val();
-                });
-            </script>
-            <?php
+            $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+            if ( ! $screen || 'product' !== $screen->post_type ) {
+                return;
+            }
 
+            if ( ! wp_script_is( 'wc-admin-product-meta-boxes', 'registered' ) ) {
+                return;
+            }
+
+            $types_json = wp_json_encode( array_values( $this->wpstream_get_wc_product_types_with_pricing() ) );
+
+            wp_add_inline_script(
+                'wc-admin-product-meta-boxes',
+                "jQuery( function( $ ) {
+                    var wpstreamPricingProductTypes = {$types_json};
+                    var \$pricing = $( '.options_group.pricing' );
+                    var \$soldIndividually = $( '._sold_individually_field' ).parent();
+
+                    wpstreamPricingProductTypes.forEach( function( type ) {
+                        \$pricing.addClass( 'show_if_' + type );
+                        \$soldIndividually.addClass( 'show_if_' + type );
+                    } );
+
+                    if ( wpstreamPricingProductTypes.indexOf( $( '#product-type' ).val() ) !== -1 ) {
+                        \$pricing.show();
+                        \$soldIndividually.show();
+                    }
+                } );"
+            );
         }
          
         

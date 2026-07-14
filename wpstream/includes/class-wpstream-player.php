@@ -501,12 +501,6 @@ class Wpstream_Player{
         wp_enqueue_script('wpstream-player');
 		wp_enqueue_script( 'wpstream-player-controls' );
 
-	    wp_localize_script(
-		    'wpstream-player-controls',
-		    'wpstreamLiveUiConfig',
-		    $this->wpstream_get_player_i18n_config()
-	    );
-
 	    $player_theme = $this->wpstream_get_player_theme( $channel_id );
         $now                =   time().rand(0,1000000);
         $overlay_video_div_id = "random_id_".$now;
@@ -1164,12 +1158,6 @@ class Wpstream_Player{
 			wp_enqueue_script('video.min');
             wp_enqueue_script('wpstream-player');
 	        wp_enqueue_script( 'wpstream-player-controls' );
-
-			wp_localize_script(
-				'wpstream-player-controls',
-				'wpstreamLiveUiConfig',
-				$this->wpstream_get_player_i18n_config()
-			);
 
 			$player_theme = $this->wpstream_get_player_theme( $product_id );
 

@@ -87,7 +87,11 @@ if ( ! class_exists( 'Wpstream_Recent_Comments_Widget' ) ) {
 					<div class="wpstream-recent-comment-body">
 						<p class="d-flex flex-wrap m-0">
 							<span class="wpstream-recent-comment-author "><?php echo esc_html( get_comment_author( $comment ) ); ?></span>
-							<span class="wpstream-recent-comment-date text-gray"><?php echo esc_html( wpstream_get_published_duration_by_date_time( $comment->comment_date ) ); ?></span>
+							<?php
+								if ( function_exists( 'wpstream_get_published_duration_by_date_time ' ) ) {
+									echo '<span class="wpstream-recent-comment-date text-gray">' . esc_html( wpstream_get_published_duration_by_date_time( $comment->comment_date ) ) . '</span>';
+								}
+							?>
 						</p>
 						<p class="wpstream-recent-comment-text m-0">
 							<?php echo esc_html( get_comment_text( $comment ) ); ?>

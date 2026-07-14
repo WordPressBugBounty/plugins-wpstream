@@ -338,7 +338,7 @@ class Wpstream {
                     $this->loader->add_action( 'init',                          $plugin_admin, 'wpstream_add_custom_wc_products' );
                     $this->loader->add_filter( 'product_type_selector',         $plugin_admin, 'wpstream_add_products' );
                     $this->loader->add_filter( 'woocommerce_product_class',     $plugin_admin, 'wpstream_add_products_class', 10, 2 );
-                    $this->loader->add_action( 'admin_footer',                  $plugin_admin, 'wpstream_products_custom_js' );
+                    $this->loader->add_action( 'admin_enqueue_scripts',         $plugin_admin, 'wpstream_enqueue_wc_product_pricing_visibility', 20 );
                     $this->loader->add_filter( 'woocommerce_product_data_tabs', $plugin_admin, 'wpstream_hide_attributes_data_panel',10,1 );
                     $this->loader->add_filter( 'woocommerce_is_purchasable',    $plugin_admin, 'wpstream_hide_buy_now_subscription_mode',10,2);
                     

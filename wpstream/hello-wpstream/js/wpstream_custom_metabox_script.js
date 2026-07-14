@@ -70,7 +70,13 @@ function wpstream_sortable_2_action(item){
  * Autocomplete search
  */
 function wpstream_admin_autocomplete_items_bundle() {
-    jQuery('.wpstream_item_autocomplete_search').autocomplete({
+	const $searchInput = jQuery('.wpstream_item_autocomplete_search');
+
+	if ( !$searchInput.length ) {
+		return;
+	}
+
+    $searchInput.autocomplete({
         source: function (request, response) {
             jQuery('#wpstream_autocomplete_status').text(wpstream_custom_metabox_script_vars.searching_text);
 

@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.13
+Stable tag: 4.13.1
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -133,6 +133,11 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.13.1 =
+* Fix - Price field on paid channel/VOD not visible
+* Fix - Paid VOD player buttons not visible
+* Fix - Fatal error on widget
 
 = 4.13 =
 * Fix - Updated the way the user quota is retrieved

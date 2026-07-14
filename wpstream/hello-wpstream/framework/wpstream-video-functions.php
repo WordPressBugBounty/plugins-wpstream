@@ -214,7 +214,7 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
         ?>
 
 		<?php
-		if ( 'wpstream_product_vod' === get_post_type( $post_id ) ) {
+		if ( 'wpstream_product_vod' === get_post_type( $post_id ) || get_post_type( $post_id ) === 'product' ) {
 			$muted = false;
 			$wpstream_vod_start_muted   =   intval ( get_option('wpstream_vod_start_muted','') );
 			if($wpstream_vod_start_muted===1){
@@ -263,23 +263,21 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 
 				if ( 'subscription' === get_post_type( $post_id )  ) {
 					$wpstream_plugin->main->wpstream_player->wpstream_video_on_demand_player_only_trailer( $post_id );
-				}else	if ( 'product' === get_post_type( $post_id ) && function_exists('wc_get_product')  ) {
+				} elseif ( 'product' === get_post_type( $post_id ) && function_exists('wc_get_product')  ) {
 					$product      = wc_get_product( $post_id );
-					$product_type 		  =   $product->get_type();
+					$product_type = $product->get_type();
 					if ( 'wpstream_bundle' === $product_type ) {
 						$wpstream_plugin->main->wpstream_player->wpstream_video_on_demand_player_only_trailer( $post_id );
-					}else{
-					$wpstream_plugin->main->wpstream_player->wpstream_video_player_shortcode( $post_id );
+					} else {
+						$wpstream_plugin->main->wpstream_player->wpstream_video_player_shortcode( $post_id );
 					}
-				}else{
+				} else {
 					$wpstream_plugin->main->wpstream_player->wpstream_video_player_shortcode( $post_id );
-					}
-			//	
-				
+				}
 			} elseif ( get_post_type( $post_id ) === 'product'  && function_exists('wc_get_product') ) {
 
 				$product      = wc_get_product( $post_id );
-				$product_type 		  =   $product->get_type();
+				$product_type = $product->get_type();
 
 				if ( 'subscription' === $product_type ) {
 					if ( ! wcs_user_has_subscription( $current_user->ID, $post_id, 'active' ) ) {

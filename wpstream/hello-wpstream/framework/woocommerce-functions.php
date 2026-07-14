@@ -71,7 +71,7 @@ function wpstream_hide_add_to_cart_if_purchased( $purchasable, $product ) {
 	) {
 		$current_user = wp_get_current_user();
 
-		if ( is_user_logged_in() && wc_customer_bought_product( get_current_user_id(), $current_user->user_email, $product->get_id() ) ) {
+		if ( is_user_logged_in() && wc_customer_bought_product( $current_user->user_email, get_current_user_id(), $product->get_id() ) ) {
 			$purchasable = false;
 		}
 	}

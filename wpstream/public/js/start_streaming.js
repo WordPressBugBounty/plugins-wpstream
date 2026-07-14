@@ -502,18 +502,17 @@ function wpstream_event_ready_make_actions_visible(parent){
     parent.find('.wpstream_show_settings').addClass('wpstream_inactive_icon');
     const channelStatus = parent.find('.wpstream_channel_status');
 	channelStatus.each(function( index, element ) {
-		if ( !jQuery(element).hasClass('not_ready_to_stream') && jQuery(element).css('display', 'none') ) {
-			console.log('put back channel on');
-			jQuery(element).text(wpstream_start_streaming_vars.channel_on);
-			jQuery(element).fadeIn(200);
-		}
 		if ( jQuery(element).hasClass('not_ready_to_stream') ) {
-			console.log('hide the element');
 			jQuery(element).hide();
+			return;
+		}
+		jQuery(element).text(wpstream_start_streaming_vars.channel_on);
+		if ( jQuery(element).css('display') === 'none' ) {
+			jQuery(element).fadeIn(200);
 		}
 	});
 	const stopEventButton = parent.find('.wpstream_stop_event');
-	if ( stopEventButton.css('display', 'none') ) {
+	if ( stopEventButton.css('display') === 'none' ) {
 		stopEventButton.fadeIn(200);
 	}
 
