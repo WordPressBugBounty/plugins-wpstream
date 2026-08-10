@@ -2,15 +2,24 @@
 /**
  * Theme options
  *
+ * Bootstraps the Redux Framework options panel for the hello-wpstream theme.
+ * Defines the shared option-set name, the global country list and the allowed
+ * HTML whitelist, wires up Redux args (admin bar links, share icons), disables
+ * Redux demo mode, and exposes the wpstream_return_option() accessor used
+ * throughout the theme to read saved option values.
+ *
  * @package wpstream-theme
  */
 
+// Redux must be available; if the framework is not loaded, skip this file entirely.
 if ( ! class_exists( 'Redux' ) ) {
 	return;
 }
 
+// Shared globals: option-set name, country dropdown source, and the kses whitelist.
 global $wpstream_opt_name, $country_list, $allowed_html_array;
 
+// Whitelist of HTML tags/attributes allowed when sanitizing rich option text.
 $allowed_html_array = array(
 	'i'    => array(
 		'class' => array(),
@@ -30,31 +39,35 @@ $wpstream_opt_name = 'wpstream_options';
 
 // This line is only for altering the demo. Can be easily removed.
 $wpstream_opt_name = apply_filters( 'redux_demo_opt_name', $wpstream_opt_name );
-$redux_path        = ReduxFramework::$_dir;
-$redux_url         = ReduxFramework::$_url;
-$img_url           = $redux_url . 'assets/img/';
+$redux_path        = ReduxFramework::$_dir;              // Filesystem path to the Redux framework.
+$redux_url         = ReduxFramework::$_url;              // URL to the Redux framework assets.
+$img_url           = $redux_url . 'assets/img/';         // Base URL for bundled Redux images.
 $theme             = wp_get_theme(); // For use with some settings. Not necessary.
-$theme_name        = $theme->get( 'Name' );
+$theme_name        = $theme->get( 'Name' );             // Active theme name, available for labels.
 
 // ADMIN BAR LINKS -> Setup custom links in the admin bar menu as external items.
+// Add a "Support" link pointing at wpstream.net into the Redux admin bar menu.
 $args['admin_bar_links'][] = array(
 	'id'    => 'wpstream-support',
 	'href'  => 'https://wpstream.net',
 	'title' => esc_html__( 'Support', 'hello-wpstream' ),
 );
 
+// Share icon: Facebook (URL left blank for the site owner to fill in).
 $args['share_icons'][] = array(
 	'url'   => '',
 	'title' => 'Like us on Facebook',
 	'icon'  => 'el el-facebook',
 );
 
+// Share icon: Twitter (URL left blank for the site owner to fill in).
 $args['share_icons'][] = array(
 	'url'   => '',
 	'title' => 'Follow us on Twitter',
 	'icon'  => 'el el-twitter',
 );
 
+// Apply the assembled args to the Redux option set.
 Redux::setArgs( $wpstream_opt_name, $args );
 
 // Change the arguments after they've been declared, but before the panel is created.
@@ -74,8 +87,10 @@ if ( ! function_exists( 'change_arguments' ) ) {
 	 * @return array The modified arguments.
 	 */
 	function change_arguments( $args ) {
+		// Force Redux developer mode off in this theme.
 		$args['dev_mode'] = false;
 
+		// Return the modified args back to Redux.
 		return $args;
 	}
 }
@@ -89,7 +104,9 @@ if ( ! function_exists( 'remove_demo' ) ) {
 	 */
 	function remove_demo() {
 		// Used to hide the demo mode link from the plugin page. Only used when Redux is a plugin.
+		// Only act when Redux is present as a standalone plugin.
 		if ( class_exists( 'ReduxFrameworkPlugin' ) ) {
+			// Remove the demo-mode link that Redux adds to the plugin row meta.
 			remove_filter(
 				'plugin_row_meta',
 				array(
@@ -114,13 +131,16 @@ if ( ! function_exists( 'wpstream_return_option' ) ) {
 	 * @return mixed The value of the option if it exists, otherwise the default value.
 	 */
 	function wpstream_return_option( $opt_name, $is_default = null ) {
+		// Load the full saved Redux option array.
 		$wpstream_option = get_option( 'wpstream_options' );
 
+		// Return the requested key if present, otherwise the supplied default.
 		$option_val = isset( $wpstream_option[ $opt_name ] ) ? $wpstream_option[ $opt_name ] : $is_default;
 		return $option_val;
 	}
 }
 
+// Country code => display name map, exposed globally for country dropdown fields.
 $country_list = array(
 	'US'  => 'United States',
 	'CA'  => 'Canada',

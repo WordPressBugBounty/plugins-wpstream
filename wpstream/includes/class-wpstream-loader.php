@@ -48,7 +48,9 @@ class Wpstream_Loader {
 	 */
 	public function __construct() {
 
+		// Start with an empty queue of actions; hooks get appended via add_action().
 		$this->actions = array();
+		// Start with an empty queue of filters; hooks get appended via add_filter().
 		$this->filters = array();
 
 	}
@@ -64,6 +66,7 @@ class Wpstream_Loader {
 	 * @param    int                  $accepted_args    Optional. The number of arguments that should be passed to the $callback. Default is 1.
 	 */
 	public function add_action( $hook, $component, $callback, $priority = 10, $accepted_args = 1 ) {
+		// Append the action to the internal collection via the shared add() helper.
 		$this->actions = $this->add( $this->actions, $hook, $component, $callback, $priority, $accepted_args );
 	}
 
@@ -78,6 +81,7 @@ class Wpstream_Loader {
 	 * @param    int                  $accepted_args    Optional. The number of arguments that should be passed to the $callback. Default is 1
 	 */
 	public function add_filter( $hook, $component, $callback, $priority = 10, $accepted_args = 1 ) {
+		// Append the filter to the internal collection via the shared add() helper.
 		$this->filters = $this->add( $this->filters, $hook, $component, $callback, $priority, $accepted_args );
 	}
 
@@ -97,14 +101,17 @@ class Wpstream_Loader {
 	 */
 	private function add( $hooks, $hook, $component, $callback, $priority, $accepted_args ) {
 
+		// Push one normalized record onto the collection, capturing everything
+		// WordPress needs later to wire the callback up in run().
 		$hooks[] = array(
-			'hook'          => $hook,
-			'component'     => $component,
-			'callback'      => $callback,
-			'priority'      => $priority,
-			'accepted_args' => $accepted_args
+			'hook'          => $hook,          // WordPress hook name to attach to
+			'component'     => $component,     // object instance owning the callback
+			'callback'      => $callback,      // method name on that object
+			'priority'      => $priority,      // execution priority for this hook
+			'accepted_args' => $accepted_args  // number of args passed to the callback
 		);
 
+		// Return the grown collection so the caller can reassign its property.
 		return $hooks;
 
 	}
@@ -116,11 +123,15 @@ class Wpstream_Loader {
 	 */
 	public function run() {
 
+		// Register every queued filter with WordPress core.
 		foreach ( $this->filters as $hook ) {
+			// Bind the stored component/callback pair at its recorded priority and arg count.
 			add_filter( $hook['hook'], array( $hook['component'], $hook['callback'] ), $hook['priority'], $hook['accepted_args'] );
 		}
 
+		// Register every queued action with WordPress core.
 		foreach ( $this->actions as $hook ) {
+			// Bind the stored component/callback pair at its recorded priority and arg count.
 			add_action( $hook['hook'], array( $hook['component'], $hook['callback'] ), $hook['priority'], $hook['accepted_args'] );
 		}
 

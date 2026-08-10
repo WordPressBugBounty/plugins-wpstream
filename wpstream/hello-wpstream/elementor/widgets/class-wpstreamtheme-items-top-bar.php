@@ -1,10 +1,16 @@
 <?php
 /**
  * Recent items class
+ * Elementor widget ("Item List with Filters") that renders a grid of WpStream
+ * items topped by a filter bar built from repeater-defined taxonomy tabs.
+ * It registers the top-bar filter repeater, the content/initial-selection
+ * controls and the control/pagination style sections, then maps the settings
+ * to attributes and delegates markup to `wpstream_theme_recent_items_top_bar()`.
  *
  * @package wpstream-theme
  */
 
+// Elementor base class plus the repeater, control, box-shadow and typography helpers used below.
 use Elementor\Group_Control_Box_Shadow;
 use Elementor\Core\Files\Assets\Svg\Svg_Handler;
 use Elementor\Repeater;
@@ -26,6 +32,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_name() {
+		// Unique machine id Elementor stores this widget under.
 		return 'WpStream Recent items with filters';
 	}
 
@@ -33,6 +40,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	 * Retrieve categories.
 	 */
 	public function get_categories() {
+		// Show this widget under the custom hello-wpstream panel category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -46,6 +54,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_title() {
+		// Label shown on the widget tile in the editor.
 		return __( 'Item List with Filters', 'hello-wpstream' );
 	}
 
@@ -58,6 +67,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_icon() {
+		// Elementor icon-font class for the widget tile.
 		return 'eicon-posts-masonry';
 	}
 
@@ -73,6 +83,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_script_depends() {
+		// No extra front-end script dependencies for this widget.
 		return array( '' );
 	}
 
@@ -87,31 +98,44 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	 * @access protected
 	 */
 	public function elementor_transform( $input ) {
+		// Collects the reshaped value => label pairs.
 		$output = array();
 		if ( is_array( $input ) ) {
+			// Re-key each entry: term value becomes the key, label becomes the value.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the value => label map (empty when input is not an array).
 		return $output;
 	}
 
 	/**
 	 * Register controls
+	 * Builds the top-bar filter repeater, the Content and Initial Selection
+	 * sections, and the Controls Style + Pagination Colours style sections.
 	 */
 	protected function register_controls() {
 
+		// Registered WpStream taxonomies keyed by taxonomy name.
 		$available_tax = wpstream_return_taxonomy_array();
+		// Drop post tags - not offered as a filter here.
 		unset( $available_tax['post_tag'] );
+		// Flat value => label map of every term across taxonomies (for the repeater).
 		$available_tax_simple=array();
 
 	
 
+		// Normalise each taxonomy's terms and also collect them into the flat map.
 		foreach ( $available_tax as $taxonoy_name => $post_types ) :
+			// Raw term choices for this taxonomy.
 			$temp_taxonomy_values           = wpstream_theme_generate_category_values( $taxonoy_name );
+			// Normalise to the value => label shape.
 			$temp_taxonomy_values           = $this->elementor_transform( $temp_taxonomy_values );
+			// Store normalised options back under the taxonomy name.
 			$available_tax[ $taxonoy_name ] = $temp_taxonomy_values;
 
+			// Also copy each term into the flat single-level map.
 			foreach( $temp_taxonomy_values as $key_id=>$valued_id ){
 				$available_tax_simple[$key_id] = $valued_id;
 			}
@@ -119,6 +143,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 
 		endforeach;
 
+		// Content types the item list can display.
 		$items_type     = array(
 			'wpstream_product'     => 'Free to view live channels',
 			'wpstream_product_vod' => 'Free to view VOD',
@@ -127,12 +152,14 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		);
 	
 
+		// Pagination style choices (none / load more / numbers).
 		$pagination_type = array(
 			'0' => 'none',
 			'1' => 'Load more',
 			'2' => 'Numbers',
 		);
 
+		// Sort-order options from the theme helper (when available).
 		$sort_options = array();
 		if ( function_exists( 'wstream_sort_options_array' ) ) {
 			$sort_options = wstream_sort_options_array();
@@ -142,6 +169,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 
 
 
+		// === Top Bar Filters section: repeater of taxonomy filter tabs ===
 		$this->start_controls_section(
 			'section_top_var_filters',
 			[
@@ -150,8 +178,10 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			]
 	); 
 	 
+	 // Repeater defining each filter tab (term, label, icon).
 	 $repeater = new Repeater();
 
+	// Repeater field: which taxonomy term this tab filters by.
 	$repeater->add_control(
 			'field_type', [
 			'label' => esc_html__('Category Terms', 'hello-wpstream'),
@@ -164,6 +194,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	
 
 	
+	// Repeater field: the tab's display label.
 	$repeater->add_control(
 			'field_label', [
 			'label' => esc_html__('Form Fields Label', 'hello-wpstream'),
@@ -173,6 +204,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	);
 
 	   
+	// Repeater field: the tab's icon.
 	$repeater->add_control(
 			'icon',
 			[
@@ -187,6 +219,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		
 	
  
+	  // Control: the list of filter tabs (defaults to a single Categories tab).
 	  $this->add_control(
 		'form_fields', [
 		'type' => Controls_Manager::REPEATER,
@@ -207,6 +240,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	
 
 
+	// End Top Bar Filters section.
 	$this->end_controls_section();
 	
 
@@ -219,6 +253,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 
 
 
+		// === Content section: item type, counts, card style, sort ===
 		$this->start_controls_section(
 			'section_content',
 			array(
@@ -226,6 +261,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: which content type to display.
 		$this->add_control(
 			'type',
 			array(
@@ -236,6 +272,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: total number of items to load.
 		$this->add_control(
 			'number',
 			array(
@@ -246,6 +283,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		);
 
 		
+		// Control: how many items are visible per row.
 		$this->add_control(
 			'rownumber',
 			array(
@@ -261,6 +299,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: which video-card template to render.
 		$this->add_control(
 			'video_card',
 			[
@@ -274,6 +313,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			]
 		);
 
+		// Control: sort order for the queried items.
 		$this->add_control(
 			'sort_by',
 			array(
@@ -284,11 +324,13 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// End Content section.
 		$this->end_controls_section();
 
 		/*
 		* Start filters
 		*/
+		// === Initial Selection section: pre-filter items by taxonomy term ===
 		$this->start_controls_section(
 			'filters_section',
 			array(
@@ -297,6 +339,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: standard WP categories.
 		$this->add_control(
 			'category_ids',
 			array(
@@ -309,6 +352,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: WpStream media categories.
 		$this->add_control(
 			'wpstream_category_ids',
 			array(
@@ -321,6 +365,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: movie-rating terms.
 		$this->add_control(
 			'movie_ratings_ids',
 			array(
@@ -333,6 +378,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: actor terms.
 		$this->add_control(
 			'actors_ids',
 			array(
@@ -345,9 +391,11 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// End Initial Selection section.
 		$this->end_controls_section();
 
 	
+		// === Style: filter control colours and geometry ===
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -356,6 +404,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)			
 		);
 
+		// Style: control background colour.
 		$this->add_control(
 			'controls_main_back_color',
 			array(
@@ -369,6 +418,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: control text/icon colour.
 		$this->add_control(
 			'controls_font_color',
 			array(
@@ -387,6 +437,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		
 	
 
+		// Style: control hover background colour.
 		$this->add_control(
 			'controls_hover_back_color',
 			array(
@@ -400,6 +451,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: control hover text/icon colour.
 		$this->add_control(
 			'controls_hover_font_color',
 			array(
@@ -415,6 +467,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		);
 
 		
+		// Style: selected control background colour.
 		$this->add_control(
 			'controls_selected_back_color',
 			array(
@@ -428,6 +481,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: selected control text/icon colour.
 		$this->add_control(
 			'controls_selected_font_color',
 			array(
@@ -445,6 +499,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 
 
 		
+	// Style: tab item typography group control.
 	$this->add_group_control(
 		Group_Control_Typography::get_type(), [
 			'name' => 'tab_item_typo',
@@ -469,6 +524,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		
 
 
+	// Style: margin around each control.
 	$this->add_responsive_control(
 		'tab_item_margin', [
 			'label' => esc_html__('Control Margin ', 'hello-wpstream'),
@@ -482,6 +538,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	);
 
 
+		// Style: internal padding of each control.
 		$this->add_responsive_control(
 		'controls_padding', [
 		'label' => esc_html__('Internal Padding', 'hello-wpstream'),
@@ -493,6 +550,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			]
 		);
 
+	// Style: control corner radius.
 	$this->add_responsive_control(
 		'control_border_radius', [
 			'label' => esc_html__('Border Radius', 'hello-wpstream'),
@@ -504,6 +562,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		]
 	);
 
+	// Control: horizontal alignment of the control row.
 	$this->add_control(
 		'control_alignment',
 		[
@@ -531,7 +590,9 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	);
 
 
+		// End Controls Style section.
 		$this->end_controls_section();
+		// === Style: pagination colours and borders ===
 		$this->start_controls_section(
 			'pagination_section',
 			array(
@@ -539,6 +600,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Style: pagination background colour.
 		$this->add_control(
 			'pagination_main_back_color',
 			array(
@@ -554,6 +616,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination text colour.
 		$this->add_control(
 			'pagination_font_color',
 			array(
@@ -570,6 +633,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination hover background colour.
 		$this->add_control(
 			'pagination_hover_back_color',
 			array(
@@ -583,6 +647,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination hover text colour.
 		$this->add_control(
 			'pagination_hover_font_color',
 			array(
@@ -598,6 +663,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination border width.
 		$this->add_control(
 			'pagination_border_width',
 			array(
@@ -610,6 +676,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination border colour.
 		$this->add_control(
 			'pagination_border_color',
 			array(
@@ -622,6 +689,7 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 			)
 		);
 
+		// End Pagination Colours section.
 		$this->end_controls_section();
 		
 	}
@@ -638,11 +706,15 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 	 * @access protected
 	 */
 	public function wpstream_send_to_shortcode( $input ) {
+		// Build a comma-separated string from the selected values.
 		$output = '';
+		// Only process a non-empty value set.
 		if ( !empty($input) ) {
+			// Track the total count so we can avoid a trailing comma.
 			$num_items = count( $input );
 			$i         = 0;
 
+			// Append each value, comma-separating all but the last.
 			foreach ( $input as $key => $value ) {
 				$output .= $value;
 				if ( ++$i !== $num_items ) {
@@ -650,18 +722,25 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 				}
 			}
 		}
+		// Return the joined "a, b, c" string.
 		return $output;
 	}
 
 	/**
 	 * Render
+	 * Maps the editor settings (including the filter-tab repeater) to attributes
+	 * and prints the item-list markup via `wpstream_theme_recent_items_top_bar()`.
 	 */
 	protected function render() {
+		// Pull the resolved control values for this widget instance.
 		$settings = $this->get_settings_for_display();
 		
+		// Pass the configured filter tabs straight through.
 		$attributes['form_fields']          =   $settings['form_fields'];
 
+		// Copy the item type into the attributes.
 		$attributes['type']                  = $settings['type'];
+		// Flatten the multi-select taxonomy filters into comma-separated lists.
 		$attributes['category_ids']          = $this->wpstream_send_to_shortcode( $settings['category_ids'] );
 		$attributes['wpstream_category_ids'] = $this->wpstream_send_to_shortcode( $settings['wpstream_category_ids'] );
 		$attributes['movie_ratings_ids']     = $this->wpstream_send_to_shortcode( $settings['movie_ratings_ids'] );
@@ -671,10 +750,12 @@ class WpStreamTheme_Items_Top_Bar extends \Elementor\Widget_Base {
 		$attributes['sort_by']               = $settings['sort_by'];
 		$attributes['video_card']               = $settings['video_card'];
 
+		// Flag so the helper knows it is rendering inside Elementor.
 		$attributes['is_elementor']          = true;
 
 
 
+		// Output the assembled item-list markup (helper escapes; phpcs ignore below).
 		echo wpstream_theme_recent_items_top_bar( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 }

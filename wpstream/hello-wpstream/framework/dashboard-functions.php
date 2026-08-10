@@ -3,6 +3,11 @@
 /**
  * Dashboard functions
  *
+ * Helpers that build the front-end broadcaster/dashboard UI for the
+ * hello-wpstream theme: a select of the user's own channels, the plupload
+ * localization for image/video uploaders, and the HTML markup for the image,
+ * profile-image, trailer and preview upload widgets plus the gallery grid.
+ *
  * @package wpstream-plugin
  */
 
@@ -17,12 +22,17 @@ if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
 	 * @return string|int The HTML markup for the select field or the count of found posts.
 	 */
 	function wpstream_theme_return_user_channel_list( $already_selected, $return_type = '' ) {
+		// Current user whose channels we are listing.
 		$current_user  = wp_get_current_user();
+		// Cap the query at 100 channels.
 		$limit         = 100;
 		$return_string = '';
 
+		// When WooCommerce is active, channels can be either WC products of
+		// type live_stream or plain wpstream_product posts.
 		if ( wpstream_check_woo_active() ) {
 			$post_type      = array( 'product', 'wpstream_product' );
+			// Match live_stream products OR posts with no product_type term.
 			$taxonomy_array = array(
 				'relation' => 'OR',
 				array(
@@ -36,10 +46,12 @@ if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
 				),
 			);
 		} else {
+			// Without WooCommerce, only the custom post type applies.
 			$post_type      = 'wpstream_product';
 			$taxonomy_array = array();
 		}
 
+		// Query the current user's channels.
 		$args = array(
 			'post_type'      => $post_type,
 			'posts_per_page' => $limit,
@@ -49,41 +61,51 @@ if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
 
 		$query_list = new WP_Query( $args );
 
+		// Caller only wants the count of channels found: return it early.
 		if ( 'found_posts' === $return_type ) {
 			return intval( $query_list->found_posts );
 		}
 
+		// Open the select element with a placeholder first option.
 		$return_string .= '<select id="wpstream-user-channel-selection" name="wpstream-user-channel-selection" '
 			. 'class="wpstream-user-channel-selection">'
 			. '<option value="">' . esc_html__( 'select the channel', 'hello-wpstream' ) . '</value>';
 
 		if ( $query_list->have_posts() ) {
+			// Emit one <option> per channel in the loop.
 			while ( $query_list->have_posts() ) :
 				$query_list->the_post();
+				// Gather the channel's ID, title and post type.
 				$the_id       = get_the_ID();
 				$the_title    = get_the_title( $the_id );
 				$post_type    = get_post_type( $the_id );
 				$product_type = '';
 
+				// For WC products, read the stored product type meta.
 				if ( get_post_type( $the_id ) === 'product' ) {
 					$product_type = get_post_meta( $the_id, '_product_type', true );
 				}
 
+				// Build the option, marking it selected when it matches.
 				$image_url      = '';
 				$return_string .= '<option value="' . intval( $the_id ) . '"';
 				if ( intval( $already_selected ) === $the_id ) {
 					$return_string .= ' selected';
 				}
+				// Attach the (currently empty) thumbnail data attribute and label.
 				$return_string .= ' data-thumbnail="' . esc_url( $image_url ) . '">';
 				$return_string .= esc_html( $the_title ) . '</option>';
 
 			endwhile;
 		}
 
+		// Close the select element.
 		$return_string .= '</select>';
 
+		// Restore the global post after the custom query loop.
 		wp_reset_postdata();
 
+		// Return the assembled <select> markup.
 		return $return_string;
 	}
 }
@@ -94,6 +116,7 @@ if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
  * @param string $button_upload The ID of the upload button.
  */
 function wpstream_theme_localize_upload_script_images( $button_upload ) {
+	// Build the admin-ajax upload endpoint URL, embedding the upload nonce.
 	$plup_url = add_query_arg(
 		array(
 			'action' => 'wpstream_me_upload',
@@ -102,14 +125,17 @@ function wpstream_theme_localize_upload_script_images( $button_upload ) {
 		esc_url( admin_url( 'admin-ajax.php' ) )
 	);
 
+	// Maximum accepted upload size: 100 MB.
 	$max_file_size = 100 * 1000 * 1000;
 
+	// Core plupload configuration passed to the browser uploader.
 	$plupload_values = array(
 		'runtimes'         => 'html5,flash,html4',
 		'max_file_size'    => $max_file_size . 'b',
 		'url'              => $plup_url,
 		'file_data_name'   => 'aaiu_upload_file',
 		'flash_swf_url'    => includes_url( 'js/plupload/plupload.flash.swf' ),
+		// Client-side allowed file extensions (not a server-side guarantee).
 		'filters'          => array(
 			array(
 				'title'      => esc_html__( 'Allowed Files', 'hello-wpstream' ),
@@ -118,18 +144,23 @@ function wpstream_theme_localize_upload_script_images( $button_upload ) {
 		),
 		'multipart'        => true,
 		'urlstream_upload' => true,
+		// Pass the originating button id so the server knows which uploader fired.
 		'multipart_params' => array( 'button_id' => $button_upload ),
 	);
 
+	// UI wiring: which element opens the file picker and which is the container.
 	$tmp_plupload_values = array(
 		'browse_button' => $button_upload,
 		'container'     => 'aaiu-upload-container',
 	);
 
+	// Merge the UI wiring into the config and set the drag-and-drop target.
 	$plupload_values                 = wp_parse_args( $plupload_values, $tmp_plupload_values );
 	$plupload_values['drop_element'] = 'drag-and-drop';
+	// Upper bound on the number of images allowed in the gallery uploader.
 	$max_images                      = 20;
 
+	// Expose all upload settings/nonces/strings to the ajax-upload JS handle.
 	wp_localize_script(
 		'ajax-upload',
 		'ajax_vars',
@@ -160,32 +191,41 @@ if ( ! function_exists( 'wpstream_theme_return_image_upload_markup' ) ) {
 	 * @return string The HTML markup for image upload.
 	 */
 	function wpstream_theme_return_image_upload_markup( $user_id, $post_id ) {
+		// Determine the post type to know where the gallery data lives.
 		$post_type      = get_post_type( $post_id );
 		$gallery_images = '';
 
 		if ( 'product' === $post_type ) {
+			// WooCommerce products store gallery IDs as a comma list in meta.
 			$gallery_images_source = get_post_meta( $post_id, '_product_image_gallery', true );
 			$gallery_images        = explode( ',', $gallery_images_source );
 		} else {
+			// Other post types use the Meta Box (rwmb) gallery field, if present.
 			if(function_exists('rwmb_meta')){
 				$gallery_images = rwmb_meta( 'wpstream_theme_gallery', array(), $post_id );
 
+				// rwmb returns id => data; reduce to the list of IDs.
 				if ( is_array( $gallery_images ) ) {
 					$gallery_images = array_keys( $gallery_images );
 				}
 			}
 		}
 
+		// Canonical gallery source: overrides whatever was gathered above.
 		$gallery_images = wpstream_theme_return_image_gallery( $post_id );
 
+		// Featured image ID and accumulator for the rendered thumbnails.
 		$thumbid = get_post_thumbnail_id( $post_id );
 		$images  = '';
 
 		if ( is_array( $gallery_images ) ) {
+			// Build a thumbnail tile (with delete icon) for each gallery image.
 			foreach ( $gallery_images as $attachment_id ) {
 
+				// Resolve the card-sized preview for this attachment.
 				$preview = wp_get_attachment_image_src( $attachment_id, 'wpstream_featured_unit_cards' );
 
+				// Only render tiles that have a usable preview URL.
 				if ( $preview && $preview[0] != '' ) {
 					$images .= '<div class="wpstream_uploaded_images" data-imageid="' . esc_attr( $attachment_id ) . '">'
 						. '<img src="' . esc_url( $preview[0] ) . '" alt="' . esc_html__( 'thumb', 'hello-wpstream' ) . '" />'
@@ -196,34 +236,43 @@ if ( ! function_exists( 'wpstream_theme_return_image_upload_markup' ) ) {
 			}
 		}
 
+		// Flatten the gallery IDs into a comma string for the hidden field.
 		$gallery_images_string = '';
 		if ( is_array( $gallery_images ) ) {
 			$gallery_images_string = implode( ',', $gallery_images );
 		}
 
+		// Capture the template output into a string via output buffering.
 		$return_string = '';
 		ob_start();
 		?>
 
+		<!-- Multi-image uploader (gallery) container -->
 		<div id="upload-container" class="upload-container">
 			<div id="aaiu-upload-container upload-container__body">
 				<h3><?php echo esc_html__( 'Image list', 'hello-wpstream' ); ?></h3>
+				<!-- Live list plupload appends queued items into -->
 				<div id="aaiu-upload-imagelist">
 					<ul id="aaiu-ul-list" class="aaiu-upload-list"></ul>
 				</div>
 
+				<!-- Existing uploaded images plus the upload nonce field -->
 				<div id="wpstream_imagelist">
 					<?php
+					// Nonce consumed by the delete-image AJAX handler.
 					$ajax_nonce = wp_create_nonce( 'wpstream_image_upload' );
 					print '<input type="hidden" id="wpstream_image_upload" value="' . esc_html( $ajax_nonce ) . '" />    ';
+					// Print the pre-rendered thumbnail tiles, if any.
 					if ( '' !== $images ) {
 						print trim( $images ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					}
 					?>
 				</div>
 
+				<!-- Actions row: drag-and-drop trigger and hidden state fields -->
 				<div class="upload-container__actions-wrap upload-container__actions-wrap--row">
 					<div id="drag-and-drop" class="rh_drag_and_drop_wrapper ">
+						<!-- "Upload More" button plupload binds to -->
 						<div id="aaiu-uploader" class="wpstream_theme_button_dashboard">
 							<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 								<path fill-rule="evenodd" clip-rule="evenodd" d="M10.7379 16.6273C9.96427 16.6273 9.31895 16.036 9.2514 15.2654C9.11015 13.6541 9.07441 12.0356 9.14427 10.4203C9.05994 10.4147 8.97563 10.4088 8.89133 10.4026L7.40178 10.2941C6.44973 10.2247 5.91752 9.16309 6.43151 8.35871C7.5277 6.6432 9.53693 4.72314 11.1904 3.53541C11.6742 3.18786 12.3258 3.18786 12.8097 3.53541C14.4631 4.72314 16.4723 6.64319 17.5685 8.35871C18.0825 9.16309 17.5503 10.2247 16.5983 10.2941L15.1087 10.4026C15.0244 10.4088 14.9401 10.4147 14.8558 10.4203C14.9256 12.0356 14.8899 13.6541 14.7486 15.2654C14.6811 16.036 14.0358 16.6273 13.2622 16.6273H10.7379ZM10.6815 9.76253C10.5678 11.5498 10.589 13.3431 10.745 15.1273H13.255C13.411 13.3431 13.4323 11.5498 13.3186 9.76253C13.3058 9.56216 13.3739 9.36505 13.5077 9.21531C13.6414 9.06556 13.8296 8.9757 14.0301 8.96582C14.3535 8.94989 14.6767 8.93015 14.9997 8.90661L16.0815 8.82775C15.1219 7.41445 13.9204 6.1802 12.5313 5.18235L12 4.80071L11.4687 5.18235C10.0796 6.1802 8.87813 7.41446 7.91858 8.82775L9.00038 8.90661C9.32337 8.93015 9.64656 8.94989 9.9699 8.96582C10.1704 8.9757 10.3586 9.06556 10.4924 9.21531C10.6261 9.36505 10.6942 9.56216 10.6815 9.76253Z" fill="#0F0F0F"/>
@@ -234,10 +283,12 @@ if ( ! function_exists( 'wpstream_theme_return_image_upload_markup' ) ) {
 						</div>
 					</div>
 
+					<!-- Hidden fields carrying the current gallery IDs and thumbnail ID -->
 					<input type="hidden" name="attachid" id="attachid" value="<?php print esc_html( $gallery_images_string ); ?>">
 					<input type="hidden" name="attachthumb" id="attachthumb" value="<?php print esc_html( $thumbid ); ?>">
 					<p class="full_form full_form_image">
 						<?php
+						// Guidance text on recommended image dimensions/format.
 						esc_html_e(
 							"It's recommended to use a picture that's at least 1280 x 720 pixels and 4MB or less. 
                         Use a PNG or GIF (no animations) file.",
@@ -249,9 +300,11 @@ if ( ! function_exists( 'wpstream_theme_return_image_upload_markup' ) ) {
 			</div>
 		</div>
 		<?php
+		// Flush the buffered template into the return string and clean up.
 		$return_string .= ob_get_contents();
 		ob_end_clean();
 
+		// Return the complete uploader markup.
 		return $return_string;
 	}
 }
@@ -267,38 +320,48 @@ if ( ! function_exists( 'wpstream_theme_return_image_upload_markup_single' ) ) {
 	 * @return string The HTML markup for single image upload.
 	 */
 	function wpstream_theme_return_image_upload_markup_single( $post_id ) {
+		// Current featured image (thumbnail) ID for this post.
 		$thumbid = get_post_thumbnail_id( $post_id );
 		$images  = '';
+		// Card-sized preview of the existing thumbnail, if any.
 		$preview = wp_get_attachment_image_src( $thumbid, 'wpstream_featured_unit_cards' );
 
+		// Render the existing thumbnail tile when a valid preview URL exists.
 		if ( isset( $preview[0] ) && '' !== $preview[0] ) {
 			$images .= '<div class="wpstream_uploaded_images"  id="wpstream_uploaded_profile_image" data-imageid="' . esc_attr( $thumbid ) . '">'
 				. '<img src="' . esc_url( $preview[0] ) . '" alt="' . esc_html__( 'thumb', 'hello-wpstream' ) . '" /></div>';
 		}
 
+		// Buffer the template markup into a return string.
 		$return_string = '';
 		ob_start();
 		?>
 
+		<!-- Single-image (channel thumbnail) uploader container -->
 		<div id="upload-container">
 			<div id="aaiu-upload-container" class="upload-container">
 				<p class="upload-container__title"><?php echo esc_html__( 'Channel Thumbnail', 'hello-wpstream' ); ?></p>
 				<div class="upload-container__row">
 					<div class="upload-container__image-wrap">
+						<!-- Live list plupload appends queued items into -->
 						<div id="aaiu-upload-imagelist_single">
 							<ul id="aaiu-ul-list" class="aaiu-upload-list"></ul>
 						</div>
 
+						<!-- Existing thumbnail plus the upload nonce field -->
 						<div id="wpstream_imagelist_single">
 							<?php
+							// Nonce for the image delete/upload AJAX handler.
 							$ajax_nonce = wp_create_nonce( 'wpstream_image_upload' );
 							print '<input type="hidden" id="wpstream_image_upload" value="' . esc_html( $ajax_nonce ) . '" />    ';
+							// Print the current thumbnail tile, if present.
 							if ( '' !== $images ) {
 								print trim( $images ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 							}
 							?>
 						</div>
 
+						<!-- Hidden field carrying the current thumbnail ID -->
 						<input type="hidden" name="attachthumb" id="attachthumb" value="<?php print esc_html( $thumbid ); ?>">
 					</div>
 
@@ -313,6 +376,7 @@ if ( ! function_exists( 'wpstream_theme_return_image_upload_markup_single' ) ) {
 							?>
 						</p>
 
+						<!-- Drag-and-drop target / "Change" button for the thumbnail -->
 						<div id="drag-and-drop" class="rh_drag_and_drop_wrapper">
 							<div id="aaiu-uploader-single" class="wpstream_theme_button_dashboard">
 								<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -328,6 +392,7 @@ if ( ! function_exists( 'wpstream_theme_return_image_upload_markup_single' ) ) {
 			</div>
 		</div>
 		<?php
+		// Capture the buffered markup and return it.
 		$return_string .= ob_get_contents();
 		ob_end_clean();
 
@@ -345,32 +410,41 @@ if ( ! function_exists( 'wpstream_theme_return_trailer_upload_markup' ) ) {
 	 * @return string The HTML markup for trailer video upload.
 	 */
 	function wpstream_theme_return_trailer_upload_markup( $post_id ) {
+		// Attachment ID of the stored trailer video (from post meta).
 		$trailer_id = get_post_meta( $post_id, 'video_trailer', true );
+		// Public URL of that trailer attachment, if it exists.
 		$attachment_url      = wp_get_attachment_url( $trailer_id );
 		$video_html = '';
 
+		// Pre-render an inline <video> preview when a trailer is present.
 		if ( $trailer_id && $attachment_url ) {
 			$video_html = '<div class="wpstream_uplod_video" id="wpstream_uploaded_trailer" data-videoid="' . esc_attr( $trailer_id ) . '">'
 				.'<video height="240" controls><source src="' . esc_url( $attachment_url ) . '" type="video/mp4"></video></div>';
 		}
 
+		// Buffer the template markup into a return string.
 		$return_string = '';
 		ob_start();
 		?>
 
+        <!-- Video trailer uploader container -->
         <div id="trailer-upload-container">
             <div id="aaiu-trailer-container" class="upload-container">
                 <p class="upload-container__title"><?php echo esc_html__( 'Video Trailer', 'hello-wpstream' ); ?></p>
                 <div class="upload-container__row">
                     <div class="upload-container__video-wrap">
+                        <!-- Live list plupload appends queued items into -->
                         <div id="aaiu-upload-trailer">
                             <ul id="aaiu-ul-list" class="aaiu-upload-list"></ul>
                         </div>
 
+                        <!-- Existing trailer preview plus the upload nonce field -->
                         <div id="wpstream_trailerlist">
 							<?php
+							// Nonce for the trailer upload AJAX handler.
 							$ajax_nonce = wp_create_nonce( 'wpstream_trailer_upload' );
 							print '<input type="hidden" id="wpstream_trailer_upload" value="' . esc_html( $ajax_nonce ) . '" />    ';
+							// Print the pre-rendered trailer <video> preview, if any.
 							if ( '' !== $video_html ) {
 								print trim( $video_html ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 							}
@@ -387,6 +461,7 @@ if ( ! function_exists( 'wpstream_theme_return_trailer_upload_markup' ) ) {
 							?>
                         </p>
 
+                        <!-- Drag-and-drop target / "Change" button for the trailer -->
                         <div id="drag-and-drop" class="rh_drag_and_drop_wrapper">
                             <div id="aaiu-uploader-trailer" class="wpstream_theme_button_dashboard">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -402,6 +477,7 @@ if ( ! function_exists( 'wpstream_theme_return_trailer_upload_markup' ) ) {
             </div>
         </div>
 		<?php
+		// Capture the buffered markup and return it.
 		$return_string .= ob_get_contents();
 		ob_end_clean();
 
@@ -419,32 +495,41 @@ if ( ! function_exists( 'wpstream_theme_return_preview_upload_markup' ) ) {
 	 * @return string The HTML markup for preview video upload.
 	 */
 	function wpstream_theme_return_preview_upload_markup( $post_id ) {
+		// Attachment ID of the stored preview video (from post meta).
 		$preview_id = get_post_meta( $post_id, 'video_preview', true );
+		// Public URL of that preview attachment, if it exists.
 		$attachment_url      = wp_get_attachment_url( $preview_id );
 		$video_html = '';
 
+		// Pre-render an inline <video> preview when a preview clip is present.
 		if ( $preview_id && $attachment_url ) {
 			$video_html = '<div class="wpstream_uplod_video" id="wpstream_uploaded_preview" data-videoid="' . esc_attr( $preview_id ) . '">'
 				.'<video height="240" controls><source src="' . esc_url( $attachment_url ) . '" type="video/mp4"></video></div>';
 		}
 
+		// Buffer the template markup into a return string.
 		$return_string = '';
 		ob_start();
 		?>
 
+        <!-- Video preview uploader container -->
         <div id="preview-upload-container">
             <div id="aaiu-preview-container" class="upload-container">
                 <p class="upload-container__title"><?php echo esc_html__( 'Video Preview', 'hello-wpstream' ); ?></p>
                 <div class="upload-container__row">
                     <div class="upload-container__video-wrap">
+                        <!-- Live list plupload appends queued items into -->
                         <div id="aaiu-upload-preview">
                             <ul id="aaiu-ul-list" class="aaiu-upload-list"></ul>
                         </div>
 
+                        <!-- Existing preview clip plus the upload nonce field -->
                         <div id="wpstream_previewlist">
 							<?php
+							// Nonce for the preview upload AJAX handler.
 							$ajax_nonce = wp_create_nonce( 'wpstream_preview_upload' );
 							print '<input type="hidden" id="wpstream_preview_upload" value="' . esc_html( $ajax_nonce ) . '" />    ';
+							// Print the pre-rendered preview <video>, if any.
 							if ( '' !== $video_html ) {
 								print trim( $video_html ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 							}
@@ -461,6 +546,7 @@ if ( ! function_exists( 'wpstream_theme_return_preview_upload_markup' ) ) {
 							?>
                         </p>
 
+                        <!-- Drag-and-drop target / "Change" button for the preview -->
                         <div id="drag-and-drop" class="rh_drag_and_drop_wrapper">
                             <div id="aaiu-uploader-preview" class="wpstream_theme_button_dashboard">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -476,6 +562,7 @@ if ( ! function_exists( 'wpstream_theme_return_preview_upload_markup' ) ) {
             </div>
         </div>
 		<?php
+		// Capture the buffered markup and return it.
 		$return_string .= ob_get_contents();
 		ob_end_clean();
 
@@ -493,12 +580,16 @@ if ( ! function_exists( 'wpstream_theme_build_html_gallery_dashboard' ) ) {
 	 * @return string The HTML string for the gallery.
 	 */
 	function wpstream_theme_build_html_gallery_dashboard( $gallery_images ) {
+		// Accumulator for the gallery tiles markup.
 		$return_string = '';
 
 		if ( is_array( $gallery_images ) ) {
+			// Render one tile per image ID in the list.
 			foreach ( $gallery_images as $attachment_id ) {
+				// Resolve the card-sized preview for this attachment.
 				$preview = wp_get_attachment_image_src( $attachment_id, 'wpstream_featured_unit_cards' );
 
+				// Only output tiles that have a usable preview URL.
 				if ( $preview && '' !== $preview[0] ) {
 					$return_string .= '<div class="wpstream_uploaded_images" data-imageid="' . esc_attr( $attachment_id ) . '">';
 					$return_string .= '<img src="' . esc_url( $preview[0] ) . '" alt="' . esc_html__( 'thumb', 'hello-wpstream' ) . '" /></div>';
@@ -506,6 +597,7 @@ if ( ! function_exists( 'wpstream_theme_build_html_gallery_dashboard' ) ) {
 			}
 		}
 
+		// Return the concatenated gallery markup.
 		return $return_string;
 	}
 }

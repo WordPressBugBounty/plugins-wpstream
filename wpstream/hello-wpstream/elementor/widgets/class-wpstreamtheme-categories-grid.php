@@ -2,9 +2,16 @@
 /**
  * Class categories grid
  *
+ * Defines the "Categories Grids" Elementor widget for the hello-wpstream theme.
+ * The widget lets an editor pick one or more taxonomy terms and render them as a
+ * grid of category cards, exposing controls for the grid layout, design variant,
+ * item sizing, title/listings typography, colors and box-shadow. The frontend
+ * markup itself is produced by the theme helper wpstream_theme_display_grids().
+ *
  * @package wpstream-theme
  */
 
+// Pull in the Elementor base class and the control/group-control helpers this widget relies on.
 use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
 use Elementor\Group_Control_Typography;
@@ -31,13 +38,19 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 	 * @return string Widget name.
 	 */
 	public function get_name() {
+		// Unique internal identifier Elementor uses to reference this widget.
 		return 'WpStreamTheme_Categories_Grid';
 	}
 
 	/**
 	 * Get categories
+	 *
+	 * Elementor panel category (widget grouping) this widget is listed under.
+	 *
+	 * @return array Category slugs the widget belongs to.
 	 */
 	public function get_categories() {
+		// Group this widget under the theme's own "hello-wpstream" panel section.
 		return array( 'hello-wpstream' );
 	}
 
@@ -51,6 +64,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 	 * @return string Widget title.
 	 */
 	public function get_title() {
+		// Human-readable, translatable label shown on the widget tile in the editor.
 		return __( 'Categories Grids', 'hello-wpstream' );
 	}
 
@@ -64,6 +78,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 	 * @return string Widget icon.
 	 */
 	public function get_icon() {
+		// Elementor icon-font class used for the widget's tile icon.
 		return 'eicon-posts-masonry';
 	}
 
@@ -79,6 +94,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 	 * @return array Widget scripts dependencies.
 	 */
 	public function get_script_depends() {
+		// No extra registered scripts are required for this widget (empty handle).
 		return array( '' );
 	}
 
@@ -95,19 +111,31 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 	 * @return array The transformed array.
 	 */
 	public function elementor_transform( $input ) {
+		// Reshape the taxonomy list into an Elementor-friendly value => label map.
 		$output = array();
+		// Guard against a non-array (e.g. empty/false) input before iterating.
 		if ( is_array( $input ) ) {
+			// Each entry carries a 'value' (term id/slug) and a human-readable 'label'.
 			foreach ( $input as $key => $tax ) {
+				// Key the output by the term value so it can be used as a SELECT2 option.
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the value => label map consumed by the place_list control.
 		return $output;
 	}
 
 	/**
 	 * Register controls
+	 *
+	 * Builds every control the widget exposes in the Elementor editor: the Content
+	 * tab (which categories, grid type, design type) and the Style tab sections
+	 * (item sizing, typography/colors, and box shadow).
+	 *
+	 * @return void
 	 */
 	protected function register_controls() {
+		// --- Content tab: category selection and layout/design pickers ---
 		$this->start_controls_section(
 			'content_section',
 			array(
@@ -116,10 +144,13 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Fetch every available taxonomy term from the theme helper.
 		$all_tax = wpstream_theme_return_all_taxomy_array();
 
+		// Convert that list into the value => label map SELECT2 expects.
 		$all_tax_elemetor = $this->elementor_transform( $all_tax );
 
+		// Multi-select of taxonomy terms to display as grid cards.
 		$this->add_control(
 			'place_list',
 			array(
@@ -133,6 +164,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 
 
 
+		// Grid layout preset (Type 1-6), passed through to the render helper.
 		$this->add_control(
 			'wpstream_grid_type',
 			array(
@@ -151,6 +183,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Card design variant (Design Type 1-2) controlling the card's inner layout.
 		$this->add_control(
 			'wpstream_design_type',
 			array(
@@ -168,9 +201,11 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 
 	
 	
+		// Close the Content tab section.
 		$this->end_controls_section();
 
 		
+		// --- Style tab: per-item sizing (image height, border radius) ---
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -179,6 +214,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Responsive image height for the type1/type2 card wrappers.
 		$this->add_responsive_control(
 			'item_height',
 			array(
@@ -215,6 +251,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 
 		
 
+		// Border radius applied to the card item across all wrapper types plus the cover overlay.
 		$this->add_responsive_control(
 			'item_border_radius',
 			array(
@@ -232,6 +269,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Close the Item Settings section.
 		$this->end_controls_section();
 
 		/*
@@ -239,6 +277,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 		 * Start Typografy
 		 */
 
+		// --- Style tab: title/tagline/listings typography and colors ---
 		$this->start_controls_section(
 			'typography_section',
 			array(
@@ -247,6 +286,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Typography group for the category title (h4 a), defaulting to the primary global font.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -274,6 +314,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 				),
 			)
 		);
+		// Responsive bottom margin below the title.
 		$this->add_responsive_control(
 			'property_title_margin_bottom',
 			array(
@@ -304,6 +345,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Responsive bottom margin below the tagline (only shown for design types 1 and 2).
 		$this->add_responsive_control(
 			'property_tagline_margin_bottom',
 			array(
@@ -338,6 +380,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Typography group for the "listings" count text on each card.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -366,6 +409,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Title text color (applied with !important to override theme styling).
 		$this->add_control(
 			'tax_title_color',
 			array(
@@ -378,6 +422,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Tagline text color (conditioned on design_type 'type1').
 		$this->add_control(
 			'tax_tagline_color',
 			array(
@@ -393,6 +438,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Listings count text color.
 		$this->add_control(
 			'tax_listings_color',
 			array(
@@ -406,6 +452,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Background color behind the listings count text.
 		$this->add_control(
 			'tax_listings_color_back',
 			array(
@@ -419,6 +466,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Solid overlay color placed over the card image (default/non-hover state).
 		$this->add_control(
 			'ovarlay_color_back',
 			array(
@@ -431,6 +479,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Overlay color used when the card image is hovered.
 		$this->add_control(
 			'ovarlay_color_back_hover',
 			array(
@@ -443,12 +492,14 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Close the typography/colors Style section.
 		$this->end_controls_section();
 
 		/*
 		-------------------------------------------------------------------------------------------------
 		 * Start shadow section
 		 */
+		// --- Style tab: box-shadow group applied to the card items ---
 		$this->start_controls_section(
 			'section_grid_box_shadow',
 			array(
@@ -456,6 +507,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Box-shadow group targeting the card item across all three wrapper types.
 		$this->add_group_control(
 			Group_Control_Box_Shadow::get_type(),
 			array(
@@ -465,6 +517,7 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 			)
 		);
 
+		// Close the Box Shadow section (end of control registration).
 		$this->end_controls_section();
 
 		/*
@@ -486,16 +539,20 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 	 * @return array An array of posts.
 	 */
 	public function wpstream_theme_drop_posts( $post_type ) {
+		// Query every post of the given type (numberposts -1 = no limit).
 		$args = array(
 			'numberposts' => -1,
 			'post_type'   => $post_type,
 		);
 
+		// Run the query and prepare an id => title map to return.
 		$posts = get_posts( $args );
 		$list  = array();
+		// Build the map keyed by post ID with the post title as the value.
 		foreach ( $posts as $cpost ) {
 			$list[ $cpost->ID ] = $cpost->post_title;
 		}
+		// Return the id => title list.
 		return $list;
 	}
 
@@ -508,11 +565,15 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 	 * @return string The transformed string.
 	 */
 	public function wpstream_theme_send_to_shortcode( $input ) {
+		// Accumulate the selected values into a comma-separated string.
 		$output = '';
+		// Only build a string when there is at least one value.
 		if ( !empty($input) ) {
+			// Track total count and current index to decide where separators go.
 			$num_items = count( $input );
 			$i         = 0;
 
+			// Append each value, inserting ', ' between items but not after the last.
 			foreach ( $input as $key => $value ) {
 				$output .= $value;
 				if ( ++$i !== $num_items ) {
@@ -520,20 +581,32 @@ class WpStreamTheme_Categories_Grid extends Widget_Base {
 				}
 			}
 		}
+		// Return the comma-separated string.
 		return $output;
 	}
 
 	/**
 	 * Render
+	 *
+	 * Collect the saved settings into an attributes array and echo the grid
+	 * markup produced by the theme helper wpstream_theme_display_grids().
+	 *
+	 * @return void
 	 */
 	protected function render() {
+		// Pull the current (editor/live) settings for this widget instance.
 		$settings                           = $this->get_settings_for_display();
+		// Selected taxonomy terms to render as cards.
 		$attributes['place_list']   		= $settings['place_list'] ;
+		// Chosen grid layout preset (Type 1-6).
 		$attributes['grid_type'] 	 		= $settings['wpstream_grid_type'];
+		// Chosen card design variant (Design Type 1-2).
 		$attributes['design_type']  		= $settings['wpstream_design_type'];
 
 		
 
+		// Output the grid HTML built by the theme helper. Escaping is intentionally
+		// skipped here because the helper returns already-built, trusted markup.
 		echo wpstream_theme_display_grids( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 }

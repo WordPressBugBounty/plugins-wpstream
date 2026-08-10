@@ -2,6 +2,13 @@
 /**
  * Class display categories as tabs
  *
+ * Elementor widget for the hello-wpstream theme that renders one or more
+ * taxonomies (categories, actors, media categories/ratings, product
+ * categories) as a set of tabs. Each tab lists the terms of its taxonomy; the
+ * editor controls how many items per row, how many items, whether empty terms
+ * are hidden, and the full styling of the tab bar and tab content. The actual
+ * markup is produced by the theme helper wpstream_theme_categories_list_functionas_tabs().
+ *
  * @package wpstream-theme
  */
 
@@ -37,9 +44,12 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 	}
 
 	/**
-	 * Get categories
+	 * Retrieve the Elementor panel categories this widget belongs to.
+	 *
+	 * @return array List with the single 'hello-wpstream' panel category.
 	 */
 	public function get_categories() {
+		// Place the widget under the theme's own "hello-wpstream" panel category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -94,6 +104,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 	 * @access protected
 	 */
 	protected function register_controls() {
+		// Selectable taxonomies -> labels shown in the per-tab type dropdown.
 		$all_tax_elemetor = array(
 			'category'		 			=> esc_html__( 'Categories', 'hello-wpstream' ),
             'wpstream_actors'			=> esc_html__( 'Actors', 'hello-wpstream' ),
@@ -103,6 +114,9 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 
 		);
 
+		// -----------------------------------------------------------------
+		// CONTENT tab: "Content" section (the tabs repeater + layout options).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'section_content',
 			array(
@@ -110,8 +124,10 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Repeater collecting the tabs (one taxonomy + label + icon per tab).
 		$repeater = new Repeater();
 
+		// Repeater control: which taxonomy this tab displays.
 		$repeater->add_control(
 			'field_type',
 			array(
@@ -122,6 +138,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Repeater control: the visible label printed on this tab.
 		$repeater->add_control(
 			'field_label',
 			array(
@@ -131,6 +148,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Repeater control: icon shown alongside the tab label.
 		$repeater->add_control(
 			'icon',
 			array(
@@ -143,6 +161,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// The repeater control itself, seeded with one default "Categories" tab.
 		$this->add_control(
 			'form_fields',
 			array(
@@ -161,6 +180,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// How many term items are shown per row inside a tab's content.
 		$this->add_control(
 			'place_per_row',
 			array(
@@ -170,6 +190,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Cap on the number of terms rendered per tab (blank = all terms).
 		$this->add_control(
 			'max_items',
 			array(
@@ -180,6 +201,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 		);
 
 
+		// Toggle hiding terms that have no associated listings.
 		$this->add_control(
 			'show_zero_terms',
 			array(
@@ -192,6 +214,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Toggle hiding the tab bar entirely (show only the active tab content).
 		$this->add_control(
 			'hide_items_bar',
 			array(
@@ -205,8 +228,12 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 		);
 
 
+		// End of the "Content" section.
 		$this->end_controls_section();
 
+		// -----------------------------------------------------------------
+		// STYLE tab: "Tab Items Settings" section (styling of the tab buttons).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'tab_items_section',
 			array(
@@ -215,6 +242,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Horizontal alignment of the tab bar (justify-content on the list).
 		$this->add_responsive_control(
 			'align',
 			array(
@@ -240,6 +268,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Inner padding of each tab button.
 		$this->add_responsive_control(
 			'form_wrapper-content_padding',
 			array(
@@ -253,6 +282,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+			// Outer margin around each tab button.
 			$this->add_responsive_control(
 				'tab_item_margin',
 				array(
@@ -266,6 +296,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 				)
 			);
 
+		// Corner radius of each tab button.
 		$this->add_responsive_control(
 			'tab_item_border_radius',
 			array(
@@ -279,6 +310,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Background color of an inactive tab button.
 		$this->add_control(
 			'tab_item_back_color',
 			array(
@@ -291,6 +323,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Text color of an inactive tab button.
 		$this->add_control(
 			'tab_item_font_color',
 			array(
@@ -304,6 +337,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Background color of the active/selected tab button.
 		$this->add_control(
 			'tab_item_back_selected_color',
 			array(
@@ -316,6 +350,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Text color of the active/selected tab button.
 		$this->add_control(
 			'tab_item_active_font_color',
 			array(
@@ -329,6 +364,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Typography group control for the tab button labels.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -357,6 +393,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Margin around the tab button icon (applies to both <i> and <svg>).
 		$this->add_responsive_control(
 			'tab_item_icon_margin',
 			array(
@@ -371,6 +408,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Icon color for an inactive tab (color for fonts, fill for SVGs).
 		$this->add_control(
 			'tab_item_icon_font_color',
 			array(
@@ -384,6 +422,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Icon color for the active tab (color for fonts, fill for SVGs).
 		$this->add_control(
 			'tab_item_icon_active_font_color',
 			array(
@@ -398,6 +437,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Tab icon size (font-size for <i>, width for <svg>).
 		$this->add_responsive_control(
 			'item_icon_size',
 			array(
@@ -430,6 +470,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Toggle stacking the icon above the label (flex-direction: column).
 		$this->add_control(
 			'icon_position',
 			array(
@@ -446,8 +487,12 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// End of the "Tab Items Settings" section.
 		$this->end_controls_section();
 
+		// -----------------------------------------------------------------
+		// STYLE tab: "Tab Content Settings" section (styling of the panel body).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'tab_content_items_section',
 			array(
@@ -456,6 +501,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Inner padding of the tab content panel.
 		$this->add_responsive_control(
 			'tab-content_padding',
 			array(
@@ -469,6 +515,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Outer margin of the tab content panel.
 		$this->add_responsive_control(
 			'wpersidence_tab_content_margin',
 			array(
@@ -481,6 +528,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Margin around each term item inside the panel.
 		$this->add_responsive_control(
 			'wpersidence_tab_content_element_margin',
 			array(
@@ -493,6 +541,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Corner radius of the tab content panel.
 		$this->add_responsive_control(
 			'tab_content_border_radius',
 			array(
@@ -506,6 +555,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Background color of the tab content panel.
 		$this->add_control(
 			'tab_content_back_color',
 			array(
@@ -518,6 +568,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Font color of the term title (first row) inside the panel.
 		$this->add_control(
 			'tab_content_font_color',
 			array(
@@ -531,6 +582,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Font color of the term's second row (listings count).
 		$this->add_control(
 			'tab_content_sec_row_font_color',
 			array(
@@ -544,6 +596,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Typography group control for the term title (h4).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -572,6 +625,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 			)
 		);
 
+		// Typography group control for the term's second row (listings count).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -599,6 +653,7 @@ class WpStreamTheme_Display_Categories_As_Tabs extends Widget_Base {
 				),
 			)
 		);
+		// Square size (height = width) of each term's thumbnail image.
 $this->add_responsive_control(
 			'item_height_square',
 			array(
@@ -629,6 +684,7 @@ $this->add_responsive_control(
 				),
 			)
 		);
+		// End of the "Tab Content Settings" section (and of register_controls()).
 		$this->end_controls_section();
 
 		
@@ -648,14 +704,17 @@ $this->add_responsive_control(
 	 * @access protected
 	 */
 	protected function render() {
+		// Pull the resolved control values for this widget instance.
 		$settings = $this->get_settings_for_display();
 
-		$attributes['form_fields']      = $settings['form_fields'];
-		$attributes['place_per_row']    = $settings['place_per_row'];
-		$attributes['show_zero_terms']  = $settings['show_zero_terms'];
-		$attributes['hide_items_bar'] 	= $settings['hide_items_bar'];
-		$attributes['max_items'] 		= $settings['max_items'];
+		// Repackage the relevant settings into the args array the helper expects.
+		$attributes['form_fields']      = $settings['form_fields'];   // the configured tabs
+		$attributes['place_per_row']    = $settings['place_per_row']; // items per row in a panel
+		$attributes['show_zero_terms']  = $settings['show_zero_terms']; // hide empty terms flag
+		$attributes['hide_items_bar'] 	= $settings['hide_items_bar']; // hide the tab bar flag
+		$attributes['max_items'] 		= $settings['max_items'];     // cap on terms per tab
 
+		// Delegate the markup generation to the theme helper and print it.
 		echo wpstream_theme_categories_list_functionas_tabs( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 }

@@ -1,21 +1,41 @@
 
+<!--
+	Live chat widget markup (WpStream plugin).
+
+	Static HTML shell for the SockJS-based chat client (public/chat_lib/chat.js).
+	Rendered by widgets/wpstream_chat.php; the JS hydrates these hooks at runtime.
+	Contains: the chat container + message log area, the "current users" overlay,
+	the typing indicator, the message composer (textarea + Connect/send + users
+	toggle), the badge row, and three Bootstrap modals (user command help, admin
+	command help, and chat options). Element IDs/classes here are the contract the
+	chat JS binds to, so they must stay stable.
+
+	@package Wpstream
+-->
+<!-- Outer chat wrapper -->
 <div class="chat_wrapper main">
       
+    <!-- Chat container: message stream plus the composer controls -->
     <div class=" wpstream_chat_container">
          
+                    <!-- Chat "meat": where the rendered message log and input UI are injected -->
                     <div class=" wpestream_chat_meat">
                      
+                                <!-- Main chat panel: message output target plus overlays and composer -->
                                 <div id="panel">
+                                    <!-- Users overlay: pop-up list of currently connected users (toggled by the user button); close "x", title, and JS-filled list -->
                                     <div id="users-dialog"  >
                                         <div id="close-users-dialog">x</div>
                                         <h4>Current users</h4>
                                         <div id="users-content"></div>
                                     </div>
                                     
+                                    <!-- Typing indicator: chat JS writes "X is typing..." text here -->
                                     <p id="typing"><br></p>
                                     <hr>
 
                                 
+                                    <!-- Composer: message textarea, Connect/send button, and the users-overlay toggle -->
                                     <div class="wpstream_chat_input">
                                         <div class="col-lg-12">
                                             <div class="input-group">
@@ -35,6 +55,7 @@
                    
                     </div>
                  
+                    <!-- Status badges: live user count (hidden until populated) and an ADMIN badge for moderators -->
                     <div id="badges" class="text-right pull-right">
                         <span style="display:none;"><label id="users" class="label">0 USERS</label></span>
                         <span><label id="admin" class="label label-warning" style="display:none">ADMIN</label></span>                              
@@ -46,6 +67,7 @@
 
 
 
+    <!-- Command-reference modal: three columns (command / variables / description) for the /pm, /me, /shrug, etc. user commands -->
     <div id="help-dialog" class="modal fade" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -90,6 +112,7 @@
         </div>
     </div>
 
+    <!-- Admin command-reference modal: moderator-only commands (/alert, /kick, /ban, /role) in the same three-column layout -->
     <div id="admin-help-dialog" class="modal fade" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -123,6 +146,7 @@
         </div>
     </div>
 
+    <!-- Chat options modal: per-user toggles (emojis, greentext, inline images, mention sound) plus feature-gated desktop/speech options hidden until supported -->
     <div id="options-dialog" class="modal fade" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">

@@ -2,6 +2,11 @@
 /**
  * Class featured category
  *
+ * Elementor widget that renders a single "Featured Category" block. It registers
+ * the editor controls (item picker, design type, sizing, typography, colors) and,
+ * on the frontend, hands the chosen settings to the wpstream_theme_featured_category()
+ * theme helper which produces the actual markup.
+ *
  * @package wpstream-theme
  */
 
@@ -33,9 +38,12 @@ class WpStreamTheme_Featured_Category extends Widget_Base {
 	}
 
 	/**
-	 * Get categories
+	 * Retrieve the Elementor panel categories this widget belongs to.
+	 *
+	 * @return array Category slugs; groups the widget under "hello-wpstream".
 	 */
 	public function get_categories() {
+		// Register the widget under the theme's custom Elementor category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -93,12 +101,17 @@ class WpStreamTheme_Featured_Category extends Widget_Base {
 	 * @return array The transformed output.
 	 */
 	public function elementor_transform( $input ) {
+		// Note: the docblock above is inherited boilerplate; this method actually
+		// converts a {value,label} list into an Elementor value => label options map.
 		$output = array();
+		// Only iterate when we actually received an array of items.
 		if ( is_array( $input ) ) {
+			// Flip each {value,label} entry into a key => value pair.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the associative array the SELECT/SELECT2 controls expect.
 		return $output;
 	}
 
@@ -106,15 +119,18 @@ class WpStreamTheme_Featured_Category extends Widget_Base {
 	 * Register controls
 	 */
 	protected function register_controls() {
+		// Fetch the selectable video/category items and reshape into a value => label map.
 		$video_array              =   wpstream_return_video_array();
 		$video_array_elemetor      = $this->elementor_transform( $video_array );
 		
+		// Options for the "Design Type" dropdown (two layout variants).
 		$featured_video_type =
 			array(
 				1 => __( 'Type 1', 'hello-wpstream' ),
 				2 => __( 'Type 2', 'hello-wpstream' ),
 				
 			);
+		// --- Content section: choose the item and its design type. ---
 		$this->start_controls_section(
 			'section_content',
 			array(

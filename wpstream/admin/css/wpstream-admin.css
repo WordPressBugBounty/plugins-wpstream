@@ -1,3 +1,15 @@
+/**
+ * WpStream admin stylesheet.
+ *
+ * Styles the plugin's wp-admin screens: the Live Channels list and its event
+ * cards, the video/VOD management and upload screens, the settings/options
+ * forms, the Gutenberg sidebar meta panel (#wpstream-sidebar-meta), broadcast
+ * credential UI (RTMP key/URI, social streaming), modals, toggle switches,
+ * tooltips, pagination, social-share buttons, the spinner/loader, and the
+ * responsive breakpoints for tablet and mobile.
+ */
+
+/* New PPV/free video and "add channel" creation links, plus the create-product link. */
 .create_new_ppv_video{
     margin-left: 30px;
 }
@@ -22,6 +34,7 @@
 }
 
 
+/* Settings/theme-options tab: the white card container that wraps an options panel. */
 .theme_options_tab_wpstream{
     background: #fff;
     border-left: 4px solid #fff;
@@ -34,6 +47,7 @@
     border-radius: 5px;
 }
  
+/* Green "Upgrade" pill button shown in the admin top bar. */
 .wpstream_upgrade_topbar{
     background: #45a73f;
     color: #fff;
@@ -53,6 +67,7 @@
     color:#fff;
 }
 
+/* Settings option rows: field wrappers, labels, text inputs, help text and the image-upload control. */
 .wpstream_option_wrapper{
     max-width: 70%;
     padding: 30px 0px 0px 0px;
@@ -124,6 +139,7 @@
     margin-bottom: 10px;
 }
 
+/* Section "pack details" cards (solid and transparent variants) grouping related settings. */
 .pack_details_wrapper{
     background-color: #fff;
     padding: 20px;
@@ -149,6 +165,7 @@
 
 
 
+/* Utility classes toggling visibility of stream-data blocks. */
 .hide_stream_data{
     display:none;
 }
@@ -159,6 +176,7 @@
 }
 
 
+/* Square channel/event thumbnail (background-image based). */
 .event_thumb_wrapper{
     margin-right: 15px;
     min-width: 50px;
@@ -173,6 +191,7 @@
 
 
 
+/* Live Channels list: the event card (event_list_unit), its title, hover/started states and column layout. */
 .event_title{
     width: 350px;
 }
@@ -235,6 +254,7 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 }
 
 
+/* Channel status badge (live/offline label) floating on the event card. */
 .wpstream_channel_status {
     position: absolute;
     background-color: rgb(255 255 255);
@@ -259,6 +279,7 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 }
 
 
+/* Small square icon buttons (edit, statistics, etc.) with their SVG icons. */
 .wpstream-button-icon{
     width: 37px;
     height: 37px;
@@ -292,6 +313,7 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 }
 
 
+/* Gutenberg sidebar meta panel (#wpstream-sidebar-meta): compact overrides of the event card and its controls. */
 #wpstream-sidebar-meta .event_list_unit{
     padding: 0px;
     box-shadow: none;
@@ -342,6 +364,7 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     padding-right: 20px;
 }
 
+/* Scrollable column holding the local-streaming event options. */
 .wpstream_event_streaming_local{
     margin-left: 0px;
     height: 458px;
@@ -353,6 +376,7 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     flex-wrap: nowrap;
 }
 
+/* Red "basic mode" notice banner. */
 .basic-mode-notice {
     color:#fff;
     background: #f40000;
@@ -368,6 +392,7 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
     text-decoration: underline;
 }
 
+/* Row wrapping a local-event option toggle and its info text; disabled toggle state. */
 .wpstream_local_event_options_toggle_wrapper {
     display: flex;
     gap: 25px;
@@ -426,6 +451,7 @@ input[type="checkbox"]:disabled + .wpstream_slider.round {
 }
 
 
+/* Empty-state warning card shown when there are no events/channels. */
 .no_events_warning{
     font-weight: bold;
     font-size: 14px;
@@ -445,6 +471,7 @@ input[type="checkbox"]:disabled + .wpstream_slider.round {
     display: inline-block;
 }
 
+/* WpStream API connection status pills (connected green / not-connected red, plus top notice). */
 .api_conected{
     background:#45a73f;
     padding: 5px 10px;
@@ -488,6 +515,7 @@ input[type="checkbox"]:disabled + .wpstream_slider.round {
     color:#fff;
 }
 
+/* Event card title typography and the channel-id caption. */
 .event_list_unit  .event_title,
 .event_list_unit  h3{
     font-weight: 500;
@@ -502,6 +530,7 @@ input[type="checkbox"]:disabled + .wpstream_slider.round {
     font-size: 12px;
 }
 
+/* Action buttons: base .wpstream_button plus start/stop/turning-on/close/external variants and their hover states. */
 .wpstream_button {
     border-radius: 2px;
     padding: 5px 5px;
@@ -662,6 +691,7 @@ stop_server wpstream_button:hover,
     color: #fff;
 }
 
+/* "How to" panel and the external-software streaming info block. */
 .how_to{
     margin-top:10px;
     width: 100%;
@@ -700,6 +730,7 @@ stop_server wpstream_button:hover,
 
 
 
+/* Stream-key wrapper and the server ready / not-ready live status indicators and error notices. */
 .event_list_stream_key_wrap{
       margin-top:10px;
 }
@@ -755,6 +786,7 @@ stop_server wpstream_button:hover,
     margin-left: 10px;
 }
 
+/* RTMP live key/URI text fields, their copy buttons and the "start with Larix mobile" button. */
 .wpstream_live_key_text,
 .wpstream_live_uri_text{
     display: inline;
@@ -811,6 +843,7 @@ stop_server wpstream_button:hover,
     background: #5878b5;
 }
 
+/* Subscription/pricing visibility toggles (hide when "movie on" mode). */
 .show_if_subscription.hide_movieon{
     display:none;
 }
@@ -967,6 +1000,7 @@ stop_server wpstream_button:hover,
     display:none;
 }
 
+/* Direct-upload container: drop area, progress bar and upload messages. */
 .wpstream_upload_container {
     background-color: #fff;
     padding: 20px;
@@ -1038,6 +1072,7 @@ stop_server wpstream_button:hover,
     margin: 10px;
 }
 
+/* Custom file-input styling: visually hidden native input with a styled label acting as the button. */
 .js .inputfile {
     width: 0.1px;
     height: 0.1px;
@@ -1099,6 +1134,7 @@ stop_server wpstream_button:hover,
     background-color: #5a9544;
 }
 
+/* Inline help tooltip trigger (question-mark link). */
 .wpstream-tooltip {
     cursor: pointer;
     color: #0073aa;
@@ -1109,6 +1145,7 @@ stop_server wpstream_button:hover,
     opacity: 0.8;
 }
 
+/* Per-event setting row wrapper and its help text. */
 .wpstream_setting_event_unit_wrapper{
     position:relative;
     margin-bottom: 10px;
@@ -1126,6 +1163,7 @@ stop_server wpstream_button:hover,
 
 
 
+/* Toggle switch component: the ON/OFF sliding checkbox (label + slider + before/after states). */
 label.wpstream_switch {
     position: relative;
     display: inline-block;
@@ -1214,6 +1252,7 @@ input:checked + .wpstream_slider:before {
   border-radius: 50%;
 }
 
+/* Setting-row label positioning inside the local-streaming column and the sidebar meta panel. */
 .wpstream_event_streaming_local .wpstream_setting_event_unit_wrapper{
    margin-bottom: 10px;
 }
@@ -1286,6 +1325,7 @@ input:checked + .wpstream_slider:before {
 }
 
 
+/* "How to" videos help block. */
 .how_to_videos{
     display: inline-block;
     width: 100%;
@@ -1293,6 +1333,7 @@ input:checked + .wpstream_slider:before {
 }
 
 
+/* Pagination list for the channel/video listings. */
 .wpstream_pagination{
     list-style: none;
     display: inline;
@@ -1326,6 +1367,7 @@ input:checked + .wpstream_slider:before {
 
 
 
+/* Modal dialog: dimmed backdrop, the centered form panel, its heading and close button. */
 .wpstream_modal_background{
     position: fixed;
     z-index: 1001;
@@ -1380,6 +1422,7 @@ input:checked + .wpstream_slider:before {
 }
 
 
+/* Hover tooltips (enabled/disabled) with their caret arrows, including sidebar-meta positioning overrides. */
 .wpstream_tooltip_wrapper{
     position: relative;
 }
@@ -1471,6 +1514,7 @@ input:checked + .wpstream_slider:before {
 
 
 
+/* Disabled/inactive icon state (dimmed, not-allowed cursor). */
 .wpstream_inactive_icon{
     cursor: not-allowed;
 }
@@ -1478,6 +1522,7 @@ input:checked + .wpstream_slider:before {
     opacity: 0.35;
 }
 
+/* Centered error notification modal and its OK button. */
 .wpstream_error_modal_notification{
     width: 500px;
     background-color: #fff;
@@ -1505,6 +1550,7 @@ input:checked + .wpstream_slider:before {
 }
 
 
+/* Modal content: external-broadcast options, explanation lists and the printable QR code. */
 .wpstream_external_broadcast_options{
     width: 50%;
     border: 1px solid #6666;
@@ -1539,6 +1585,7 @@ input:checked + .wpstream_slider:before {
 
 
 
+/* Spinning circular loader indicator (used while actions are in progress). */
 .wpstream_loader {
     width: 8px;
     height: 8px;
@@ -1572,6 +1619,7 @@ input:checked + .wpstream_slider:before {
 /*    position: relative;*/
 /*}*/
 
+/* Options help link (styled as a blue pill button). */
 .wpstream_options_help a{
     display: inline-block;
     position: relative;
@@ -1587,6 +1635,7 @@ input:checked + .wpstream_slider:before {
 
 
 
+/* Responsive: tablet / narrow screens — stack event cards, full-width buttons, full-screen modals. */
 @media only screen and (max-width:1099px){
     
     .wpstream_upgrade_topbar{
@@ -1685,6 +1734,7 @@ input:checked + .wpstream_slider:before {
 
 
 
+/* Responsive: mobile — narrower broadcast details, wrapped copy buttons, break-all RTMP text. */
 @media only screen and (max-width:500px){
     .external_software_streaming_details{
         width: 280px;
@@ -1704,6 +1754,7 @@ input:checked + .wpstream_slider:before {
     }
 }
 
+/* Theme-side event list unit: spinner appearance (nested rule). */
 .wpstream_theme_event_list_unit {
     .spinner {
         visibility: visible;

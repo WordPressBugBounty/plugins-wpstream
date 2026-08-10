@@ -26,6 +26,12 @@
  */
 
 // If uninstall not called from WordPress, then exit.
+// WP_UNINSTALL_PLUGIN is only defined when WordPress runs this file through the
+// official uninstall routine; its absence means the file was reached directly
+// (e.g. a direct HTTP request), so we abort to prevent arbitrary execution.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
+	// Not a legitimate uninstall context — stop immediately.
 	exit;
 }
+// NOTE: No cleanup logic is implemented below; uninstalling the plugin performs
+// no data removal at this time (this remains the boilerplate skeleton).

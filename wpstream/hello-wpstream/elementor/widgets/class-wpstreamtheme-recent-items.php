@@ -2,6 +2,14 @@
 /**
  * Recent items class
  *
+ * Registers the "Video Item List" Elementor widget for the hello-wpstream
+ * category. It renders a filterable, paginated grid of items (free live
+ * channels, free VOD, video collections/bundles or WooCommerce products) and
+ * exposes controls for the item type, count, per-row count, card style, sort
+ * order, taxonomy filters, pagination style, an optional filter bar and full
+ * color styling. On render it maps every control to shortcode attributes and
+ * defers to wpstream_item_list_shortcodes() to produce the markup.
+ *
  * @package wpstream-theme
  */
 
@@ -11,6 +19,8 @@ use Elementor\Group_Control_Box_Shadow;
 
 /**
  * Recent items.
+ *
+ * Elementor widget that outputs the theme's filterable video item list.
  */
 class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 	/**
@@ -22,13 +32,17 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_name() {
+		// Unique internal identifier Elementor uses for this widget.
 		return 'WpStream Recent items';
 	}
 
 	/**
 	 * Retrieve categories.
+	 *
+	 * @return array The Elementor panel categories this widget belongs to.
 	 */
 	public function get_categories() {
+		// Group this widget under the theme's custom Elementor category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -42,6 +56,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_title() {
+		// Human-readable label shown in the Elementor widget panel.
 		return __( 'Video Item List', 'hello-wpstream' );
 	}
 
@@ -54,6 +69,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_icon() {
+		// Icon shown next to the widget name in the Elementor panel.
 		return 'eicon-posts-masonry';
 	}
 
@@ -69,6 +85,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_script_depends() {
+		// No extra script handles are required by this widget.
 		return array( '' );
 	}
 
@@ -83,8 +100,10 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 	 * @access protected
 	 */
 	public function elementor_transform( $input ) {
+		// Build a value => label map Elementor SELECT/SELECT2 controls expect.
 		$output = array();
 		if ( is_array( $input ) ) {
+			// Re-key each {value,label} entry into value => label.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
@@ -94,13 +113,19 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 
 	/**
 	 * Register controls
+	 *
+	 * Builds all Content, Filters, Pagination, Filter bar and Style controls
+	 * for the widget, pre-populating the taxonomy selects with the site's
+	 * available terms.
 	 */
 	protected function register_controls() {
 
+		// Collect the available taxonomies, dropping the generic post_tag.
 		$taxonomy_data = array();
 		$available_tax = wpstream_return_taxonomy_array();
 		unset( $available_tax['post_tag'] );
 
+		// For each taxonomy, generate its term options in Elementor format.
 		foreach ( $available_tax as $taxonoy_name => $post_types ) :
 			$temp_taxonomy_values           = wpstream_theme_generate_category_values( $taxonoy_name );
 			$temp_taxonomy_values           = $this->elementor_transform( $temp_taxonomy_values );
@@ -108,28 +133,33 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 
 		endforeach;
 
+		// Selectable content types the list can display.
 		$items_type     = array(
 			'wpstream_product'     => 'Free to view live channels',
 			'wpstream_product_vod' => 'Free to view VOD',
 			'wpstream_bundles'     => 'Video Collections',
 			'product'              => 'WooCommerce Products',
 		);
+		// Card layout orientation options (unused map kept for reference).
 		$alignment_type = array(
 			'vertical'   => 'vertical',
 			'horizontal' => 'horizontal',
 		);
 
+		// Available pagination styles (value => label).
 		$pagination_type = array(
 			'0' => 'none',
 			'1' => 'Load more',
 			'2' => 'Numbers',
 		);
 
+		// Sort options, pulled from the theme helper when available.
 		$sort_options = array();
 		if ( function_exists( 'wstream_sort_options_array' ) ) {
 			$sort_options = wstream_sort_options_array();
 		}
 
+		// --- Content tab: what to show and how many. ---
 		$this->start_controls_section(
 			'section_content',
 			array(
@@ -137,6 +167,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: which content type the list renders.
 		$this->add_control(
 			'type',
 			array(
@@ -147,6 +178,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: total number of items to display.
 		$this->add_control(
 			'number',
 			array(
@@ -157,6 +189,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 		);
 
 
+		// Control: how many items per row (2-6).
 		$this->add_control(
 			'rownumber',
 			array(
@@ -173,6 +206,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 				'default' => 3,
 			)
 		);
+		// Control: which video card design to use (type 1 or 2).
 		$this->add_control(
 			'video_card',
 			[
@@ -186,6 +220,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			]
 		);
 
+		// Control: default sort order for the query.
 		$this->add_control(
 			'sort_by',
 			array(
@@ -201,6 +236,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 		/*
 		* Start filters
 		*/
+		// --- Filters tab: restrict the query by taxonomy terms. ---
 		$this->start_controls_section(
 			'filters_section',
 			array(
@@ -209,6 +245,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: restrict to selected WordPress categories.
 		$this->add_control(
 			'category_ids',
 			array(
@@ -221,6 +258,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: restrict to selected WpStream media categories.
 		$this->add_control(
 			'wpstream_category_ids',
 			array(
@@ -233,6 +271,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: restrict to selected movie ratings.
 		$this->add_control(
 			'movie_ratings_ids',
 			array(
@@ -245,6 +284,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: restrict to selected actors.
 		$this->add_control(
 			'actors_ids',
 			array(
@@ -262,6 +302,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 		/*
 		* Start filters
 		*/
+		// --- Pagination tab: choose how the list paginates. ---
 		$this->start_controls_section(
 			'paginatio_section',
 			array(
@@ -270,6 +311,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: pagination style (none / load more / numbers).
 		$this->add_control(
 			'pagination_type',
 			array(
@@ -285,6 +327,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 		/*
 		* Start filters
 		*/
+		// --- Filter bar tab: toggle the front-end filter controls. ---
 		$this->start_controls_section(
 			'filter_bar_section',
 			array(
@@ -293,6 +336,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Toggle: show/hide the whole filter bar (sets its display value).
 		$this->add_control(
 			'show_bar',
 			array(
@@ -308,6 +352,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Toggle: show/hide the item-type dropdown in the filter bar.
 		$this->add_control(
 			'show_post_type',
 			array(
@@ -323,6 +368,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Toggle: show/hide the category select in the filter bar.
 		$this->add_control(
 			'show_bar_category',
 			array(
@@ -338,6 +384,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Toggle: show/hide the actors select in the filter bar.
 		$this->add_control(
 			'show_bar_wpstream_actors',
 			array(
@@ -353,6 +400,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Toggle: show/hide the media-category select in the filter bar.
 		$this->add_control(
 			'show_bar_wpstream_category',
 			array(
@@ -368,6 +416,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Toggle: show/hide the movie-rating select in the filter bar.
 		$this->add_control(
 			'show_bar_wpstream_movie_rating',
 			array(
@@ -384,6 +433,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 		);
 
 
+		// Toggle: show/hide the order-by select in the filter bar.
 		$this->add_control(
 			'show_bar_wpstream_sort_by',
 			array(
@@ -401,6 +451,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 
 
 
+		// Text: default placeholder label for the item-type dropdown.
 		$this->add_control(
 			'label_post_types',
 			array(
@@ -411,6 +462,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Text: default placeholder label for the category dropdown.
 		$this->add_control(
 			'label_category',
 			array(
@@ -422,6 +474,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Text: default placeholder label for the actor dropdown.
 		$this->add_control(
 			'label_wpstream_actors',
 			array(
@@ -431,6 +484,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 				'default'     => esc_html__( 'Select the Actor', 'hello-wpstream' ),
 			)
 		);
+		// Text: default placeholder label for the media-category dropdown.
 		$this->add_control(
 			'label_wpstream_category',
 			array(
@@ -441,6 +495,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Text: default placeholder label for the movie-rating dropdown.
 		$this->add_control(
 			'label_wpstream_movie_rating',
 			array(
@@ -458,6 +513,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 
 
 
+		// --- Style tab: filter-bar dropdown colors. ---
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -465,6 +521,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Color: dropdown button background.
 		$this->add_control(
 			'dropdown_main_back_color',
 			array(
@@ -478,6 +535,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: dropdown button text.
 		$this->add_control(
 			'dropdown_font_color',
 			array(
@@ -492,6 +550,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 		);
 
 
+		// Color: dropdown button border (and toggle arrow).
 		$this->add_control(
 			'dropdown_Border_color',
 			array(
@@ -505,6 +564,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: open dropdown menu background.
 		$this->add_control(
 			'dropdown_menu_back_color',
 			array(
@@ -518,6 +578,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: dropdown menu item text.
 		$this->add_control(
 			'dropdown_menu_font_color',
 			array(
@@ -531,6 +592,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: dropdown menu item background on hover.
 		$this->add_control(
 			'dropdown_menu_hover_back_color',
 			array(
@@ -544,6 +606,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: dropdown menu item text on hover.
 		$this->add_control(
 			'dropdown_menu_hover_font_color',
 			array(
@@ -561,6 +624,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 		$this->end_controls_section();
 
 		// Style for the card details
+		// --- Style tab: card text colors. ---
 		$this->start_controls_section(
 			'card_details_section',
 			array(
@@ -569,6 +633,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: card title text.
 		$this->add_control(
 			'video_card_title_color',
 			array(
@@ -581,6 +646,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: card categories/tags text.
 		$this->add_control(
 			'video_card_details_color',
 			array(
@@ -595,6 +661,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 
 		$this->end_controls_section();
 
+		// --- Style tab: pagination colors and borders. ---
 		$this->start_controls_section(
 			'pagination_section',
 			array(
@@ -602,6 +669,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Color: pagination background (load-more button and page links).
 		$this->add_control(
 			'pagination_main_back_color',
 			array(
@@ -617,6 +685,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: pagination text/borders (links, active page, arrow icons).
 		$this->add_control(
 			'pagination_font_color',
 			array(
@@ -633,6 +702,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: pagination background on hover.
 		$this->add_control(
 			'pagination_hover_back_color',
 			array(
@@ -646,6 +716,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: pagination text/borders on hover.
 		$this->add_control(
 			'pagination_hover_font_color',
 			array(
@@ -661,6 +732,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Dimensions: pagination page-item border width.
 		$this->add_control(
 			'pagination_border_width',
 			array(
@@ -673,6 +745,7 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Color: pagination page-item border.
 		$this->add_control(
 			'pagination_border_color',
 			array(
@@ -702,11 +775,14 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 	 * @access protected
 	 */
 	public function wpstream_send_to_shortcode( $input ) {
+		// Flatten an array of selected values into a comma-separated string.
 		$output = '';
 		if ( !empty($input) ) {
+			// Track position so separators go between items, not after the last.
 			$num_items = count( $input );
 			$i         = 0;
 
+			// Append each value, adding ", " until the final element.
 			foreach ( $input as $key => $value ) {
 				$output .= $value;
 				if ( ++$i !== $num_items ) {
@@ -714,39 +790,53 @@ class WpStreamTheme_Recent_Items extends \Elementor\Widget_Base {
 				}
 			}
 		}
+		// Return the joined string of selected term IDs.
 		return $output;
 	}
 
 	/**
 	 * Render
+	 *
+	 * Maps the saved control values to shortcode attributes and echoes the
+	 * item list produced by wpstream_item_list_shortcodes().
 	 */
 	protected function render() {
+		// Saved control values for this widget instance.
 		$settings = $this->get_settings_for_display();
+		// Unique id so multiple widgets on a page don't collide.
 		$uid ='video_sh_'. wp_unique_id();
 
+		// Content type to query.
 		$attributes['type'] = isset($settings['type']) ? $settings['type'] : '';
+		// Taxonomy filters: flatten each multi-select into a comma list.
 		$attributes['category_ids'] = isset($settings['category_ids']) ? $this->wpstream_send_to_shortcode($settings['category_ids']) : '';
 		$attributes['wpstream_category_ids'] = isset($settings['wpstream_category_ids']) ? $this->wpstream_send_to_shortcode($settings['wpstream_category_ids']) : '';
 		$attributes['movie_ratings_ids'] = isset($settings['movie_ratings_ids']) ? $this->wpstream_send_to_shortcode($settings['movie_ratings_ids']) : '';
 		$attributes['actors_ids'] = isset($settings['actors_ids']) ? $this->wpstream_send_to_shortcode($settings['actors_ids']) : '';
+		// Count, per-row count, sort order and pagination style.
 		$attributes['number'] = isset($settings['number']) ? $settings['number'] : '';
 		$attributes['rownumber'] = isset($settings['rownumber']) ? $settings['rownumber'] : '';
 		$attributes['sort_by'] = isset($settings['sort_by']) ? $settings['sort_by'] : '';
 		$attributes['pagination_type'] = isset($settings['pagination_type']) ? $settings['pagination_type'] : '';
+		// Flag so the shortcode knows it is rendering inside Elementor.
 		$attributes['is_elementor'] = true;
+		// Chosen card design.
 		$attributes['video_card'] = isset($settings['video_card']) ? $settings['video_card'] : '';
 
+		// Filter-bar placeholder labels.
 		$attributes['label_post_types'] = isset($settings['label_post_types']) ? $settings['label_post_types'] : '';
 		$attributes['label_category'] = isset($settings['label_category']) ? $settings['label_category'] : '';
 		$attributes['label_wpstream_actors'] = isset($settings['label_wpstream_actors']) ? $settings['label_wpstream_actors'] : '';
 		$attributes['label_wpstream_category'] = isset($settings['label_wpstream_category']) ? $settings['label_wpstream_category'] : '';
 		$attributes['label_wpstream_movie_rating'] = isset($settings['label_wpstream_movie_rating']) ? $settings['label_wpstream_movie_rating'] : '';
+		// Filter-bar visibility toggles.
 		$attributes['show_bar_category'] = isset($settings['show_bar_category']) ? $settings['show_bar_category'] : '';
 		$attributes['show_bar_wpstream_actors'] = isset($settings['show_bar_wpstream_actors']) ? $settings['show_bar_wpstream_actors'] : '';
 		$attributes['show_bar_wpstream_movie_rating'] = isset($settings['show_bar_wpstream_movie_rating']) ? $settings['show_bar_wpstream_movie_rating'] : '';
 		$attributes['show_bar_wpstream_category'] = isset($settings['show_bar_wpstream_category']) ? $settings['show_bar_wpstream_category'] : '';
 
 
+		// Attach the unique id and hand everything to the list shortcode.
 		$attributes['uid']                   = $uid;
 		echo wpstream_item_list_shortcodes( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}

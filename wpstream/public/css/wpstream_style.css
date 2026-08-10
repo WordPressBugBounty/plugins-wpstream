@@ -1,3 +1,19 @@
+/**
+ * WpStream front-end stylesheet.
+ *
+ * Covers the public-facing markup emitted by the WpStream plugin:
+ *  - compact single-product "front" listing rows and the media/product grid;
+ *  - the video.js player chrome (big play button, channel logo, live counter);
+ *  - live/VOD "not live" overlays and the pre-load spinner;
+ *  - the VOD "Play Video" title-overlay button and action wrappers;
+ *  - the SockJS-based live chat widget;
+ *  - the front-end "go live" event units and the external-software broadcast modal;
+ *  - responsive breakpoints and the external VOD iframe wrapper.
+ *
+ * Comments-only annotation pass: no selectors, properties or values were changed.
+ */
+
+/* === Product "front" row — compact single-product listing (image + name + See link) === */
 .wpstream_product_front{
     width:100%;
     padding: 10px;
@@ -49,6 +65,7 @@
 }
 
 
+/* === Player wrapper, "not live" overlay message and live-channel status badge === */
 .wpstream_player_wrapper{
  
 }
@@ -93,6 +110,7 @@
     padding: 10px;
 }
 
+/* === Video container + pre-load spinner (centered spinner, keyframes) === */
 .wpstream-video-container {
     position: relative;
 }
@@ -116,6 +134,7 @@
     100% { transform: rotate(360deg); }
 }
 
+/* === "Not live" message text (default + .wpestate_header_video header variant) === */
 .wpstream_not_live_mess_mess{
     color: #fff;
     font-size: 17px;
@@ -146,6 +165,7 @@
 
 
 
+/* === Player container layout (max width, centering, inserted-player flex) === */
 .wpstream_player_container{
 /*    height: 675px;*/
     max-width:1200px;
@@ -164,6 +184,7 @@
     width: 100%;
 }
 
+/* === Purchase / VOD notice banners (red info bar) === */
 .wpstream_notice,
 .wpstream_vod_notice{
     background-color: #e16767;
@@ -177,6 +198,7 @@
 }
 
 
+/* === "No buy" player states — collapsed placeholder shown when access is gated === */
 #wpstream_product_wrap_no_buy{
     margin-top: 0px;
 }
@@ -222,6 +244,7 @@
     font-size: 22px;
 }
 
+/* === video.js big "play" button — centered circular overlay button === */
 .wpstream_live_player_wrapper .video-js .vjs-big-play-button ,
 .wpstream_player_container .video-js .vjs-big-play-button {
     line-height: 90px!important;
@@ -258,6 +281,7 @@
     opacity: 1;
 }
 
+/* === VOD "Play Video" title-overlay button (gradient circle + label, theme-var driven) === */
 /* Title overlay: match theme "Play Video" row (gradient circle + label) used with .video-js .vjs-big-play-button / .wpstream_video_on_demand_play_video_wrapper. */
 
 .wpstream_title_wrapper_simple button.wpstream_player_controls.wpstream_video_on_demand_play_video_wrapper,
@@ -340,6 +364,7 @@
     margin: -1px 0 0 6px;
 }
 
+/* === VOD / live action wrappers — hidden off-theme, flex layout on hello-wpstream === */
 body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
     display: none;
 }
@@ -377,6 +402,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
     width: 100%;
 }
 
+/* === video.js channel logo overlay positioning (top/bottom, responsive) + volume level === */
 .video-js.vjs-logo.logo-top.logo-left .wpestream_live_counting:not(:empty)~.vjs-logo-content {
     top: 30px !important;
 }
@@ -406,6 +432,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
 
 
 
+/* === Misc: hidden download link + YouTube poster fit === */
 .wpstream_get_download_link{
     display:none;
 }
@@ -419,6 +446,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
 }
 
 
+/* === Product / media list shortcode grid (rows, column widths, pagination, product units) === */
 /*product list shortcode*/
 
 
@@ -517,6 +545,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
      color:#555;
 }
 
+/* === Live player wrapper + live viewer counter badge === */
 .wpstream_live_player_wrapper{
     position:relative;
 }
@@ -539,6 +568,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
 }
 
 
+/* === Live chat widget — SockJS chat panel, message list, input and user dialog === */
 /*wpstream chat wrapper*/
 
 .wpstream_plugin_chat_wrapper{
@@ -733,6 +763,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
     display: none;
 }
 
+/* === Front-end "go live" event units + external-software broadcast modal === */
 /* start streaming styling front end*/
 .event_unit_style_front.event_list_unit{
     box-shadow: none;
@@ -842,9 +873,11 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
 }
 
 
+/* === Generic spinner rotation keyframe (used by loading indicators) === */
 @keyframes rotation{0%{transform:rotate(0)}100%{transform:rotate(359deg)}}
 
 
+/* === Responsive breakpoints — event units, media grid columns, mobile modal === */
 @media only screen and (max-width:1099px){
     .event_unit_style_front.event_list_unit {
         flex-direction: column;
@@ -924,6 +957,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
 }
 
 
+/* === Hover video title overlay (fades in over the player) === */
 .wpstream-video-title-overlay{
     position: absolute;
     top: 10px;
@@ -938,6 +972,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
     z-index: 99;
 }
 
+/* === External VOD / live iframe player wrapper (16:9 responsive frame) === */
 /* External VOD iframe player (mirror of player/public/iframe_test.html .frame-wrap) */
 .wpstream_player_iframe_wrap, .wpstream_live_channel_iframe {
     position: relative;

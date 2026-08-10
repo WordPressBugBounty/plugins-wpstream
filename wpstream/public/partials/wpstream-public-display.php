@@ -14,3 +14,5 @@
 ?>
 
 <!-- This file should primarily consist of HTML with a little bit of PHP. -->
+<!-- Placeholder partial scaffolded by the plugin generator; it currently renders no markup. -->
+<!-- Public-facing output is produced elsewhere (shortcodes, widgets, and player templates). -->

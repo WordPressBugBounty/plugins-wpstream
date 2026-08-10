@@ -1,10 +1,15 @@
 <?php
 /**
- * Upload picture template
+ * Upload picture template.
+ *
+ * Profile-picture panel for the account dashboard: shows the current avatar and
+ * an AJAX drag-and-drop uploader with "Change Profile Picture" and "Remove"
+ * actions. Emits the upload nonce and localizes the uploader script.
  *
  * @package wpstream-theme
  */
 
+// Current user identity and the custom/small profile image references.
 $current_user        = wp_get_current_user();// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 $user_id             = $current_user->ID;// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 $user_login          = $current_user->user_login;// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
@@ -12,27 +17,34 @@ $user_custom_picture = wpstream_get_author_profile_image_url_by_author_id( $user
 $image_id            = get_the_author_meta( 'custom_picture_small', $user_id );
 
 ?>
+	<!-- Profile-picture panel wrapper. -->
 	<div id="upload-container" class="wpstream-dashboard-account__upload-wrapper">
+		<!-- Current profile image and its label. -->
 		<div class="wpstream-dashboard-account__image-wrapper">
 			<p class="wpstream-dashboard-account__upload-title">
 				<?php echo esc_html__( 'Profile Picture', 'hello-wpstream' ); ?>
 			</p>
 
+			<!-- Current avatar; data-* attributes seed the uploader with existing URLs. -->
 			<img id="profile-image" class="wpstream-dashboard-account__profile-image" src="<?php echo esc_url( $user_custom_picture ); ?>" alt="<?php esc_attr_e( 'user image', 'hello-wpstream' ); ?>"
 				data-profileurl="<?php echo esc_attr( $user_custom_picture ); ?>"
 				data-smallprofileurl="<?php echo esc_attr( $image_id ); ?>">
 		</div>
 
 
+		<!-- Uploader area: file list plus drag-and-drop actions. -->
 		<div id="aaiu-upload-container" class="wpstream-dashboard-account__image-actions">
 			<div id="aaiu-upload-imagelist">
+				<!-- List where queued/uploaded files are shown by the uploader script. -->
 				<ul id="aaiu-ul-list" class="aaiu-upload-list"></ul>
 			</div>
 
+			<!-- Drag-and-drop drop zone with size/format hint and action buttons. -->
 			<div id="drag-and-drop" class="rh_drag_and_drop_wrapper ">
 				<div class="drag-drop-msg wpstream-dashboard-account__image-description"><?php esc_html_e( 'Must be JPEG, PNG, or GIF and cannot exceed 4MB.', 'hello-wpstream' ); ?></div>
 
 				<div class="wpstream-dashboard-account__actions-wrap">
+					<!-- Change-profile-picture trigger (opens the file picker). -->
 					<div id="aaiu-uploader-profile" class="wpstream_theme_button_dashboard wpstream-dashboard-account__action-btn">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path fill-rule="evenodd" clip-rule="evenodd" d="M10.7379 16.6273C9.96427 16.6273 9.31895 16.0361 9.2514 15.2654C9.11015 13.6541 9.07441 12.0357 9.14427 10.4204C9.05994 10.4147 8.97563 10.4088 8.89133 10.4027L7.40178 10.2941C6.44973 10.2247 5.91752 9.16312 6.43151 8.35874C7.5277 6.64323 9.53693 4.72317 11.1904 3.53544C11.6742 3.18789 12.3258 3.18789 12.8097 3.53544C14.4631 4.72317 16.4723 6.64322 17.5685 8.35874C18.0825 9.16312 17.5503 10.2247 16.5983 10.2941L15.1087 10.4027C15.0244 10.4088 14.9401 10.4147 14.8558 10.4204C14.9256 12.0357 14.8899 13.6541 14.7486 15.2654C14.6811 16.0361 14.0358 16.6273 13.2622 16.6273H10.7379ZM10.6815 9.76256C10.5678 11.5498 10.589 13.3431 10.745 15.1273H13.255C13.411 13.3431 13.4323 11.5498 13.3186 9.76256C13.3058 9.56219 13.3739 9.36508 13.5077 9.21534C13.6414 9.06559 13.8296 8.97573 14.0301 8.96585C14.3535 8.94992 14.6767 8.93018 14.9997 8.90664L16.0815 8.82778C15.1219 7.41448 13.9204 6.18023 12.5313 5.18238L12 4.80074L11.4687 5.18238C10.0796 6.18023 8.87813 7.41449 7.91858 8.82778L9.00038 8.90664C9.32337 8.93018 9.64656 8.94992 9.9699 8.96585C10.1704 8.97573 10.3586 9.06559 10.4924 9.21534C10.6261 9.36508 10.6942 9.56219 10.6815 9.76256Z" fill="#0F0F0F"/>
@@ -41,6 +53,7 @@ $image_id            = get_the_author_meta( 'custom_picture_small', $user_id );
 
 						<?php esc_html_e( 'Change Profile Picture', 'hello-wpstream' ); ?>
 					</div>
+					<!-- Remove-picture button; data-image-id targets the stored small image. -->
 					<div id="wpstream_remove_profile" data-image-id="<?php echo esc_attr( $image_id ); ?>" class="wpstream_theme_button_dashboard wpstream-dashboard-account__action-btn">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path d="M10 2.25C9.58579 2.25 9.25 2.58579 9.25 3V3.75H5C4.58579 3.75 4.25 4.08579 4.25 4.5C4.25 4.91421 4.58579 5.25 5 5.25H19C19.4142 5.25 19.75 4.91421 19.75 4.5C19.75 4.08579 19.4142 3.75 19 3.75H14.75V3C14.75 2.58579 14.4142 2.25 14 2.25H10Z" fill="#0F0F0F"/>
@@ -58,7 +71,9 @@ $image_id            = get_the_author_meta( 'custom_picture_small', $user_id );
 	</div>
 
 <?php
+// Create and print a hidden nonce authorizing the profile-image upload AJAX.
 $ajax_nonce = wp_create_nonce( 'wpstream_profile_image_upload' );
 print '<input type="hidden" id="wpstream_profile_image_upload" value="' . esc_html( $ajax_nonce ) . '"/>';
 ?>
+<!-- Localize the profile-picture uploader script. -->
 <?php wpstream_theme_localize_upload_script_images( 'aaiu-uploader-profile' ); ?>

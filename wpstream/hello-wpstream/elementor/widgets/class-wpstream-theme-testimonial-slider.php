@@ -1,6 +1,15 @@
 <?php
 /**
- * Class lust by id
+ * Testimonial Slider Elementor widget.
+ *
+ * Registers the "Testimonial slider" widget for the hello-wpstream theme's
+ * Elementor category. The widget lets an editor build a repeatable list of
+ * testimonials (title, person name, position, WYSIWYG text and an image) and
+ * exposes Style-tab controls for typography, colors, slider arrows and box
+ * shadow. On the frontend it hands the collected settings to the
+ * `wpstream_testimonial_slider()` template helper, which emits the slick-based
+ * carousel markup; in the Elementor editor it additionally prints an inline
+ * script that initialises the slick slider so the preview animates.
  *
  * @package wpstream-theme
  */
@@ -20,7 +29,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * List items by id
+ * Testimonial slider widget class.
+ *
+ * Extends Elementor's base widget to provide the testimonial carousel.
  */
 class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 	/**
@@ -33,13 +44,17 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 	 * @return string Widget name.
 	 */
 	public function get_name() {
+		// Unique machine name Elementor uses to identify this widget type.
 		return 'WpStreamTheme_Testimonial_Slider';
 	}
 
 	/**
-	 * Get categories
+	 * Retrieve the widget categories.
+	 *
+	 * @return array Elementor panel category slugs this widget belongs to.
 	 */
 	public function get_categories() {
+		// Group the widget under the theme's own "hello-wpstream" panel category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -54,6 +69,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 	 * @return string Widget title.
 	 */
 	public function get_title() {
+		// Human-readable label shown in the Elementor widget panel (translatable).
 		return __( 'Testimonial slider', 'hello-wpstream' );
 	}
 
@@ -67,6 +83,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 	 * @return string Widget icon.
 	 */
 	public function get_icon() {
+		// Elementor icon-font class used as the widget's panel icon.
 		return 'eicon-post-list';
 	}
 
@@ -84,24 +101,29 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 	 * @return array Widget scripts dependencies.
 	 */
 	public function get_script_depends() {
+		// No enqueued script handles are required for this widget.
 		return array( '' );
 	}
 
 	/**
-	 * Register the widget controls.
+	 * Flatten an Elementor label/value list into an associative map.
 	 *
-	 * Adds different input fields to allow the user to change and customize the widget settings.
+	 * Converts a numerically-indexed array of `array( 'value' => ..., 'label' => ... )`
+	 * entries into a `value => label` map suitable for a SELECT control's options.
 	 *
 	 * @since 1.0.0
-	 * @access protected
+	 * @access public
 	 *
 	 * @param array $input The input data containing the labels and values.
 	 *
-	 * @return array The transformed output array.
+	 * @return array The transformed output array keyed by value.
 	 */
 	public function elementor_transform( $input ) {
+		// Accumulator for the value => label pairs.
 		$output = array();
+		// Only iterate when we were handed an array to transform.
 		if ( is_array( $input ) ) {
+			// Re-key each entry so its 'value' becomes the key and 'label' the value.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
@@ -110,12 +132,27 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 	}
 
 
+	/**
+	 * Join a list of values into a comma-separated string.
+	 *
+	 * Used to serialise multi-select control values into the comma list the
+	 * downstream shortcode/template helper expects.
+	 *
+	 * @param array $input List of values to concatenate.
+	 *
+	 * @return string Comma-separated string of the input values.
+	 */
 	public function wpstream_send_to_shortcode( $input ) {
+		// Start with an empty result string.
 		$output = '';
+		// Nothing to do when the input is empty.
 		if ( !empty($input) ) {
+			// Total number of values, used to decide where separators go.
 			$num_items = count( $input );
+			// Running counter of processed items.
 			$i         = 0;
 
+			// Append each value, inserting ", " between items but not after the last.
 			foreach ( $input as $key => $value ) {
 				$output .= $value;
 				if ( ++$i !== $num_items ) {
@@ -126,19 +163,34 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 		return $output;
 	}
 
+        /**
+         * Register the widget's Elementor controls.
+         *
+         * Builds the Content section (a repeater of testimonial entries plus an
+         * autoscroll period) and several Style-tab sections: typography,
+         * colors, slider arrow styling and box shadow.
+         *
+         * @since 1.0.0
+         * @access protected
+         *
+         * @return void
+         */
         protected function register_controls() {
 
-        
-        
+
+
+        // ---- Content section: the list of testimonials and slider timing. ----
         $this->start_controls_section(
             'content_section', [
             'label' => esc_html__('Content', 'hello-wpstream'),
                 ]
         );
-        
+
+        // Repeater instance whose fields describe a single testimonial entry.
         $repeater = new Repeater();
 
 
+        // Repeater field: the testimonial's title/heading.
         $repeater->add_control(
             'testimonial_title', [
             'label' => esc_html__('Title', 'hello-wpstream'),
@@ -146,6 +198,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
             'default' => '',
                 ]
         );
+        // Repeater field: the name of the person giving the testimonial.
         $repeater->add_control(
                 'testimonial_name', [
             'label' => esc_html__('Person Name', 'hello-wpstream'),
@@ -153,7 +206,8 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
             'default' => '',
                 ]
         );
-        
+
+        // Repeater field: the person's job title / position.
         $repeater->add_control(
                 'testimonial_job', [
             'label' => esc_html__('Person Position', 'hello-wpstream'),
@@ -161,9 +215,10 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
             'default' => '',
                 ]
         );
-          
-    
-        
+
+
+
+        // Repeater field: the testimonial body copy (rich text editor).
         $repeater->add_control(
             'testimonial_text', [
             'label' => esc_html__('Testimonial Text', 'hello-wpstream'),
@@ -173,6 +228,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                 ]
         );
 
+        // Repeater field: the person's photo, defaulting to Elementor's placeholder.
         $repeater->add_control(
                 'testimonial_image',
                 [
@@ -186,6 +242,8 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 
         
         
+        // Main repeater control that holds the collection of testimonial entries,
+        // seeded with two example testimonials by default.
         $this->add_control(
 			'list',
 			[
@@ -210,6 +268,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
         
         
         
+        // Autoscroll interval in milliseconds (0 disables automatic sliding).
         $this->add_control(
 				'autoscroll',
 				[
@@ -220,11 +279,11 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 
 				]
 		);
-        
 
 
 
 
+        // ---- End Content section. ----
         $this->end_controls_section();
         
         
@@ -235,12 +294,14 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
         * -------------------------------------------------------------------------------------------------
         * Start typography section
        */
+        // ---- Style section: typography, image/border visibility, item width. ----
         $this->start_controls_section(
             'typography_section', [
             'label' => esc_html__('Style', 'hello-wpstream'),
             'tab' => Controls_Manager::TAB_STYLE,
                 ]
         );
+        // Switcher: when on, hides the testimonial image via display:none.
         $this->add_control(
                 'hide_image',
                 [
@@ -256,6 +317,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                     ],
                 ]
         );
+          // Switcher: when on, removes the slider's border via border:none.
           $this->add_control(
                 'hide_border',
                 [
@@ -272,6 +334,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                 ]
         );
 
+         // Typography group for the testimonial body text.
          $this->add_group_control(
                 Group_Control_Typography::get_type(), [
             'name' => 'testimonial_content',
@@ -284,6 +347,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
         );
 
 
+        // Typography group for the person's name.
         $this->add_group_control(
                 Group_Control_Typography::get_type(), [
             'name' => 'testimonial_title',
@@ -298,6 +362,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
         
       
             
+        // Typography group for the person's position/job line.
         $this->add_group_control(
             Group_Control_Typography::get_type(), [
             'name' => 'testimonial_postion',
@@ -313,6 +378,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
            
                       
                       
+	// Responsive slider item width, tunable per device (desktop/tablet/mobile).
 	$this->add_responsive_control(
             'item_width',
             [
@@ -345,15 +411,17 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
             );
 
         
+        // ---- End Style/typography section. ----
         $this->end_controls_section();
 
-       
 
-        
+
+
          /*
          * -------------------------------------------------------------------------------------------------
          * Start color section
          */
+        // ---- Colors section: background and per-text-element color pickers. ----
         $this->start_controls_section(
                 'section_grid_colors', [
             'label' => esc_html__('Colors', 'hello-wpstream'),
@@ -361,6 +429,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                 ]
         );
 
+        // Color: the slider wrapper's background.
         $this->add_control(
                 'unit_backgorund', [
             'label' => esc_html__('Background', 'hello-wpstream'),
@@ -372,6 +441,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                 ]
         );
 
+        // Color: the testimonial body text.
         $this->add_control(
                 'content_color', [
             'label' => esc_html__('Content Color', 'hello-wpstream'),
@@ -386,6 +456,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
      
    
 
+        // Color: the person's name text.
         $this->add_control(
                 'name_color', [
             'label' => esc_html__('Name Color', 'hello-wpstream'),
@@ -397,6 +468,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                 ]
         );
 
+        // Color: the person's position/job text.
         $this->add_control(
                 'item_testimonial_job', [
             'label' => esc_html__('Position Color', 'hello-wpstream'),
@@ -418,13 +490,15 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
          */
         
        
+         // ---- Arrows section: slick prev/next arrow radius and colors. ----
          $this->start_controls_section(
                 'arrow_section', [
             'label' => esc_html__('Arrows Styles & Colors', 'hello-wpstream'),
             'tab' => Controls_Manager::TAB_STYLE,
                 ]
         );
-        
+
+           // Responsive border radius for both prev and next slick arrows.
            $this->add_responsive_control(
             'arrow_border_radius',
             [
@@ -438,6 +512,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
             ]
         );
         
+            // Arrow glyph color in the normal state.
             $this->add_control(
                    'arrow_color',
                    [
@@ -451,6 +526,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                    ]
             );
             
+              // Arrow background color in the normal state.
               $this->add_control(
                    'arrow_bck_color',
                    [
@@ -466,6 +542,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
            
            
             
+            // Arrow glyph color on hover.
             $this->add_control(
                    'arrow_color_hover',
                    [
@@ -479,6 +556,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                    ]
                );
             
+             // Arrow background color on hover.
              $this->add_control(
                    'arrow_bck_color_hover',
                    [
@@ -496,19 +574,22 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
        
 
 
+           // ---- End Arrows section. ----
            $this->end_controls_section();
-        
-        
+
+
         /*
          * -------------------------------------------------------------------------------------------------
          * Start shadow section
          */
+        // ---- Box Shadow section: drop shadow applied to the slider box. ----
         $this->start_controls_section(
                 'section_grid_box_shadow', [
             'label' => esc_html__('Box Shadow', 'hello-wpstream'),
             'tab' => Controls_Manager::TAB_STYLE,
                 ]
         );
+        // Box-shadow group control targeting the slider wrapper.
         $this->add_group_control(
                 Group_Control_Box_Shadow::get_type(), [
             'name' => 'box_shadow',
@@ -517,29 +598,52 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
                 ]
         );
 
+        // ---- End Box Shadow section. ----
         $this->end_controls_section();
         /*
          * -------------------------------------------------------------------------------------------------
          * End shadow section
          */
-     
+
     }
 
+    /**
+     * Render the widget on the frontend (and in the editor preview).
+     *
+     * Pulls the saved control values, generates a unique slider DOM id, and
+     * prints the carousel markup produced by the `wpstream_testimonial_slider()`
+     * template helper. When rendering inside the Elementor editor it also emits
+     * an inline script that boots the slick slider so the preview animates.
+     *
+     * @access protected
+     *
+     * @return void
+     */
     protected function render() {
+        // Current post context (available to the template helper if needed).
         global $post;
+        // Resolved control values ready for display/output.
         $settings = $this->get_settings_for_display();
 
+        // Unique DOM id so multiple sliders on one page don't collide.
         $slider_id                        = 'categories_slider_carousel_elementor_v1_' . wp_rand( 1, 99999 );
+        // Emit the testimonial carousel markup built by the template helper.
         print   wpstream_testimonial_slider( $settings,	$slider_id );
-        
-        
+
+
+        // Only inside the Elementor editor: initialise slick so the preview slides.
         if ( \Elementor\Plugin::instance()->editor->is_edit_mode() ) :
 			?>
+			<!-- Editor-only slick initialiser so the testimonial slider animates in the preview. -->
 			<script>
 
+				// Boot slick on each testimonial slider instance in the preview.
 				jQuery('.wpstream_testimonial_slider').each(function () {
+					// This slider shows a single testimonial per view.
 					var items = 1;
+					// Autoplay period read from the element's data-auto attribute.
 					var auto = parseInt(jQuery(this).attr('data-auto'));
+					// Initialise the slick carousel with the desired options.
 					var slick = jQuery(this).slick({
 						infinite: true,
 						slidesToShow: items,
@@ -548,6 +652,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 						nextArrow:'<button class="slick-next slick-arrow 333 " aria-label="Next" type="button" style=""><svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M0.93934 0.93934C1.52513 0.353553 2.47487 0.353553 3.06066 0.93934L11.0607 8.93934C11.6464 9.52513 11.6464 10.4749 11.0607 11.0607L3.06066 19.0607C2.47487 19.6464 1.52513 19.6464 0.93934 19.0607C0.353553 18.4749 0.353553 17.5251 0.93934 16.9393L7.87868 10L0.93934 3.06066C0.353553 2.47487 0.353553 1.52513 0.93934 0.93934Z"/></svg></button>',
             			prevArrow:'<button class="slick-prev slick-arrow 222 " aria-label="Next" type="button" style=""><svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.0607 19.0607C10.4749 19.6464 9.52513 19.6464 8.93934 19.0607L0.93934 11.0607C0.353555 10.4749 0.353555 9.52513 0.939341 8.93934L8.93934 0.93934C9.52513 0.353554 10.4749 0.353554 11.0607 0.939341C11.6464 1.52513 11.6464 2.47487 11.0607 3.06066L4.12132 10L11.0607 16.9393C11.6464 17.5251 11.6464 18.4749 11.0607 19.0607Z"/></svg></button>',
 
+						// Responsive overrides: fewer slides on tablet and mobile widths.
 						responsive: [
 							{
 								breakpoint: 1025,
@@ -565,6 +670,7 @@ class WpStreamTheme_Testimonial_Slider extends Widget_Base {
 							}
 						]
 					});
+					// For right-to-left sites, flip the slider direction after init.
 					if (wpstream_theme.is_rtl === '1') {
 						jQuery(this).slick('slickSetOption', 'rtl', true, true);
 						jQuery(this).slick('slidesToScroll', '-1');

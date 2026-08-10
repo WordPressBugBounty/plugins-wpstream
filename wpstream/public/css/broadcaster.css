@@ -1,12 +1,25 @@
+/*
+ * Broadcaster ("go live" in-browser) page styles.
+ *
+ * Chrome for the WebRTC/WHIP browser-broadcasting page: full-bleed body reset,
+ * page header/logo/nav, the local video preview and live badge, the control
+ * buttons (start/stop), the status indicator dots, the settings panel
+ * (bitrate/device selectors), info/error/success message banners, connection
+ * stats, and the mobile video expand/collapse behaviour.
+ */
+
 /* Additional styles for the broadcaster */
+/* Remove the admin-bar top offset WordPress would otherwise add. */
 html {
     margin-top: 0 !important;
 }
 
+/* Page background. */
 body {
     background: #F8F8F8;
 }
 
+/* Broadcaster page body: system font stack, neutral background, side padding. */
 body.wpstream-broadcaster-page {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
     background-color: #F8F8F8;
@@ -15,11 +28,13 @@ body.wpstream-broadcaster-page {
     padding: 0 15px;
 }
 
+/* Hide the WordPress admin bar on the broadcaster page. */
 body.wpstream-broadcaster-page #wpadminbar {
     display: none;
 }
 
 /* Style for the header */
+/* Sticky-style page header bar with a subtle drop shadow. */
 .broadcaster-header {
     background-color: #f8f9fa!important;
     box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.05);
@@ -30,6 +45,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     z-index: 100;
 }
 
+/* Header inner row: logo on the left, nav on the right, vertically centred. */
 .header-container {
     display: flex;
     justify-content: space-between;
@@ -38,25 +54,30 @@ body.wpstream-broadcaster-page #wpadminbar {
     padding: 0 20px;
 }
 
+/* Logo cell padding. */
 .header-logo {
     padding: .3125rem 0;
 }
 
+/* Logo image keeps its intrinsic aspect ratio. */
 .header-logo img {
     width: auto;
 }
 
+/* Header navigation cluster. */
 .header-nav {
     display: flex;
     align-items: center;
 }
 
+/* Individual nav link styling. */
 .nav-item {
     font-size: 16px;
     font-weight: 500;
     color: #333;
 }
 
+/* Centred container for status/notice messages under the header. */
 #messageContainer {
     display: flex;
     margin-top: 1rem;
@@ -69,12 +90,14 @@ body.wpstream-broadcaster-page #wpadminbar {
 }
 
 /* Style for the main broadcaster container */
+/* Centred, max-width page content wrapper. */
 .broadcaster-container {
     max-width: 1500px;
     margin: 0 auto;
     padding: 20px;
 }
 
+/* "LIVE" badge overlay anchored to the top-left of the video preview. */
 .broadcaster-container .video-live-indicator {
     position: absolute;
     top: 0.5em;
@@ -83,6 +106,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     z-index: 3;
 }
 
+/* Base pill/badge styling for the live indicator. */
 .broadcaster-container .video-live-indicator .badge {
     display: inline-block;
     padding: .25em .4em;
@@ -96,22 +120,26 @@ body.wpstream-broadcaster-page #wpadminbar {
     transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
 }
 
+/* Rounded pill variant of the badge. */
 .broadcaster-container .video-live-indicator .badge.badge-pill {
     padding-right: .6em;
     padding-left: .6em;
     border-radius: 10rem;
 }
 
+/* Danger (live) badge: red. */
 .broadcaster-container .video-live-indicator .badge.badge-danger {
     color: #fff;
     background-color: #d63638;
 }
 
+/* Warning (connecting) badge: amber. */
 .broadcaster-container .video-live-indicator .badge.badge-warning {
     color: #212529;
     background-color: #ffc107;
 }
 
+/* Video preview box: relative host for overlays, clipped rounded corners. */
 .video-container {
     flex: 2;
     position: relative;
@@ -123,6 +151,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     overflow: hidden;
 }
 
+/* Small screens: stack and cap the preview height. */
 @media screen and (max-width: 600px) {
     .video-container {
         display: flex;
@@ -132,6 +161,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     }
 }
 
+/* The actual <video> element showing the local camera feed. */
 #localVideo {
     position: relative;
     z-index: 2;
@@ -139,6 +169,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     background-color: #EEEEEE;
 }
 
+/* Row of broadcast control buttons; wraps on narrow widths. */
 .controls-container {
     display: flex;
     flex-wrap: wrap;
@@ -146,6 +177,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     margin-bottom: 20px;
 }
 
+/* Base button styling. */
 .button {
     background-color: #2271b1;
     border: none;
@@ -161,20 +193,24 @@ body.wpstream-broadcaster-page #wpadminbar {
     transition: background-color 0.3s;
 }
 
+/* Button hover: darker blue. */
 .button:hover {
     background-color: #135e96;
 }
 
+/* Full-width "Start broadcast" primary button. */
 .button.start-broadcast {
     background-color: #066AA6;
     width: 100%;
 }
 
+/* Full-width "Stop broadcast" button (dark). */
 .button.stop-broadcast {
     background-color: #2c3338;
     width: 100%;
 }
 
+/* Status panel: hidden until broadcasting begins. */
 .status-container {
     display: none;
     padding: 15px;
@@ -184,17 +220,20 @@ body.wpstream-broadcaster-page #wpadminbar {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+/* Two-column wrapper (video + settings); collapses on tablet widths. */
 .wrapper {
     display: flex;
     gap: 15px;
 }
 
+/* Tablet and below: stack the wrapper columns. */
 @media screen and (max-width: 768px) {
     .wrapper {
         flex-direction: column;
     }
 }
 
+/* Connection status dot: grey by default. */
 .status-indicator {
     display: inline-block;
     width: 12px;
@@ -204,18 +243,22 @@ body.wpstream-broadcaster-page #wpadminbar {
     background-color: #ccc;
 }
 
+/* Connected: green dot. */
 .status-indicator.connected {
     background-color: #00a32a;
 }
 
+/* Disconnected: red dot. */
 .status-indicator.disconnected {
     background-color: #d63638;
 }
 
+/* Connecting: amber dot. */
 .status-indicator.connecting {
     background-color: #f0c33c;
 }
 
+/* Settings side panel container. */
 .settings-panel {
     flex: 1;
     background-color: #fff;
@@ -225,6 +268,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+/* A row of settings groups; wraps and gaps between them. */
 .settings-row {
     display: flex;
     flex-wrap: wrap;
@@ -232,28 +276,33 @@ body.wpstream-broadcaster-page #wpadminbar {
     margin-bottom: 15px;
 }
 
+/* Horizontal input + suffix grouping (e.g. bitrate + unit). */
 .settings-row .settings-group .input-group {
     display: flex;
     flex-direction: row;
     align-items: center;
 }
 
+/* Square off the audio-bitrate input's right corners to join its suffix. */
 .settings-row .settings-group .input-group #audioBitrate {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
 
+/* Inputs inside an input-group flex to fill available width. */
 .settings-row .settings-group .input-group input {
     flex: 1;
     font-size: 1rem;
 }
 
+/* Media (device) selection row stacks vertically. */
 .settings-row.media-row {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
+/* Static unit/suffix appended to an input (e.g. "kbps"). */
 .settings-row .settings-group .input-group .input-suffix {
     background-color: #e9ecef;
     padding: .375rem .75rem;
@@ -265,11 +314,13 @@ body.wpstream-broadcaster-page #wpadminbar {
     border-left: 0;
 }
 
+/* A single settings group cell. */
 .settings-group {
     flex: 1;
     /*min-width: 250px;*/
 }
 
+/* Settings group label. */
 .settings-group label {
     display: block;
     margin-bottom: 5px;
@@ -277,11 +328,13 @@ body.wpstream-broadcaster-page #wpadminbar {
     font-size: 1rem;
 }
 
+/* Inline group of small control buttons within a settings group. */
 .settings-group .controls-group {
     display: flex;
     gap: 10px;
 }
 
+/* Those small control buttons: light, bordered, rounded. */
 .settings-group .controls-group button {
     background: #FFFFFF;
     border: 1px solid #B2B3B5;
@@ -289,10 +342,12 @@ body.wpstream-broadcaster-page #wpadminbar {
     border-radius: 6px;
 }
 
+/* Utility: fully hide an element. */
 .hidden {
     display: none;
 }
 
+/* Info banner: blue, left-accented. */
 .info-message {
     color: #0056b3;
     background-color: #e9f5ff;
@@ -301,6 +356,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     margin-bottom: 15px;
 }
 
+/* Error banner: red, left-accented, constrained width. */
 .error-message {
     color: #d63638;
     background-color: #fcf0f1;
@@ -311,11 +367,13 @@ body.wpstream-broadcaster-page #wpadminbar {
     flex: 0 0 83.333333%;
 }
 
+/* Links inside an error banner keep the red tone, underlined. */
 .error-message a {
     color: #d63638;
     text-decoration: underline;
 }
 
+/* Shared layout for info/error banners: relative host with room for the close button. */
 .info-message,
 .error-message {
     position: relative;
@@ -323,6 +381,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     padding-right: 2.5rem; /* Make space for the close button */
 }
 
+/* Dismiss (x) button pinned to the right edge of the error banner. */
 .error-message .dismiss-message {
     position: absolute;
     top: 50%;
@@ -338,11 +397,13 @@ body.wpstream-broadcaster-page #wpadminbar {
     padding: 0.5rem;
 }
 
+/* Dismiss button hover: full opacity. */
 .error-message .dismiss-message:hover {
     opacity: 1;
 }
 
 
+/* Success banner: green, left-accented. */
 .success-message {
     color: #00a32a;
     background-color: #edfaef;
@@ -351,6 +412,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     margin-bottom: 15px;
 }
 
+/* Connection statistics list (bitrate, resolution, etc.). */
 .stats-container {
     display: flex;
     flex-direction: column;
@@ -358,12 +420,14 @@ body.wpstream-broadcaster-page #wpadminbar {
     font-size: 14px;
 }
 
+/* One stat pill. */
 .stat-item {
     background-color: #f0f0f1;
     padding: 5px 10px;
     border-radius: 4px;
 }
 
+/* Device/quality <select> dropdowns in the settings panel. */
 .settings-group select {
     color: #495057;
     width: 100%;
@@ -377,6 +441,7 @@ body.wpstream-broadcaster-page #wpadminbar {
     -webkit-appearance: menulist;
 }
 
+/* Focused select: blue outline ring. */
 .settings-group select:focus {
     outline: none;
     border-color: #2271b1;
@@ -384,6 +449,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 }
 
 /* Code to expand portrait video on mobile */
+/* Disabled select: greyed and non-interactive. */
 .settings-group select:disabled {
     background-color: #f0f0f1;
     cursor: not-allowed;
@@ -391,6 +457,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 }
 
 /* Mobile Expand/Collapse Button */
+/* Overlay toggle to expand the video preview; hidden on desktop. */
 .video-expand-toggle {
     display: none;
     position: absolute;
@@ -407,10 +474,12 @@ body.wpstream-broadcaster-page #wpadminbar {
     transition: background 0.3s;
 }
 
+/* Expand toggle hover: darker background. */
 .video-expand-toggle:hover {
     background: rgba(0, 0, 0, 0.8);
 }
 
+/* Small screens: show the expand toggle and allow the video to grow when expanded. */
 @media screen and (max-width: 600px) {
     .video-expand-toggle {
         display: block;

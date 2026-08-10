@@ -1,53 +1,76 @@
 
 
+/*
+ * WPStream live-chat widget styles.
+ *
+ * Layout and colour rules for the chat client rendered by chat.js: the
+ * settings toggles, the typing indicator, role-based name colours (self /
+ * helper / moderator / administrator), message bodies and inline images,
+ * timestamps, the hover-only DELETE control, per-message-type colours
+ * (pm/mention/global/info/light/...), and the reconnect spinner animation.
+ */
+
+/* Settings toggle checkboxes: spacing from their labels. */
 #emoji, #sound, #desktop, #greentext, #synthesis, #recognition, #inline {
     margin-left: 10px;
 }
 
+/* Settings/audio icon glyphs: colour and fine positioning nudge. */
 #icon-settings, #icon-audio {
     color: white;
     top: -7px;
     left: -3.5px;
 }
 
+/* Audio (mic) button spacing. */
 #audio {
     margin-right: 10px;
 }
 
+/* "X is writing..." typing indicator: italic, small, indented. */
 #typing {
     margin-left: 10px;
     font-style: italic;
     font-size: 9pt;
 }
 
+/* Material Design icon font sizing. */
 .mdi {
     font-size: 20px;
 }
 
+/* Author name block: floated to the left of the message row. */
 .name {
     float: left;
 }
 
+/* Name anchor inherits the surrounding role colour instead of link blue. */
 .namelink {
     color: inherit!important;
 }
 
+/* Role colours applied to the author name (see showChat in chat.js). */
+/* Own messages: amber. */
 .self {
     color: #eb9d00!important;
 }
 
+/* Helper role: blue. */
 .helper {
     color: #55aef6!important;
 }
 
+/* Moderator role: green. */
 .moderator {
     color: #689f38!important;
 }
 
+/* Administrator role: red. */
 .administrator {
     color: #f55549!important;
 }
 
+/* Message body: wrap long/unbroken text and pad horizontally. */
 .msg {
     word-wrap: break-word;
     word-break: break-all;
@@ -55,10 +78,12 @@
     padding-left: 20px;
 }
 
+/* Inline-expanded images capped in width. */
 .msg a img {
     max-width: 350px;
 }
 
+/* Timestamp: floated right, small and bold. */
 .timestamp {
     float: right;
     font-size: 8pt;
@@ -66,6 +91,7 @@
     margin-left: 20px;
 }
 
+/* DELETE control: floated right, hidden until a moderator hovers the row. */
 .delete {
     float: right;
     font-size: 8pt;
@@ -73,36 +99,44 @@
     display: none;
 }
 
+/* Private messages and mentions: amber highlight. */
 .pm , .mention {
     color: #eb9d00;
 }
 
+/* Emote body (the 4th span) rendered in italic. */
 .emote span:nth-child(4) {
     font-style: italic;
 }
 
+/* System/alert message types: red. */
 .global, .kick, .role, .ban {
     color: #f55549!important;
 }
 
+/* Informational system lines: blue. */
 .info {
     color: #55aef6;
 }
 
+/* Light/error notices: grey. */
 .light {
     color: #616161;
 }
 
+/* Regular chat message: near-black with a little top spacing. */
 .message {
     color: #2b2b2b;
     margin-top: 3px;
 }
 
+/* Reconnect indicator: continuous rotation. */
 .spin {
     -webkit-animation: spin 1500ms infinite linear;
     animation: spin 1500ms infinite linear;
 }
 
+/* Keyframes driving the .spin rotation (prefixed + standard). */
 @-webkit-keyframes spin {
     0% {
         -webkit-transform: rotate(0deg);

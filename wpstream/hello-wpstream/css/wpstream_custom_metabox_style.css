@@ -1,8 +1,18 @@
+/*
+ * WpStream custom metabox styles.
+ *
+ * Admin-side styles for the product metabox UI: the two-column sortable
+ * product picker (initial vs. selected lists), the free/paid type badges,
+ * and the item autocomplete search row.
+ */
+
+/* Full-width label wrapper. */
 .wpstream_full_label{
     width: 100%;
     display: inline-block;
 }
 
+/* Sortable list column: fixed-width, scrollable, bordered container. */
 .wpstream_sortable_list{
     width: 400px;
     display: inline-block;
@@ -16,15 +26,18 @@
      border-radius: 2px;
 }
 
+/* Individual list rows inside a sortable column. */
 .wpstream_sortable_list li{
     padding: 7px;
     position: relative;
 }
 
+/* The "available items" (source) column. */
 .wpstream_sortable_list_initial{
     
 }
 
+/* The "selected items" (destination) column, offset and shaded. */
 .wpstream_sortable_list_final{
     background-color: #dedede;
     margin-top: 60px;
@@ -32,6 +45,7 @@
 
 
 
+/* Hover feedback for rows in each column. */
 .wpstream_sortable_list_initial li:hover{
     background-color: #f0f0f1;
     cursor: pointer;
@@ -42,12 +56,14 @@
     cursor: pointer;
     border-radius: 2px;
 }
+/* Badge holder pinned to the top-right of each product row. */
 .wpstream_product_list_type_wrapper{
     position: absolute;
     right: 7px;
     top: 6px;
 }
 
+/* Shared badge shape for the free/paid product-type labels. */
 .wpstream_product_list_type,
 .wpstream_product_list_free{
     border-radius: 4px;
@@ -59,26 +75,31 @@
     text-align: center;
 }
 
+/* "Free" badge: dark background, white text. */
 .wpstream_product_list_free{
     background-color: #1d2327;
     color: #fff;
 }
 
+/* "Paid" badge: green background, white text. */
 .wpstream_product_list_type{
     background-color: #45a73f;
     color:#fff;
 }
+/* Row that lays the two selection columns side by side. */
 .wpstream_selection_wrapper{
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
 }
+/* A single vertical column within the selection wrapper. */
 .wpstream_selection_col_1{
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
 }
 
+/* Autocomplete search input row above the pickers. */
 .wpstream_item_autocomplete_search{
     margin-right: 20px;
 }

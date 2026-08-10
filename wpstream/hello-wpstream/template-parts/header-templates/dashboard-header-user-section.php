@@ -1,14 +1,20 @@
 <?php
 /**
- * Dashboard header user section
+ * Dashboard header user section.
+ *
+ * Renders the profile avatar in the dashboard header. Clicking it opens a
+ * Bootstrap popover (built here as an HTML string) containing the user's name
+ * and image plus "Back to Website", "Edit Account" and "Logout" links.
  *
  * @package wpstream-theme
  */
 
+// Current user and their custom profile image URL.
 $current_user        = wp_get_current_user();// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 $user_id             = $current_user->ID;
 $user_custom_picture = wpstream_get_author_profile_image_url_by_author_id( $user_id );
 
+// Edit-account link: WooCommerce endpoint when available, otherwise the theme's non-Woo fallback.
 if ( function_exists( 'wc_get_account_menu_items' ) ) {
 	$edit_account_link = wc_get_endpoint_url( 'edit-account', '', wc_get_page_permalink( 'myaccount' ) );
 } else {
@@ -16,6 +22,7 @@ if ( function_exists( 'wc_get_account_menu_items' ) ) {
 }
 ?>
 <?php
+// Build the popover markup shown when the header avatar is clicked.
 $popover_content = '<div class="popover-content account-profile-popover">
     <div class="dashboard-header-user-profile-menu-item account-profile-popover__image">
         <img id="dashboard-header_profile-image-menu" alt="' . esc_attr( __( 'Profile image', 'hello-wpstream' ) ) . '" src="' . esc_url( $user_custom_picture ) . '"/>
@@ -34,6 +41,7 @@ $popover_content = '<div class="popover-content account-profile-popover">
 </div>';
 ?>
 
+<!-- Header avatar; Bootstrap popover trigger carrying the profile menu as HTML content. -->
 <img id="dashboard-header_profile-image" src="<?php echo esc_url( $user_custom_picture ); ?>"
 	alt="<?php esc_attr_e( 'user image', 'hello-wpstream' ); ?>"
 	accesskey="" data-bs-toggle="popover" data-bs-placement="bottom"

@@ -23,22 +23,27 @@
 class Wpstream_Activator {
 
 	/**
-	 * Short Description. (use period)
+	 * Run the one-time activation routine.
 	 *
-	 * Long Description.
+	 * Registers the plugin's custom post types and flushes the rewrite rules so
+	 * their permalinks work immediately after the plugin is switched on.
 	 *
 	 * @since    3.0.1
 	 */
 	public static function activate() {
-        
+
+            // Load the class that declares WpStream's custom post types.
             require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream_product.php';
+            // Instantiate the post-type registrar.
             $plugin_post_types = new Wpstream_Product();
+            // Register the custom post types (channels, VODs, etc.).
             $plugin_post_types->create_custom_post_type();
-    
+
+            // Rebuild rewrite rules now that new post types exist, so their URLs resolve.
             flush_rewrite_rules();
-          
-//            
-            
+
+//
+
 	}
 
 }

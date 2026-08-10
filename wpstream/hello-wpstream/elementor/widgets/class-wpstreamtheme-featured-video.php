@@ -2,6 +2,11 @@
 /**
  * Featured video class
  *
+ * Elementor widget that renders a single "Featured VOD/Channel" block. It registers
+ * the editor controls (video picker, design type, hover-preview toggle, sizing,
+ * typography and colors, box shadow) and, on the frontend, hands the chosen settings
+ * to the wpstream_theme_featured_video() theme helper which produces the actual markup.
+ *
  * @package wpstream-theme
  */
 
@@ -34,9 +39,12 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 	}
 
 	/**
-	 * Get categories
+	 * Retrieve the Elementor panel categories this widget belongs to.
+	 *
+	 * @return array Category slugs; groups the widget under "hello-wpstream".
 	 */
 	public function get_categories() {
+		// Register the widget under the theme's custom Elementor category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -92,12 +100,16 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 	 * @param array $input The input data to be rendered.
 	 */
 	public function elementor_transform( $input ) {
+		// Start with an empty value => label map.
 		$output = array();
+		// Only iterate when we actually received an array of items.
 		if ( is_array( $input ) ) {
+			// Flip each {value,label} entry into an Elementor-friendly key => value pair.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the associative array SELECT/SELECT2 controls expect.
 		return $output;
 	}
 
@@ -105,15 +117,18 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 	 * Register control
 	 */
 	protected function register_controls() {
+		// Fetch the selectable VOD/channel items and reshape into a value => label map.
 		$video_array              =   wpstream_return_video_array();
 		$video_array_elemetor      = $this->elementor_transform( $video_array );
 		
+		// Options for the "Design Type" dropdown (two layout variants).
 		$featured_video_type =
 			array(
 				1 => __( 'Type 1', 'hello-wpstream' ),
 				2 => __( 'Type 2', 'hello-wpstream' ),
 				
 			);
+		// --- Content section: choose the video item, design type and hover preview. ---
 		$this->start_controls_section(
 			'section_content',
 			array(
@@ -121,6 +136,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Video/channel picker (single selection).
 		$this->add_control(
 			'video_id',
 			[
@@ -132,6 +148,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			]
 		);
 
+		// Layout/design variant selector (Type 1 or Type 2).
 		$this->add_control(
 			'type',
 			array(
@@ -142,6 +159,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Toggle: play a short preview video when the item is hovered.
 		$this->add_control(
 			'show_video',
 			array(
@@ -158,6 +176,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 	
 		$this->end_controls_section();
 
+		// --- Style tab: item sizing (image height, corner radius). ---
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -166,6 +185,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Responsive image height; targets a different element per design type.
 		$this->add_responsive_control(
 			'item_height',
 			array(
@@ -199,6 +219,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Corner rounding for the image and the card (card also clips overflow).
 		$this->add_responsive_control(
 			'item_border_radius',
 			array(
@@ -217,6 +238,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 		$this->end_controls_section();
 
 		
+		// --- Style tab: typography and colors for each text element. ---
 		$this->start_controls_section(
 			'typography_section',
 			array(
@@ -225,6 +247,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Title typography (font family/size/weight for the item heading link).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -253,6 +276,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Excerpt typography (only shown for design Type 1).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -284,6 +308,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+			// Meta line typography (only shown for design Type 2).
 			$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -316,6 +341,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 		);
 
 
+		// Title text color.
 		$this->add_control(
 			'title_color',
 			array(
@@ -328,6 +354,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 				),
 			)
 		);
+		// Excerpt text color (Type 1 only).
 		$this->add_control(
 			'excerpt_color',
 			array(
@@ -345,6 +372,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 		
+		// Meta line text color (Type 2 only).
 		$this->add_control(
 			'meta_color',
 			array(
@@ -362,6 +390,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Image overlay/cover background color.
 		$this->add_control(
 			'overlay_color',
 			array(
@@ -378,6 +407,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 			)
 		);
 
+		// Outer margin around the widget container.
 		$this->add_responsive_control(
 			'content_margin', [
 				'label' => esc_html__('Content Margin ', 'hello-wpstream'),
@@ -399,6 +429,7 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Standard Elementor box-shadow group control targeting the card wrapper.
 		$this->add_group_control(
 			Group_Control_Box_Shadow::get_type(),
 			array(
@@ -422,12 +453,15 @@ class WpStreamTheme_Featured_Video extends Widget_Base {
 	 * @access protected
 	 */
 	protected function render() {
+		// Pull the saved control values for this widget instance.
 		$settings = $this->get_settings_for_display();
 
+		// Map the chosen video ID, design type and hover-preview flag into the helper's attributes.
 		$attributes['id']            = $settings['video_id'];
 		$attributes['type']          = $settings['type'];
 		$attributes['show_video']	= $settings['show_video'];
 
+		// Output the video markup built by the theme helper.
 		echo wpstream_theme_featured_video( $attributes );
 	}
 }

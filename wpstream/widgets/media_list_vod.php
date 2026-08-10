@@ -1,4 +1,16 @@
 <?php
+/**
+ * Elementor widget: WpStream Video on Demand List.
+ *
+ * Registers an Elementor widget that renders a grid of on-demand videos. The
+ * control panel exposes free/paid filtering, per-row/per-page counts, the
+ * "watch" label, and ordering; render() maps those settings to attributes and
+ * delegates to the plugin's media-list shortcode function (VOD type, live off).
+ *
+ * @package    Wpstream
+ * @subpackage Wpstream/widgets
+ */
+
 namespace ElementorWpStream\Widgets;
 
 use Elementor\Widget_Base;
@@ -7,6 +19,9 @@ use Elementor\Controls_Manager;
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 
+/**
+ * Video-on-demand list Elementor widget.
+ */
 class Wpstream_Media_List_Vod extends Widget_Base {
 
 	/**
@@ -19,9 +34,15 @@ class Wpstream_Media_List_Vod extends Widget_Base {
 	 * @return string Widget name.
 	 */
 	public function get_name() {
+		// Unique identifier Elementor uses to reference this widget.
 		return 'class Wpstream_Media_List_Vod';
 	}
 
+        /**
+         * Retrieve the Elementor panel categories this widget appears under.
+         *
+         * @return array Category slugs.
+         */
         public function get_categories() {
 		return [ 'wpstream' ];
 	}
@@ -80,9 +101,16 @@ class Wpstream_Media_List_Vod extends Widget_Base {
 	 * @access protected
 	 */
      
+        /**
+         * Flatten a list of {value,label} rows into a value => label map.
+         *
+         * @param array $input Array of associative rows with 'value'/'label' keys.
+         * @return array Map keyed by each row's value.
+         */
         public function elementor_transform($input){
             $output=array();
             if( is_array($input) ){
+                // Reindex each row so its 'value' becomes the key and 'label' the value.
                 foreach ($input as $key=>$tax){
                     $output[$tax['value']]=$tax['label'];
                 }
@@ -93,31 +121,36 @@ class Wpstream_Media_List_Vod extends Widget_Base {
         protected function _register_controls() {
             global $all_tax;
 
+           // Media type options (this widget forces Video on demand; see render()).
            $product_type=array(
                     0 =>  __('Both','wpstream'),
                     1 =>  __('Live Event','wpstream'),
                     2 =>  __('Video on demand','wpstream')
             );
-           
+
+            // Free vs. paid filter options.
             $free_paid_type=array(
                 0 =>  esc_html__('Free','wpstream'),
                 1 =>  esc_html__('Paid','wpstream')
             );
-            
-            
+
+
+            // Ordering options offered by the "Order by" select.
             $order_by_id=array(
                 0=>esc_html('By date - ASC','wpstream'),
                 1=>esc_html('By date - DESC','wpstream'),
                 2=>esc_html('By title - ASC','wpstream'),
                 3=>esc_html('By title - DESC','wpstream'),
             );
-            
-            
+
+
+            // Yes/no option set (declared but unused by this widget's controls).
             $live_settings=array(
                 'no'=>esc_html__('no','wpstream'),
                 'yes'=>esc_html__('yes','wpstream'),
             );
 
+            // Open the single "Content" settings section for this widget.
             $this->start_controls_section(
                     'section_content',
                     [
@@ -135,6 +168,7 @@ class Wpstream_Media_List_Vod extends Widget_Base {
 //                  ]
 //            );
             
+            // Free/paid filter dropdown.
             $this->add_control(
                   'product_type_free_paid',
                   [
@@ -144,8 +178,9 @@ class Wpstream_Media_List_Vod extends Widget_Base {
                       'options' => $free_paid_type
                   ]
             );
-            
-          
+
+
+            // (Live-only control intentionally disabled for the VOD widget.)
 //            $this->add_control(
 //                  'product_show_live',
 //                  [
@@ -157,6 +192,7 @@ class Wpstream_Media_List_Vod extends Widget_Base {
 //            );    
            
            
+            // Items per page (pagination size).
             $this->add_control(
                     'media_number',
                     [
@@ -167,7 +203,8 @@ class Wpstream_Media_List_Vod extends Widget_Base {
                         'default'=>3
                     ]
             );
-            
+
+            // Items per row (grid columns); capped at 4 downstream.
             $this->add_control(
                 'row_number',
                 [
@@ -178,6 +215,7 @@ class Wpstream_Media_List_Vod extends Widget_Base {
                     'default'=>3
                 ]
             );
+            // Call-to-action label shown on free items.
             $this->add_control(
                     'free_label',
                     [
@@ -188,9 +226,10 @@ class Wpstream_Media_List_Vod extends Widget_Base {
                         'description'=>__('Link Label for free items','wpstream')
                     ]
             );
-              
-                
-            
+
+
+
+            // Result ordering (date/title, asc/desc).
             $this->add_control(
                   'order_by',
                   [
@@ -199,11 +238,12 @@ class Wpstream_Media_List_Vod extends Widget_Base {
                       'default' => 0,
                       'options' => $order_by_id
                   ]
-            ); 
-                
+            );
+
+            // Close the "Content" settings section.
             $this->end_controls_section();
 
-		
+
 	}
 
 	/**
@@ -216,14 +256,22 @@ class Wpstream_Media_List_Vod extends Widget_Base {
 	 * @access protected
 	 */
         
+        /**
+         * Join an array of values into a comma-separated string.
+         *
+         * @param array|string $input Values to join (empty string yields '').
+         * @return string Comma-separated list.
+         */
          public function wpresidence_send_to_shortcode($input){
             $output='';
             if($input!==''){
+                // Track total count so the last element does not get a trailing comma.
                 $numItems = count($input);
                 $i = 0;
 
                 foreach ($input as $key=>$value){
                     $output.=$value;
+                    // Append a separator after every item except the last.
                     if(++$i !== $numItems) {
                       $output.=', ';
                     }
@@ -231,22 +279,26 @@ class Wpstream_Media_List_Vod extends Widget_Base {
             }
             return $output;
         }
-        
+
 	protected function render() {
+            // Current editor settings for this widget instance.
             $settings = $this->get_settings_for_display();
 
-            $attributes['product_type']                 =   2 ;  
-            $attributes['product_type_free_paid']       =   $settings['product_type_free_paid'] ;  
-            $attributes['media_number']                 =   $settings['media_number'] ;  
-            $attributes['row_number']                   =   $settings['row_number'] ;  
-            $attributes['free_label']                   =   $settings['free_label'] ;  
-            $attributes['order_by']                     =   $settings['order_by'] ;  
-            $attributes['product_show_live']            =   'no';
+            // Map panel settings onto the shortcode function's attribute array.
+            $attributes['product_type']                 =   2 ;                                  // force Video on demand type
+            $attributes['product_type_free_paid']       =   $settings['product_type_free_paid'] ; // free/paid filter
+            $attributes['media_number']                 =   $settings['media_number'] ;           // items per page
+            $attributes['row_number']                   =   $settings['row_number'] ;             // items per row
+            $attributes['free_label']                   =   $settings['free_label'] ;             // CTA label
+            $attributes['order_by']                     =   $settings['order_by'] ;               // sort order
+            $attributes['product_show_live']            =   'no';                                 // VOD is never live-only
+            // Plugin instance exposing the media-list renderer.
             global $wpstream_plugin;
-           
-          
-            
+
+
+
            // echo  $wpstream_plugin->admin->wpstream_live_stream_unit(   $attributes['id'],'front' );
+            // Delegate to the shared media-list renderer and print its HTML.
             echo  $wpstream_plugin->wpstream_media_list_elementor_function(   $attributes );
 	}
 

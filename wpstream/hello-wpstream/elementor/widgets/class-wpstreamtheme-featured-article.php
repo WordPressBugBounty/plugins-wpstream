@@ -2,6 +2,11 @@
 /**
  * Class featured image
  *
+ * Elementor widget that renders a single "Featured Article" block. It registers
+ * the editor controls (article picker, design type, item sizing, typography and
+ * colors, box shadow) and, on the frontend, hands the chosen settings to the
+ * wpstream_featured_article() theme helper which produces the actual markup.
+ *
  * @package wpstream-theme
  */
 
@@ -34,9 +39,12 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 	}
 
 	/**
-	 * Get categories
+	 * Retrieve the Elementor panel categories this widget belongs to.
+	 *
+	 * @return array Category slugs; groups the widget under "hello-wpstream".
 	 */
 	public function get_categories() {
+		// Register the widget under the theme's custom Elementor category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -96,12 +104,16 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 	 * @return array An associative array where keys are 'value' values and values are 'label' values.
 	 */
 	public function elementor_transform( $input ) {
+		// Start with an empty value => label map.
 		$output = array();
+		// Only iterate when we actually received an array of items.
 		if ( is_array( $input ) ) {
+			// Flip each {value,label} entry into an Elementor-friendly key => value pair.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the associative array Elementor SELECT/SELECT2 controls expect.
 		return $output;
 	}
 
@@ -109,15 +121,19 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 	 * Register control
 	 */
 	protected function register_controls() {
+		// Options for the "Design Type" dropdown (two layout variants).
 		$featured_article_type = array(
 			1 => esc_html__( 'Type 1', 'hello-wpstream' ),
 			2 => esc_html__( 'Type 2', 'hello-wpstream' ),
 
 		);
+		// Fetch the list of selectable articles, then reshape it into the
+		// value => label map the SELECT2 control needs.
 		$article_array              =   wpstream_return_article_array();
 		$article_array_elementor    =   $this->elementor_transform($article_array);
 
 
+		// --- Content section: choose which article to show and its design type. ---
 		$this->start_controls_section(
 			'section_content',
 			array(
@@ -125,6 +141,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Article picker (single selection).
 		$this->add_control(
 			'article_id',
 			[
@@ -137,6 +154,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 		);
 
 
+		// Layout/design variant selector (Type 1 or Type 2).
 		$this->add_control(
 			'type',
 			array(
@@ -149,6 +167,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 
 		$this->end_controls_section();
 
+		// --- Style tab: item sizing (image height, border, corner radius). ---
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -157,6 +176,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Responsive image height; targets a different element per design type.
 		$this->add_responsive_control(
 			'item_height',
 			array(
@@ -190,6 +210,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Border width around the article card.
 		$this-> add_control(
 			'item_border_width',
 			array(
@@ -202,6 +223,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Border color for the card and its cover overlay.
 		$this->add_control(
 			'item_border_color',
 			array(
@@ -215,6 +237,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Corner rounding for the card and its cover overlay.
 		$this->add_responsive_control(
 			'item_border_radius',
 			array(
@@ -231,6 +254,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 		$this->end_controls_section();
 
 
+		// --- Style tab: typography and colors for each text element. ---
 		$this->start_controls_section(
 			'typography_section',
 			array(
@@ -239,6 +263,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Title typography (font family/size/weight for the article heading link).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -267,6 +292,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Excerpt typography (only shown for design Type 1).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -298,6 +324,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Meta line typography (author/date row).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -327,6 +354,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 		);
 
 
+		// "Read more" link typography (only shown for design Type 2).
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -357,6 +385,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 				),
 			)
 		);
+		// Title text color.
 		$this->add_control(
 			'title_color',
 			array(
@@ -369,6 +398,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 				),
 			)
 		);
+		// Excerpt text color (Type 1 only).
 		$this->add_control(
 			'excerpt_color',
 			array(
@@ -386,6 +416,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Meta line text color.
 		$this->add_control(
 			'meta_color',
 			array(
@@ -399,6 +430,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 
 			)
 		);
+		// "Read more" link text color (Type 2 only).
 		$this->add_control(
 			'read_more_color',
 			array(
@@ -417,6 +449,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Image overlay/cover background color.
 		$this->add_control(
 			'overlay_color',
 			array(
@@ -433,6 +466,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Link/button text color.
 		$this->add_control(
 			'button_text_color',
 			array(
@@ -446,6 +480,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Link/button text hover color.
 		$this->add_control(
 			'button_text_hover_color',
 			array(
@@ -459,6 +494,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 			)
 		);
 
+		// Outer margin around the whole article card.
 		$this->add_responsive_control(
 			'content_margin', [
 				'label' => esc_html__('Content Margin ', 'hello-wpstream'),
@@ -472,6 +508,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 
 		$this->end_controls_section();
 
+		// --- Style tab: box shadow around the card. ---
 		$this->start_controls_section(
 			'section_grid_box_shadow',
 			array(
@@ -479,6 +516,7 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Standard Elementor box-shadow group control targeting the card wrapper.
 		$this->add_group_control(
 			Group_Control_Box_Shadow::get_type(),
 			array(
@@ -502,9 +540,12 @@ class WpStreamTheme_Featured_Article extends Widget_Base {
 	 * @access protected
 	 */
 	protected function render() {
+		// Pull the saved control values for this widget instance.
 		$settings           = $this->get_settings_for_display();
+		// Map the chosen article ID and design type into the helper's attributes.
 		$attributes['id']   = $settings['article_id'];
 		$attributes['type'] = $settings['type'];
+		// Output the article markup built by the theme helper (escaping handled upstream).
 		echo wpstream_featured_article( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 }

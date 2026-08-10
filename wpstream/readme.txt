@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.13.1
+Stable tag: 4.13.2
 License: GPL
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -133,6 +133,16 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.13.2 =
+* Security - Enforce channel-ownership checks on live/broadcast actions so a user can only start, stop, or read the credentials of channels they own
+* Security - Restrict front-end dashboard profile saves to address fields only, and verify channel ownership (by author, not editable user meta) when saving channel data
+* Security - Generate the Larix QR code locally in the browser with a bundled library, so the RTMP URL and stream key are no longer sent to a third-party QR service
+* Security - Harden the live chat client against stored cross-site scripting: chat messages, usernames, and the user list are now rendered as text instead of HTML, and message ids are matched as plain data so a crafted id cannot affect other page elements
+* Fix - Live chat now clears its keep-alive timer and reconnects reliably after a dropped connection (a stale connection can no longer interfere with the active one), and the "not live" notice no longer errors
+* Fix - Fatal error on the WooCommerce email preview screen and in order emails when an order item's product is missing (e.g. deleted after purchase)
+* Fix - Fatal error on the order-received page when no order is available
+* Fix - Purchase confirmation message now correctly detects live stream / VOD purchases regardless of the product type term name
 
 = 4.13.1 =
 * Fix - Price field on paid channel/VOD not visible

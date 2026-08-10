@@ -1,16 +1,25 @@
 <?php
 /**
- * Dashboard header template
+ * Dashboard header template.
+ *
+ * Renders the top masthead shown on the WpStream dashboard pages: a menu-toggle
+ * button that collapses/expands the dashboard sidebar, an optional "Start
+ * Streaming" call-to-action (only for users allowed to stream), the logged-in
+ * user section, and the mobile offcanvas navbar toggle. The offcanvas menu
+ * container itself is required in at the end of the file.
  *
  * @package wpstream-theme
  */
 
 ?>
+<!-- Site masthead / dashboard header wrapper. -->
 <header id="masthead" class="site-header header-1">
 	<div class="wpstream-dashboard-header">
+		<!-- Bootstrap navbar; container width class comes from the theme helper. -->
 		<nav id="nav-main" class="navbar navbar-expand-lg">
 			<div class="<?php echo esc_attr( wpstream_theme_header_container_class() ); ?>">
 
+				<!-- Desktop-only hamburger that toggles the collapsible dashboard sidebar menu. -->
 				<button id="wpstream_toggle_dashboard_menu" class="wpstream_toggle_dashboard_menu d-none d-lg-block">
 					<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
 						<path fill-rule="evenodd" clip-rule="evenodd" d="M26.3333 16C26.3333 15.4478 25.8856 15 25.3333 15H6.66667C6.11439 15 5.66667 15.4478 5.66667 16C5.66667 16.5523 6.11439 17 6.66667 17H25.3333C25.8856 17 26.3333 16.5523 26.3333 16Z" fill="#2F2F35"/>
@@ -19,12 +28,16 @@
 					</svg>
 				</button>
 
+				<!-- Right-aligned call-to-action / user area of the header. -->
 				<div class="wpstream-dashboard-header-cta-wrap ms-auto ms-lg-0 align-items-center">
 					<?php
 					
 				
+					// Only surface the "Start Streaming" button to users permitted to broadcast.
 					if (  wpstream_check_if_user_can_stream() ) {
 					
+						// Prefer the WooCommerce account endpoint when WooCommerce is active,
+						// otherwise fall back to the theme's non-Woo account endpoint URL.
 						if ( function_exists( 'wc_get_account_menu_items' ) ) {
 							$start_streaming_link = wc_get_endpoint_url( 'start-streaming' );
 						} else {
@@ -32,6 +45,7 @@
 						}
 						?>
 
+						<!-- Start Streaming CTA linking to the start-streaming account endpoint. -->
 						<a href="<?php echo esc_url( $start_streaming_link ); ?>" id="wpstream_dashboard_header_start_streaming" class="wpstream-gradient-button type-2-button-style">
 							<?php esc_html_e( 'Start Streaming', 'hello-wpstream' ); ?>
 						</a>
@@ -41,6 +55,7 @@
 
 					<?php
 					}
+					// Always render the logged-in user section (avatar/account dropdown).
 					require WPSTREAM_PLUGIN_PATH . 'hello-wpstream/template-parts/header-templates/dashboard-header-user-section.php';
 					?>
 
@@ -66,6 +81,7 @@
 	</div><!-- .fixed-top .bg-light -->
 			<!-- offcanvas user -->
 	<?php
+	// Pull in the slide-in offcanvas menu markup that the mobile toggle above opens.
 	require WPSTREAM_PLUGIN_PATH . '/hello-wpstream/template-parts/header-templates/header-offcanvas-menu-container.php';
 	?>
 

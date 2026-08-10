@@ -9,6 +9,7 @@ namespace elementor;
 
 use ElementorWpStreamTheme\Widgets;
 
+// Debug output emitted at include time (prints on every request that loads this file).
 print 'loaded pluginelementor ';
 
 
@@ -40,10 +41,12 @@ class Plugin {
 	 * @access public
 	 */
 	public static function instance() {
+		// Lazily construct the single instance on first access.
 		if ( is_null( self::$instance ) ) {
 			self::$instance = new self();
 		}
 
+		// Hand back the shared singleton.
 		return self::$instance;
 	}
 
@@ -55,6 +58,7 @@ class Plugin {
 	 * @access public
 	 */
 	public function widget_scripts() {
+		// Placeholder: no frontend scripts are registered for these widgets yet.
 	}
 
 	/**
@@ -65,6 +69,7 @@ class Plugin {
 	 * @access private
 	 */
 	private function include_widgets_files() {
+		// Pull in the widget class file before it is registered.
 		require_once __DIR__ . '/elementor/widgets/recent-items.php';
 	}
 
@@ -93,6 +98,7 @@ class Plugin {
 	 * @access public
 	 */
 	public function add_elementor_widget_categories( $elements_manager ) {
+		// Add the "Hello WpStream Widgets" category to the Elementor panel.
 		$elements_manager->add_category(
 			'hello-wpstream',
 			array(
@@ -112,6 +118,7 @@ class Plugin {
 		// Register widgets.
 		add_action( 'elementor/widgets/register', array( $this, 'register_widgets' ) );
 
+		// Register our custom widget category with Elementor.
 		add_action( 'elementor/elements/categories_registered', array( $this, 'add_elementor_widget_categories' ) );
 	}
 }

@@ -2,6 +2,11 @@
 /**
  * Social login class
  *
+ * Provides "Login with Facebook / Google / Twitter" for the hello-wpstream
+ * theme. Builds the provider authorization URLs, handles the OAuth callback for
+ * each provider, and creates or logs in the matching WordPress user. Provider
+ * credentials/status are held as (currently empty) instance properties.
+ *
  * @package wpstream-theme
  */
 
@@ -10,6 +15,7 @@
  *
  * @author cretu remus
  */
+// Twitter OAuth client used to build request/authorize URLs and verify credentials.
 use Abraham\TwitterOAuth\TwitterOAuth;
 
 /**
@@ -121,18 +127,23 @@ class wpstream_theme_Social_Login {
 	 * Construct
 	 */
 	public function __construct() {
+		// OAuth state (request tokens, provider flags) is stored in the PHP session,
+		// so make sure a session is started before the flow runs.
 		if ( session_status() === PHP_SESSION_NONE ) {
 			session_start();
 		}
 
+		// Initialize Twitter credentials/URL to empty (populated elsewhere when configured).
 		$this->twitter_url             = '';
 		$this->twitter_consumer_key    = '';
 		$this->twitter_consumer_secret = '';
 		$this->twitter_access_token    = '';
 		$this->twitter_access_secret   = '';
+		// Default the OAuth redirect target to the user dashboard profile page when available.
 		if ( function_exists( 'wpstream_theme_get_template_link' ) ) {
 			$this->redirect = trim( wpstream_theme_get_template_link( 'user_dashboard_profile.php' ) );
 		}
+		// Initialize per-provider enable flags and credentials to empty defaults.
 		$this->facebook_status      = '';
 		$this->google_status        = '';
 		$this->twiter_status        = '';
@@ -142,6 +153,7 @@ class wpstream_theme_Social_Login {
 		$this->google_client_secret = '';
 		$this->google_developer_key = '';
 
+		// AJAX endpoint (logged-in + logged-out) that returns the provider authorization URL.
 		add_action( 'wp_ajax_wpstream_theme_social_login_generate_link', array( $this, 'wpstream_theme_social_login_generate_link' ) );
 		add_action( 'wp_ajax_nopriv_wpstream_theme_social_login_generate_link', array( $this, 'wpstream_theme_social_login_generate_link' ) );
 	}
@@ -151,12 +163,15 @@ class wpstream_theme_Social_Login {
 	 */
 	public function wpstream_theme_social_login_generate_link() {
 
+		// Verify the AJAX nonce before doing any work.
 		check_ajax_referer( 'wpstream_theme_social_login_nonce', 'nonce' );
 
+		// Read which provider the client asked for.
 		if ( isset( $_POST['social_type'] ) ) {
 			$social_type = esc_html( sanitize_text_field( wp_unslash( $_POST['social_type'] ) ) );
 		}
 
+		// Print the authorization URL for the requested provider.
 		if ( 'facebook' === $social_type ) {
 			print esc_url( $this->return_facebook_url() );
 		} elseif ( 'google' === $social_type ) {
@@ -164,6 +179,7 @@ class wpstream_theme_Social_Login {
 		} elseif ( 'twitter' === $social_type ) {
 			print esc_url( $this->return_twiter_url() );
 		}
+		// End the AJAX request.
 		die();
 	}
 
@@ -174,9 +190,11 @@ class wpstream_theme_Social_Login {
 	 * @return string|void If $return is set to 1, returns the form as a string; otherwise, prints the form.
 	 */
 	public function display_form( $where ) {
+		// Accumulated markup and the id suffix that keys buttons to their location.
 		$to_return = '';
 		$appendix  = '';
 
+		// Map the requested location to a unique id suffix so multiple forms can coexist.
 		if ( 'mobile' === $where ) {
 			$appendix = '_mobile';
 		} elseif ( 'widget' === $where ) {
@@ -191,23 +209,29 @@ class wpstream_theme_Social_Login {
 			$appendix = '_topbar';
 		}
 
+		// Add the Facebook button only when the provider is enabled.
 		if ( 'yes' === $this->facebook_status ) {
 			$to_return .= '<div class="wpstream_theme_social_login" id="facebookloginsidebar' . $appendix . '" data-social="facebook"> ' . esc_html__( 'Login with Facebook', 'hello-wpstream' ) . '</div>';
 		}
 
+		// Add the Google button only when the provider is enabled.
 		if ( 'yes' === $this->google_status ) {
 			$to_return .= '<div class="wpstream_theme_social_login"  id="googleloginsidebar' . $appendix . '" data-social="google">' . esc_html__( 'Login with Google', 'hello-wpstream' ) . '</div>';
 		}
 
+		// Add the Twitter button only when the provider is enabled.
 		if ( 'yes' === $this->twiter_status ) {
 			$to_return .= '<div class="wpstream_theme_social_login"  id="twitterloginsidebar' . $appendix . '" data-social="twitter">' . esc_html__( 'Login with Twitter', 'hello-wpstream' ) . '</div>';
 		}
 
+		// Append a nonce field consumed by the generate-link AJAX call.
 		$nonce      = wp_create_nonce( 'wpstream_theme_social_login_nonce' );
 		$to_return .= '<input type="hidden" class="wpstream_theme_social_login_nonce" value="' . $nonce . '">';
 
+		// $return is hardcoded empty, so the branch below always prints (never returns).
 		$return = '';
 
+		// Either return the markup to the caller or print it directly.
 		if ( 1 === $return ) {
 			return $to_return;
 		} else {
@@ -221,17 +245,22 @@ class wpstream_theme_Social_Login {
 	 * @return string
 	 */
 	public function return_twiter_url() {
+		// Authorization URL to return; stays empty if the request fails.
 		$url = '';
 		try {
+			// App-level Twitter client used to obtain a request token.
 			$connection = new TwitterOAuth( $this->twitter_consumer_key, $this->twitter_consumer_secret, $this->twitter_access_token, $this->twitter_access_secret );
 
+			// Step 1 of OAuth 1.0a: request a temporary token, passing our callback URL.
 			$request_token      = $connection->oauth( 'oauth/request_token', array( 'oauth_callback' => $this->redirect ) );
 			$oauth_token        = $request_token['oauth_token'];
 			$oauth_token_secret = $request_token['oauth_token_secret'];
 
+			// Persist the request token/secret and a flag so the callback can complete the flow.
 			$_SESSION['token_tw']         = $oauth_token;
 			$_SESSION['token_secret_tw']  = $oauth_token_secret;
 			$_SESSION['wpstream_theme_is_twet'] = 'ison';
+			// Build the authorize URL the user is redirected to.
 			$url                          = $connection->url( 'oauth/authorize', array( 'oauth_token' => $request_token['oauth_token'] ) );
 			$this->twitter_url            = $url;
 		} catch ( Exception $e ) { //phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
@@ -247,43 +276,53 @@ class wpstream_theme_Social_Login {
 	 */
 	public function twiter_authentificate_user() {
 
+		// Without the request token/secret stored earlier there is nothing to verify.
 		if ( empty($_SESSION['token_tw']) || empty($_SESSION['token_secret_tw']) ) {
 			return;
 		}
 
+		// Client built with the request token/secret to exchange for an access token.
 		$tw_client = new TwitterOAuth( $this->twitter_consumer_key, $this->twitter_consumer_secret, esc_html( sanitize_text_field( $_SESSION['token_tw'] ) ), esc_html( sanitize_text_field( $_SESSION['token_secret_tw'] ) ) );
 
+		// The oauth_verifier returned by Twitter on the callback completes the exchange.
 		if ( isset( $_REQUEST['oauth_verifier'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$params = array(
 				'oauth_verifier' => esc_html( sanitize_text_field( wp_unslash( $_REQUEST['oauth_verifier'] ) ) ), //phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			);
 		}
 
+		// Step 3 of OAuth 1.0a: trade the verifier for a long-lived access token.
 		$access_token = $tw_client->oauth( 'oauth/access_token', $params );
 
+		// Ask the verify_credentials endpoint to include the user's email.
 		$params = array(
 			'include_email'    => 'true',
 			'include_entities' => 'false',
 			'skip_status'      => 'true',
 		);
 
+		// Authenticated client used to fetch the profile.
 		$twitter   = new TwitterOAuth( $this->twitter_consumer_key, $this->twitter_consumer_secret, $access_token['oauth_token'], $access_token['oauth_token_secret'] );
 		$user_info = $twitter->get( 'account/verify_credentials', $params );
 
+		// Clear the OAuth session state now that the flow is complete.
 		unset( $_SESSION['token_tw'] );
 		unset( $_SESSION['token_secret_tw'] );
 		unset( $_SESSION['wpstream_theme_is_twet'] );
 		unset( $_SESSION['wpstream_theme_is_fb'] );
 		unset( $_SESSION['wpstream_theme_is_google'] );
 
+		// Pull the identifying fields from the Twitter profile.
 		$email                = $user_info->email;
 		$full_name            = $user_info->screen_name;
 		$openid_identity_code = $user_info->id;
 
+		// Split the screen name into a best-effort first/last name.
 		$name     = explode( ' ', $full_name );
 		$firsname = isset( $name[0] ) ? $name[0] : '';
 		$lastname = isset( $name[1] ) ? $name[1] : '';
 
+		// Create the WordPress user (if new) and log them in.
 		$this->create_or_login_user( $email, $full_name, $openid_identity_code, $firsname, $lastname, 'twitter' );
 	}
 
@@ -292,6 +331,7 @@ class wpstream_theme_Social_Login {
 	 */
 	public function return_facebook_url() {
 
+		// Instantiate the Facebook SDK with the configured app credentials.
 		$fb = new Facebook\Facebook(
 			array(
 				'app_id'                => $this->facebook_api,
@@ -300,15 +340,18 @@ class wpstream_theme_Social_Login {
 			)
 		);
 
+		// Optional property id passed from the client (unused further below).
 		if ( isset( $_POST['propid'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$prop_id = intval( $_POST['propid'] ); //phpcs:ignore WordPress.Security.NonceVerification.Missing
 		} else {
 			$prop_id = 0;
 		}
 
+		// Redirect helper builds the Facebook login URL; request only the email scope.
 		$helper      = $fb->getRedirectLoginHelper();
 		$permissions = array( 'email' ); // optional.
 
+		// Build the login URL and flag the session so the callback runs the FB handler.
 		$login_url                  = $helper->getLoginUrl( $this->redirect, $permissions );
 		$_SESSION['wpstream_theme_is_fb'] = 'ison';
 		return $login_url;
@@ -319,6 +362,7 @@ class wpstream_theme_Social_Login {
 	 */
 	public function facebook_authentificate_user() {
 
+		// Re-instantiate the Facebook SDK with the same app credentials.
 		$fb = new Facebook\Facebook(
 			array(
 				'app_id'                => $this->facebook_api,
@@ -327,10 +371,13 @@ class wpstream_theme_Social_Login {
 			)
 		);
 
+		// Redirect helper reads the code from the callback query string.
 		$helper = $fb->getRedirectLoginHelper();
 
+		// App secret is later mixed into the local identity code.
 		$secret = $this->facebook_secret;
 		try {
+			// Exchange the callback code for an access token.
 			$access_token = $helper->getAccessToken();
 		} catch ( Facebook\Exceptions\FacebookResponseException $e ) {
 			// When Graph returns an error.
@@ -350,11 +397,14 @@ class wpstream_theme_Social_Login {
 		$token_meta_data = $o_auth_2_client->debugToken( $access_token );
 
 		// Validation (these will throw FacebookSDKException's when they fail).
+		// Confirm the token was issued for this app.
 		$token_meta_data->validateAppId( $this->facebook_api );
 
 		// If you know the user ID this access token belongs to, you can validate it here.
+		// Confirm the token has not expired.
 		$token_meta_data->validateExpiration();
 
+		// Short-lived tokens are upgraded to long-lived ones for reuse.
 		if ( ! $access_token->isLongLived() ) {
 			// Exchanges a short-lived access token for a long-lived one.
 			try {
@@ -365,10 +415,12 @@ class wpstream_theme_Social_Login {
 			}
 		}
 
+		// Stash the token string in the session.
 		$_SESSION['fb_access_token'] = (string) $access_token;
 
 		try {
 			// Returns a `Facebook\FacebookResponse` object.
+			// Fetch the profile fields we need from the Graph API.
 			$response = $fb->get( '/me?fields=id,email,name,first_name,last_name', $access_token );
 		} catch ( Facebook\Exceptions\FacebookResponseException $e ) {
 			echo 'Graph returned an error: ' . esc_html( $e->getMessage() );
@@ -378,20 +430,25 @@ class wpstream_theme_Social_Login {
 			exit;
 		}
 
+		// Extract the user node from the Graph response.
 		$user = $response->getGraphUser();
 
+		// Pull the display name and email when present.
 		if ( isset( $user['name'] ) ) {
 			$full_name = $user['name'];
 		}
 		if ( isset( $user['email'] ) ) {
 			$email = $user['email'];
 		}
+		// Build a local identity code from the app secret plus the Facebook user id.
 		$identity_code = $secret . $user['id'];
 
+		// Clear the per-provider session flags now that authentication is done.
 		unset( $_SESSION['wpstream_theme_is_twet'] );
 		unset( $_SESSION['wpstream_theme_is_fb'] );
 		unset( $_SESSION['wpstream_theme_is_google'] );
 
+		// Create the WordPress user (if new) and log them in.
 		$this->create_or_login_user( $email, $full_name, $identity_code, $user['first_name'], $user['last_name'], 'facebook' );
 	}
 
@@ -399,9 +456,11 @@ class wpstream_theme_Social_Login {
 	 * Google url
 	 */
 	public function return_google_url() {
+		// The bundled Google API library lives under the theme's libs/resources dir.
 		$include_path = get_template_directory() . '/libs/resources';
 		set_include_path( $include_path . PATH_SEPARATOR . get_include_path() ); //phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_set_include_path
 
+		// Configure the Google client with app credentials, redirect and scopes.
 		$g_client = new Google_Client();
 
 		$g_client->setApplicationName( 'Login to WpResidence' );
@@ -411,6 +470,7 @@ class wpstream_theme_Social_Login {
 		$g_client->setDeveloperKey( $this->google_developer_key );
 		$g_client->setScopes( array( 'email', 'profile' ) );
 
+		// Build the Google authorization URL and flag the session for the callback.
 		$google_oauth_v_2               = new Google_Oauth2Service( $g_client );
 		$auth_url                       = $g_client->createAuthUrl();
 		$_SESSION['wpstream_theme_is_google'] = 'ison';
@@ -421,8 +481,10 @@ class wpstream_theme_Social_Login {
 	 * Google authentificate user
 	 */
 	public function google_authentificate_user() {
+		// Empty allowed-tags list means wp_kses strips all HTML from the values below.
 		$allowed_html = array();
 
+		// Rebuild the Google client with the same configuration used to create the auth URL.
 		$g_client = new Google_Client();
 		$g_client->setApplicationName( 'Login to WpResidence' );
 		$g_client->setClientId( $this->google_client_id );
@@ -431,23 +493,29 @@ class wpstream_theme_Social_Login {
 		$g_client->setDeveloperKey( $this->google_developer_key );
 		$g_client->setScopes( array( 'email', 'profile' ) );
 
+		// Service used to read the authenticated user's profile.
 		$google_oauth_v_2 = new Google_Oauth2Service( $g_client );
 
+		// Exchange the callback authorization code for an access token.
 		if ( isset( $_REQUEST['code'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$code = sanitize_text_field( wp_kses( wp_unslash( $_REQUEST['code'] ), $allowed_html ) ); //phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$g_client->authenticate( $code );
 		}
 
+		// Proceed only once an access token has been obtained.
 		if ( $g_client->getAccessToken() ) {
 
 			$allowed_html = array();
 
+			// Fetch the Google profile and pull the identifying fields (HTML-stripped).
 			$user      = $google_oauth_v_2->userinfo->get();
 			$user_id   = $user['id'];
 			$full_name = wp_kses( $user['name'], $allowed_html );
 			$email     = wp_kses( $user['email'], $allowed_html );
+			// Replace spaces with dots so the name is usable as a username fragment.
 			$full_name = str_replace( ' ', '.', $full_name );
 
+			// Extract optional first/last name and avatar when present.
 			$first_name = '';
 			$last_name  = '';
 			if ( isset( $user['family_name'] ) ) {
@@ -460,10 +528,12 @@ class wpstream_theme_Social_Login {
 				$picture = $user['picture'];
 			}
 
+			// Clear the per-provider session flags now that authentication is done.
 			unset( $_SESSION['wpstream_theme_is_twet'] );
 			unset( $_SESSION['wpstream_theme_is_fb'] );
 			unset( $_SESSION['wpstream_theme_is_google'] );
 
+			// Create the WordPress user (if new) and log them in.
 			$this->create_or_login_user( $email, $full_name, $user_id, $first_name, $last_name, 'google' );
 
 		}
@@ -480,34 +550,44 @@ class wpstream_theme_Social_Login {
 	 * @param string $social_type        Type of social platform.
 	 */
 	public function create_or_login_user( $email, $full_name, $openid_identity_code, $firsname = '', $lastname = '', $social_type = '' ) {
+		// Derive a base username from the email local-part, suffixed with the provider.
 		$social_username_array = explode( '@', $email );
 		$social_username       = $social_username_array[0];
 		$social_username       = $social_username . '_' . $social_type;
 
+		// If a user with this email already exists we simply log them in below.
 		if ( email_exists( $email ) ) {
 			// do nothing - you will be logged in with email account - email being check on social platform.
 			return;
 		} else {
+			// Ensure the generated username is unique by appending a timestamp on collision.
 			if ( username_exists( $social_username ) ) {
 				$social_username = $social_username . '-' . time();
 			}
+			// Create the new user with the OpenID identity code as the password.
 			$user_id = wp_create_user( $social_username, $openid_identity_code, $email );
-		
+
+			// Run the theme's post-registration role/profile setup.
 			$this->wpstream_theme_register_as_user( $social_username, $user_id, $firsname, $lastname );
 		}
 
+		// Look up the user by email to log them in.
 		$user = get_user_by( 'email', $email );
 
+		// On failure send them to the home page; otherwise authenticate and redirect.
 		if ( is_wp_error( $user ) ) {
 			wp_safe_redirect( esc_url( home_url( '/' ) ) );
 			exit();
 		} else {
+			// Replace any existing auth cookies and sign the user in.
 			wp_clear_auth_cookie();
 			wp_set_current_user( $user->ID );
 			wp_set_auth_cookie( $user->ID );
 
+			// Note: wpstream_theme_update_old_users() is not defined in this class.
 			$this->wpstream_theme_update_old_users( $user->ID );
 
+			// Redirect to the configured landing page (user dashboard).
 			wp_safe_redirect( $this->redirect );
 			exit();
 		}
@@ -524,43 +604,51 @@ class wpstream_theme_Social_Login {
 	 * @param string $social_type        Type of social platform.
 	 */
 	public function create_or_login_user_old( $email, $full_name, $openid_identity_code, $firsname = '', $lastname = '', $social_type = '' ) {
+		// Legacy variant of create_or_login_user(); kept for reference and not called above.
+		// Derive a base username from the email local-part, suffixed with the provider.
 		$social_username_array = explode( '@', $email );
 		$social_username       = $social_username_array[0];
 		$social_username       = $social_username . '_' . $social_type;
 
+		// Branch on whether the email and/or username already exist.
 		if ( email_exists( $email ) ) {
 			if ( username_exists( $social_username ) ) {
 				// nothing.
 				return;
 			} else {
+				// Email exists but username is free: create a user with a blank email.
 				$user_id = wp_create_user( $social_username, $openid_identity_code, ' ' );
 
-			
+
 				$this->wpstream_theme_register_as_user( $full_name, $user_id, 0, $firsname, $lastname );
 			}
 		} elseif ( username_exists( $social_username ) ) {
 			// nothing.
 			return;
 		} else {
+			// Neither exists: create the new user with the real email.
 			$user_id = wp_create_user( $social_username, $openid_identity_code, $email );
-		
+
 			$this->wpstream_theme_register_as_user( $full_name, $user_id, 0, $firsname, $lastname );
 		}
 
+		// Reset the password to the identity code, then sign the user in with it.
 		$wordpress_user_id = username_exists( $social_username );
 		wp_set_password( $openid_identity_code, $wordpress_user_id );
 
+		// Build the credentials array and attempt sign-on.
 		$info                  = array();
 		$info['user_login']    = $social_username;
 		$info['user_password'] = $openid_identity_code;
 		$info['remember']      = true;
 		$user_signon           = wp_signon( $info, true );
 
+		// Redirect home on failure, or to the configured landing page on success.
 		if ( is_wp_error( $user_signon ) ) {
 			wp_safe_redirect( esc_url( home_url( '/' ) ) );
 			exit();
 		} else {
-		
+
 
 			wp_safe_redirect( $this->redirect );
 			exit();
@@ -577,6 +665,7 @@ class wpstream_theme_Social_Login {
 	 * @param string $last_name      User's last name.
 	 */
 	public function wpstream_theme_register_as_user( $user_name, $user_id, $new_user_type, $first_name = '', $last_name = '' ) {
+		// Resolve the CPT slug + human label from the numeric user-type code.
 		$post_type = '';
 		$app_type  = '';
 		$new_user_type = intval($new_user_type);
@@ -590,13 +679,16 @@ class wpstream_theme_Social_Login {
 			$post_type = 'estate_developer';
 			$app_type  = esc_html__( 'Developer', 'hello-wpstream' );
 		}
+		// Roles that require admin approval (empty here, so nothing matches below).
 		$admin_submission_user_role = '';
 
+		// Default new submissions to published unless the role requires approval.
 		$post_approve = 'publish';
 		if ( in_array( $app_type, $admin_submission_user_role, true ) ) {
 			$post_approve = 'pending';
 		}
 
+		// When a CPT applies, create the linked agent/agency/developer post and cross-link ids.
 		if ( !empty($post_type) ) {
 			$post    = array(
 				'post_title'  => $user_name,
@@ -604,16 +696,20 @@ class wpstream_theme_Social_Login {
 				'post_type'   => $post_type,
 			);
 			$post_id = wp_insert_post( $post );
+			// Store the user id on the post and the post id on the user.
 			update_post_meta( $post_id, 'user_meda_id', $user_id );
 			update_user_meta( $user_id, 'user_agent_id', $post_id );
 		}
 
+		// Fetch the user's email to mirror onto the CPT post.
 		$user_email = get_the_author_meta( 'user_email', $user_id );
 
+		// Store the email on the linked post when one was created.
 		if ( !empty($post_type) ) {
 			update_post_meta( $post_id, 'agent_email', $user_email );
 		}
 
+		// Persist optional first/last name to user meta when provided.
 		if ( !empty($first_name) ) {
 			update_user_meta( $user_id, 'first_name', $first_name );
 		}

@@ -1,3 +1,13 @@
+/*
+ * WpStream integrations stylesheet.
+ *
+ * Styles the BuddyPress/BuddyBoss "Live Video" profile tab and the video.js
+ * player as it appears inside BuddyPress contexts (the profile tab and the
+ * activity timeline). Two areas: the profile tab layout, and player control-bar
+ * / big-play-button overrides so the player matches the theme.
+ */
+
+/* Profile "Live Video" tab: card wrapper and section headings. */
 .wpstream-menu .item-body{
     border: 1px solid #d6d9dd;
     border-radius: 4px;
@@ -11,7 +21,8 @@ body.wpstream-menu.buddypress .buddypress-wrap h4{
     margin-top: 25px;
 }
 
-.wpstream_live_player_wrapper .vjs-controls-disabled .vjs-big-play-button, 
+/* Player: hide the default big "play" button in started/error/native-control states. */
+.wpstream_live_player_wrapper .vjs-controls-disabled .vjs-big-play-button,
 .wpstream_live_player_wrapper .vjs-error .vjs-big-play-button, 
 .wpstream_live_player_wrapper .vjs-has-started .vjs-big-play-button, 
 .wpstream_live_player_wrapper .vjs-using-native-controls .vjs-big-play-button {
@@ -19,19 +30,23 @@ body.wpstream-menu.buddypress .buddypress-wrap h4{
 }
 
 
-.wpstream_live_player_wrapper .video-js .vjs-big-play-button, 
+/* Player: reset the big-play-button transform/padding across wrappers. */
+.wpstream_live_player_wrapper .video-js .vjs-big-play-button,
 .wpstream_player_container .video-js .vjs-big-play-button{
     transform: none;
     padding: 0px;
 }
+/* Player: suppress the built-in error dialog text. */
 .wpstream_live_player_wrapper .vjs-error .vjs-error-display .vjs-modal-dialog-content{
     display: none;;
 }
-.wpstream_live_player_wrapper .video-js .vjs-big-play-button:before, 
+/* Player: size the big-play-button icon glyph. */
+.wpstream_live_player_wrapper .video-js .vjs-big-play-button:before,
 .wpstream_player_container .video-js .vjs-big-play-button:before{
     font-size: 57px;   
 }
 
+/* Player: fixed 40x40 borderless control buttons. */
 .wpstream_player_container button.vjs-control,
 .wpstream_player_container button.vjs-control{
     border:none!important;
@@ -40,11 +55,13 @@ body.wpstream-menu.buddypress .buddypress-wrap h4{
 }
 
 
+/* Timeline: cap the player width inside an activity entry. */
 .activity-inner .wpstream_live_player_wrapper{
     max-width: 715px;
 }
 
 
+/* Profile tab: button and live-control typography/spacing. */
 body.wpstream-menu .buddypress-wrap button,
 body.wpstream-menu .vjs-wpstream .vjs-live-control {
     font-size: 12px;
@@ -58,12 +75,14 @@ body.wpstream-menu  .vjs-wpstream .vjs-live-control{
     padding-left: 20px;
 }
 
-body.wpstream-menu 
+/* Profile tab: hide the picture-in-picture control glyph. */
+body.wpstream-menu
 div.video-js .vjs-control-bar button.vjs-picture-in-picture-control .vjs-icon-placeholder:before{
     display: none;
 }
 
 
+/* Player: vertical volume panel layout/sizing. */
 .video-js .vjs-volume-panel {
     display: flex;
     align-items: center;
@@ -75,11 +94,13 @@ div.video-js .vjs-control-bar button.vjs-picture-in-picture-control .vjs-icon-pl
     width: 34px;
 }
 
+/* Player: vertically center control-bar icon glyphs and the live control. */
 div.video-js .vjs-control-bar button .vjs-icon-placeholder:before,
 .vjs-wpstream .vjs-live-control {
     line-height: 40px;
 }
 
+/* Player: blank out the picture-in-picture control glyph content. */
 div.video-js .vjs-control-bar button.vjs-picture-in-picture-control .vjs-icon-placeholder:before{
     content:"";
 }

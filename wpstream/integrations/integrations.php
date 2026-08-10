@@ -1,5 +1,18 @@
 <?php
 /**
+ * Third-party plugin integration bootstrap and shared helpers.
+ *
+ * This file is the entry point for WpStream's compatibility layer with other
+ * plugins. It detects whether BuddyPress/BuddyBoss is active and conditionally
+ * loads the matching integration file, and it exposes small helper functions
+ * (live-event lookup with transient caching, and a "LIVE" card badge) that the
+ * integrations and theme templates reuse.
+ *
+ * @package    Wpstream
+ * @subpackage Wpstream/integrations
+ */
+
+/**
  * Check and load integrations for plugins like BuddyPress or BuddyBoss.
  *
  * This function checks if the BuddyPress or BuddyBoss plugin is active
@@ -55,12 +68,16 @@ if ( ! function_exists('wpstream_get_live_tag_html' ) ) {
 	 */
 	function wpstream_get_live_tag_html($post_id)
 	{
+		// Only WooCommerce live-stream products or native wpstream_product posts can be "live".
 		if ((get_post_type($post_id) === 'product' && has_term('live_stream', 'product_type', $post_id)) || get_post_type($post_id) === 'wpstream_product') {
+			// Pull the current user's live events (no exit) so we can test membership.
 			$live_events = wpestream_integrations_get_current_user_live_events('no');
+			// If this post is among the live events, emit the "LIVE" badge markup.
 			if (is_array($live_events) && array_key_exists($post_id, $live_events)) {
 				return '<div class="wpstream_featured_image_live_tag">' . esc_html_x('LIVE', 'Card tag', 'hello-wpstream') . '</div>';
 			}
 		}
+		// Not a live post (or no live event matched): render nothing.
 		return '';
 	}
 }

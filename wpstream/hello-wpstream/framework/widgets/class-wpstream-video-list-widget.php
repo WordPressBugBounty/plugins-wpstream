@@ -2,6 +2,12 @@
 /**
  * Video widget
  *
+ * Classic widget that lists the theme's video posts (live events, VOD, and
+ * bundles). The admin form (inherited from Wpstream_Widget_Base) lets the owner
+ * choose a title, which post type to show, and how many items; the front-end
+ * runs a WP_Query and renders each result through the theme's video card
+ * partial.
+ *
  * @package wpstream-theme
  */
 
@@ -18,18 +24,21 @@ if ( ! class_exists( 'Wpstream_Video_List_Widget' ) ) {
 	 */
 	class Wpstream_Video_List_Widget extends Wpstream_Widget_Base {
 
+		/** @var array Selectable video post types, keyed by post type slug => label. */
 		public $post_types = array();
 
 		/**
 		 * Constructor.
 		 */
 		public function __construct() {
+			// Video post types the widget can list (used for the type dropdown).
 			$this->post_types = array(
 				'wpstream_product'     => esc_html__( 'Live Events', 'hello-wpstream' ),
 				'wpstream_product_vod' => esc_html__( 'Video on Demand', 'hello-wpstream' ),
 				'wpstream_bundles'     => esc_html__( 'Video Bundles', 'hello-wpstream' ),
 			);
 
+			// Field schema consumed by the base class's form()/update().
 			$this->settings = array(
 				'title'     => array(
 					'type'  => 'text',
@@ -53,6 +62,7 @@ if ( ! class_exists( 'Wpstream_Video_List_Widget' ) ) {
 
 			);
 
+			// Register with WP_Widget: id base, admin title, and options.
 			parent::__construct(
 				'wpstream-video-list',
 				esc_html__( 'Wpstream Video list', 'hello-wpstream' ),
@@ -71,9 +81,11 @@ if ( ! class_exists( 'Wpstream_Video_List_Widget' ) ) {
 		 */
 		public function get_video( $instance ) {
 			
+			// Prefer the saved post type; sanitize the stored value.
 			if (isset($instance['post_type'])) {
 				$post_type = sanitize_text_field($instance['post_type']);
 			} else {
+				// No saved choice: fall back to the "all" option, or the literal "all".
 				if(isset($this->settings['post_type']['all'])){
 					$post_type = $this->settings['post_type']['all'];
 				}else{
@@ -81,8 +93,10 @@ if ( ! class_exists( 'Wpstream_Video_List_Widget' ) ) {
 				}
 				
 			}
+			// Number of items to show, defaulting to the field's std value.
 			$number    = ! empty( $instance['number'] ) ? absint( $instance['number'] ) : $this->settings['number']['std'];
 
+			// Unknown/"all" selection: query every supported video post type.
 			if ( ! isset( $this->post_types[ $post_type ] ) ) {
 				$post_type = array_keys( $this->post_types );
 			}
@@ -108,26 +122,37 @@ if ( ! class_exists( 'Wpstream_Video_List_Widget' ) ) {
 		 */
 		public function widget( $args, $instance ) {
 
+			// Run the configured query for this widget instance.
 			$videos = $this->get_video( $instance );
 
+			// Only render the widget when the query returned posts.
 			if ( $videos && $videos->have_posts() ) {
+				// Sidebar wrapper + optional title.
 				$this->widget_start( $args, $instance );
 
+				// Open the list container.
 				echo '<ul class="wpstream-video-list-widget">';
 
+				// Emit one list item per matched video post.
 				while ( $videos->have_posts() ) {
 					echo '<li>';
+					// Set up the global post so template tags work inside the card.
 					$videos->the_post();
+					// Pick the card partial for the current item type.
 					$unit_card_type = wpstream_video_item_card_selector();
+					// Render the selected card partial from the theme.
 					include WPSTREAM_PLUGIN_PATH . 'hello-wpstream/' . $unit_card_type;
 					echo '</li>';
 				}
 
+				// Close the list container.
 				echo '</ul>';
 
+				// Sidebar closing wrapper.
 				$this->widget_end( $args );
 			}
 
+			// Restore the global post after our custom loop.
 			wp_reset_postdata();
 		}
 	}

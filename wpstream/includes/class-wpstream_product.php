@@ -8,25 +8,44 @@
 
 
 /**
- * Description of class-wpstream-wpstream_product
+ * Registers the WpStream custom post types and their taxonomies.
+ *
+ * Defines the Free-To-View Live Channel, Free-To-View VOD, and Video
+ * Collection post types together with the wpstream_actors / wpstream_category /
+ * wpstream_movie_rating taxonomies, wires custom capabilities, renders the
+ * taxonomy term meta fields (page id, featured image, tagline), and maintains
+ * cached term-value lists used by shortcodes.
  *
  * @author cretu
+ *
+ * @package    Wpstream
+ * @subpackage Wpstream/includes
  */
 class Wpstream_Product {
-        
+
+    /**
+     * Hook term add/edit/delete to cache rebuilds and adjust the product list columns.
+     */
     public function __construct() {
+        // Any term create/edit/delete invalidates and rebuilds the cached term lists.
         add_action( 'create_term', array($this,'wpstream_redo_transient') );
         add_action( 'edit_term', array($this,'wpstream_redo_transient') );
         add_action( 'delete_term', array($this,'wpstream_redo_transient') );
+        // Hide the WpStream taxonomy columns from the WooCommerce products table.
         add_filter('manage_edit-product_columns', array($this,'remove_wpstream_category_column') ) ;
     }
-    
-    
+
+
+    /**
+     * Flush the cached taxonomy value transients and regenerate them.
+     */
     public function wpstream_redo_transient(){
+        // Drop the stale cached term-value lists.
         delete_transient('wpstream_woo_movie_category_values');
         delete_transient('wpstream_woo_actors_category_values');
         delete_transient('wpstream_woo_product_cat');
         delete_transient('wpstream_woo_movie_rating_category_values');
+        // Rebuild each list so subsequent reads hit a warm cache.
         $this->wpstream_generate_woo_movie_category_values_shortcode();
         $this->wpstream_generate_actors_category_values_shortcode();
         $this->wpstream_generate_woo_product_tax_values_shortcode();
@@ -39,10 +58,12 @@ class Wpstream_Product {
     * Register custom post type
     *
     * @link https://codex.wordpress.org/Function_Reference/register_post_type
+    *
+    * @param array $fields Post type definition (slug, singular/plural labels, supports, caps, taxonomies, ...).
     */
     private function register_single_post_type( $fields ) {
 
-    
+        // Build the full labels array from the singular/plural names supplied in $fields.
         $labels = array(
             'name'                  => $fields['plural'],
             'singular_name'         => $fields['singular'],
@@ -69,6 +90,7 @@ class Wpstream_Product {
 			'archive_title'        => $fields['plural'],
         );
 
+        // Assemble register_post_type() args, falling back to sensible defaults for anything not in $fields.
         $args = array(
             'labels'             => $labels,
             'description'        => ( isset( $fields['description'] ) ) ? $fields['description'] : '',
@@ -101,6 +123,7 @@ class Wpstream_Product {
             'taxonomies'          => array( 'category','post_tag' ),
         );
 
+        // Apply a custom permalink rewrite rule when the definition provides one.
         if ( isset( $fields['rewrite'] ) ) {
 
             /**
@@ -110,6 +133,7 @@ class Wpstream_Product {
             $args['rewrite'] = $fields['rewrite'];
         }
 
+        // When custom capabilities are requested, map meta caps and assign them to roles.
         if ( $fields['custom_caps'] ) {
 
             /**
@@ -123,6 +147,7 @@ class Wpstream_Product {
              * @link https://gist.github.com/creativembers/6577149
              * @link http://justintadlock.com/archives/2010/07/10/meta-capabilities-for-custom-post-types
              */
+            // Explicit capability map keyed off the singular/plural names.
             $args['capabilities'] = array(
 
                 // Meta capabilities
@@ -157,15 +182,18 @@ class Wpstream_Product {
              * Assign capabilities to users
              * Without this, users - also admins - can not see post type.
              */
+            // Grant the mapped capabilities to the configured roles.
             $this->assign_capabilities( $args['capabilities'], $fields['custom_caps_users'] );
         }
 
+        // Register the post type itself with WordPress.
         register_post_type( $fields['slug'], $args );
 
         /**
          * Register Taxnonmies if any
          * @link https://codex.wordpress.org/Function_Reference/register_taxonomy
          */
+        // Register each associated taxonomy declared for this post type.
         if ( isset( $fields['taxonomies'] ) && is_array( $fields['taxonomies'] ) ) {
 
             foreach ( $fields['taxonomies'] as $taxonomy ) {
@@ -175,29 +203,39 @@ class Wpstream_Product {
             }
 
         }
-        
+
+        // Warm the cached term-value lists now that the taxonomies exist.
         $this->wpstream_generate_woo_movie_category_values_shortcode();
         $this->wpstream_generate_actors_category_values_shortcode();
         $this->wpstream_generate_woo_product_tax_values_shortcode();
         $this->wpstream_generate_movie_rating_category_values_shortcode();
-        
+
     }
 
     
     
     
+    /**
+     * Build (and cache for 4 hours) the wpstream_category term list for shortcodes.
+     *
+     * @return array List of ['label' => name, 'value' => term_id] entries.
+     */
     public function  wpstream_generate_woo_movie_category_values_shortcode(){
-    
+
+        // Parallel map of term_id => name, cached alongside the value list.
         $all_tax_labels=array();
+        // Serve from cache when available; a false result means the cache is cold.
         $property_action_category_values = get_transient('wpstream_woo_movie_category_values');
         if($property_action_category_values===false){
             $property_action_category_values=array();
+            // Fetch every term (including empty ones) in the media-category taxonomy.
             $terms_category = get_terms( array(
                 'taxonomy' => 'wpstream_category',
                 'hide_empty' => false,
             ) );
-            
+
             if( is_array($terms_category) ){
+                // Convert each term into a label/value pair for the shortcode select.
                 foreach($terms_category as $term){
 
                     $temp_array=array();
@@ -211,6 +249,7 @@ class Wpstream_Product {
 
                 }
             }
+            // Cache both the id=>name labels and the value list for 4 hours.
             set_transient('wpstream_woo_movie_category_values_label',$all_tax_labels,60*60*4);
             set_transient('wpstream_woo_movie_category_values',$property_action_category_values,60*60*4);
         }
@@ -220,12 +259,20 @@ class Wpstream_Product {
     
     
     
+    /**
+     * Build (and cache for 4 hours) the wpstream_actors term list for shortcodes.
+     *
+     * @return array List of ['label' => name, 'value' => term_id] entries.
+     */
     public  function wpstream_generate_actors_category_values_shortcode(){
+        // Parallel map of term_id => name, cached alongside the value list.
         $all_tax_labels=array();
+        // Serve from cache when available; false means rebuild.
         $movie_actors_values = get_transient('wpstream_woo_actors_category_values');
 
         if($movie_actors_values===false){
             $movie_actors_values=array();
+            // Fetch every actor term, including empty ones.
             $terms_actors= get_terms( array(
                 'taxonomy' => 'wpstream_actors',
                 'hide_empty' => false,
@@ -233,6 +280,7 @@ class Wpstream_Product {
 
 
             if( is_array($terms_actors) ){
+                // Convert each term into a label/value pair for the shortcode select.
                 foreach($terms_actors as $term){
                     $places[$term->name]= $term->term_id;
                     $temp_array=array();
@@ -245,7 +293,8 @@ class Wpstream_Product {
                 }
             }
 
-         
+
+            // Cache both the id=>name labels and the value list for 4 hours.
             set_transient('wpstream_woo_actors_category_values_label',$all_tax_labels,60*60*4);
             set_transient('wpstream_woo_actors_category_values',$movie_actors_values,60*60*4);
         }
@@ -253,17 +302,26 @@ class Wpstream_Product {
     }
     
     
+    /**
+     * Build (and cache for 4 hours) the WooCommerce product_cat term list for shortcodes.
+     *
+     * @return array List of ['label' => name, 'value' => term_id] entries.
+     */
     public function wpstream_generate_woo_product_tax_values_shortcode(){
+        // Parallel map of term_id => name, cached alongside the value list.
         $all_tax_labels=array();
+        // Serve from cache when available; false means rebuild.
         $product_categ_values = get_transient('wpstream_woo_product_cat');
-      
+
         if($product_categ_values===false){
+            // Fetch every WooCommerce product category, including empty ones.
             $product_cat= get_terms( array(
                 'taxonomy' => 'product_cat',
                 'hide_empty' => false,
             ) );
             $product_categ_values=array();
             if( is_array($product_cat) ){
+                // Convert each term into a label/value pair for the shortcode select.
                 foreach($product_cat as $term){
                     $places[$term->name]= $term->term_id;
                     $temp_array=array();
@@ -278,6 +336,7 @@ class Wpstream_Product {
 
                 }
             }
+            // Cache both the id=>name labels and the value list for 4 hours.
             set_transient('wpstream_woo_product_cat_label',$all_tax_labels,60*60*4);
             set_transient('wpstream_woo_product_cat',$product_categ_values,60*60*4);
         }
@@ -286,16 +345,25 @@ class Wpstream_Product {
     }
 
 
+    /**
+     * Build (and cache for 4 hours) the wpstream_movie_rating term list for shortcodes.
+     *
+     * @return array List of ['label' => name, 'value' => term_id] entries.
+     */
     public function wpstream_generate_movie_rating_category_values_shortcode(){
+       // Parallel map of term_id => name, cached alongside the value list.
        $all_tax_labels=array();
+        // Serve from cache when available; false means rebuild.
         $movie_rating_values = get_transient('wpstream_woo_movie_rating_category_values');
         if($movie_rating_values===false){
+            // Fetch every movie-rating term, including empty ones.
             $movie_ratiog= get_terms( array(
                 'taxonomy' => 'wpstream_movie_rating',
                 'hide_empty' => false,
             ) );
             $movie_rating_values=array();
             if( is_array($movie_ratiog) ){
+                // Convert each term into a label/value pair for the shortcode select.
                 foreach($movie_ratiog as $term){
                     $places[$term->name]= $term->term_id;
                     $temp_array=array();
@@ -310,6 +378,7 @@ class Wpstream_Product {
 
                 }
             }
+            // Cache both the id=>name labels and the value list for 4 hours.
             set_transient('wpstream_woo_movie_rating_category_values_label',$all_tax_labels,60*60*4);
             set_transient('wpstream_woo_movie_rating_category_values',$movie_rating_values,60*60*4);
         }
@@ -325,10 +394,13 @@ class Wpstream_Product {
     * Register taxonomy custom post type
     *
     * @link https://codex.wordpress.org/Function_Reference/register_taxonomy
+    *
+    * @param array $tax_fields Taxonomy definition (taxonomy, single/plural, post_types, rewrite, ...).
     */
-    
+
     private function register_single_post_type_taxnonomy( $tax_fields ) {
 
+        // Build the taxonomy admin labels from its single/plural names.
         $labels = array(
             'name'                       => $tax_fields['plural'],
             'singular_name'              => $tax_fields['single'],
@@ -349,6 +421,7 @@ class Wpstream_Product {
             'not_found'                  => sprintf( __( 'No %s found' , 'wpstream' ), $tax_fields['plural'] ),
         );
 
+        // Assemble register_taxonomy() args, defaulting anything the definition omits.
         $args = array(
         	'label'                 => $tax_fields['plural'],
         	'labels'                => $labels,
@@ -369,8 +442,10 @@ class Wpstream_Product {
         	'sort'                  => ( isset( $tax_fields['sort'] ) )                  ? $tax_fields['sort']                  : '',
         );
 
+        // Let integrators tweak the args via a per-taxonomy filter before registration.
         $args = apply_filters( $tax_fields['taxonomy'] . '_args', $args );
 
+        // Register the taxonomy against its target post types.
         register_taxonomy( $tax_fields['taxonomy'], $tax_fields['post_types'], $args );
 
     }
@@ -380,13 +455,19 @@ class Wpstream_Product {
      *
      * @link https://codex.wordpress.org/Function_Reference/register_post_type
      * @link https://typerocket.com/ultimate-guide-to-custom-post-types-in-wordpress/
+     *
+     * @param array $caps_map Map of WordPress cap key => custom capability string.
+     * @param array $users    Role slugs to receive the custom capabilities.
      */
     public function assign_capabilities( $caps_map, $users  ) {
 
+        // Walk each target role.
         foreach ( $users as $user ) {
 
+            // Resolve the WP_Role object for this role slug.
             $user_role = get_role( $user );
 
+            // Add every mapped custom capability to that role.
             foreach ( $caps_map as $cap_map_key => $capability ) {
 
                 $user_role->add_cap( $capability );
@@ -398,11 +479,15 @@ class Wpstream_Product {
     }
 
     /**
+     * Render the extra term-meta fields on the Edit Term screen.
+     *
      * CUSTOMIZE CUSTOM POST TYPE AS YOU WISH.
+     *
+     * @param object|string $tag      Term object being edited (or a string on add screens).
+     * @param string        $taxonomy Taxonomy slug the term belongs to.
      */
-
-
     public   function wpstream_category_callback_function($tag, $taxonomy){
+            // Editing an existing term: load its saved meta values.
             if(is_object ($tag)){
                 $t_id                       =   $tag->term_id;
                 $term_meta                  =   get_option( "taxonomy_$t_id");
@@ -412,12 +497,14 @@ class Wpstream_Product {
                 $category_tagline           =   stripslashes($category_tagline);
                 $category_attach_id         =   $term_meta['category_attach_id'] ? $term_meta['category_attach_id'] : '';
             }else{
+                // No term object: start with empty defaults.
                 $pagetax                    =   '';
                 $category_featured_image    =   '';
                 $category_tagline           =   '';
                 $category_attach_id         =   '';
             }
 
+            // Output the edit-screen form rows pre-filled with the values above.
             print'
             <table class="form-table">
             <tbody>    
@@ -460,11 +547,14 @@ class Wpstream_Product {
     
     
      /**
+     * Render the extra term-meta fields on the Add New Term screen.
+     *
      * CUSTOMIZE CUSTOM POST TYPE AS YOU WISH.
+     *
+     * @param object|string $tag Term object, or (on the add screen) the taxonomy string.
      */
-
-
     public function wpstream_category_callback_add_function($tag){
+        // Editing an existing term: load its saved meta values.
         if(is_object ($tag)){
             $t_id                       =   $tag->term_id;
             $term_meta                  =   get_option( "taxonomy_$t_id");
@@ -473,6 +563,7 @@ class Wpstream_Product {
             $category_tagline           =   $term_meta['category_tagline'] ? $term_meta['category_tagline'] : '';
             $category_attach_id         =   $term_meta['category_attach_id'] ? $term_meta['category_attach_id'] : '';
         }else{
+            // Add screen (no term yet): start with empty defaults.
             $pagetax                    =   '';
             $category_featured_image    =   '';
             $category_tagline           =   '';
@@ -480,6 +571,7 @@ class Wpstream_Product {
 
         }
 
+        // Output the add-screen form fields pre-filled with the values above.
         print'
         <div class="form-field">
         <label for="term_meta[pagetax]">'. esc_html__( 'Page id for this term','wpstream').'</label>
@@ -503,16 +595,22 @@ class Wpstream_Product {
     }
 
     /**
+     * Persist the extra term-meta fields when a term is created or updated.
+     *
      * CUSTOMIZE CUSTOM POST TYPE AS YOU WISH.
+     *
+     * @param int $term_id ID of the term being saved.
      */
-    
-
     function wpstream_category_save_extra_fields_callback($term_id ){
+        // Only act when the edit/add form actually submitted term_meta data.
         if ( isset( $_POST['term_meta'] ) ) {
+            // Load any existing meta so unsubmitted keys are preserved.
             $t_id = $term_id;
             $term_meta = get_option( "taxonomy_$t_id");
             $cat_keys = array_keys($_POST['term_meta']);
+            // Empty allowed-HTML list: values are stripped of all markup.
             $allowed_html   =   array();
+                // Sanitize each submitted key/value before storing it.
                 foreach ($cat_keys as $key){
                     $key=sanitize_key($key);
                     if (isset($_POST['term_meta'][$key])){
@@ -544,17 +642,20 @@ class Wpstream_Product {
          */
         
         
+        // Live-channel permalink base: admin-configured slug, or 'wpstream' when unset.
         $custom_slug =  esc_html( get_option('wpstream_free_media_slug','') );
         if($custom_slug==''){
             $custom_slug='wpstream';
         }
 
+        // VOD permalink base: admin-configured slug, or 'wpstream_vod' when unset.
         $custom_slug_vod =  esc_html( get_option('wpstream_free_media_slug_vod','') );
         if($custom_slug_vod==''){
             $custom_slug_vod='wpstream_vod';
         }
-        
-      
+
+
+        // First post type: Free-To-View Live Channel, with its three shared taxonomies.
         $post_types_fields = array(
             array(
                 'slug'                  =>  'wpstream_product',
@@ -631,8 +732,9 @@ class Wpstream_Product {
         );
 
 
+        // Second post type: Free-To-View VOD (reuses the taxonomies registered above).
         $post_types_fields[] = array(
-            
+
                 'slug'                  =>  'wpstream_product_vod',
                 'singular'              => __( 'Free-To-View VOD','wpstream'),
                 'plural'                => __( 'Free-To-View VODs','wpstream'),
@@ -672,9 +774,10 @@ class Wpstream_Product {
                
         );
 
+        // Third post type: Video Collection (bundles) — only when the theme customizer helper is present.
         if( function_exists('wpstream_custom_theme_customizer')){
             $post_types_fields[] = array(
-            
+
                 'slug'                  =>  'wpstream_bundles',
                 'singular'              => __( 'Video Collection','wpstream'),
                 'plural'                => __( 'Video Collections','wpstream'),
@@ -737,6 +840,7 @@ class Wpstream_Product {
             $this->register_single_post_type( $fields );
         }
 
+        // One-time 5.0 data migration: run once until the flag option is set.
         if( get_option('wpstream_updated_50')!=='yes' ){
             $this->wpstream_50_post_update();
         }
@@ -745,32 +849,40 @@ class Wpstream_Product {
     }
 
 
+    /**
+     * One-time 5.0 migration: move VOD-typed legacy posts to the wpstream_product_vod type.
+     */
     public function wpstream_50_post_update(){
+        // Query every legacy wpstream_product post regardless of status.
         $arg=array(
             'post_type'     =>'wpstream_product',
             'post_status'   => 'any',
-            'posts_per_page'=> -1 
+            'posts_per_page'=> -1
         );
-        
-            	
+
+
         $the_query = new WP_Query($arg);
-        
+
         if($the_query->have_posts()){
+            // Inspect each post's stored product type.
             while ( $the_query->have_posts() ) {
                 $the_query->the_post();
                 $post_id=get_the_ID();
                 $wpstream_product_type =    esc_html(get_post_meta($post_id, 'wpstream_product_type', true));
-                  
+
+                // Types 2 and 3 were VOD entries: convert them to the dedicated VOD post type.
                 if($wpstream_product_type==2 || $wpstream_product_type==3){
                     // print 'will update '.$post_id.' - '.get_the_title($post_id).'</br>'.PHP_EOL;
                     set_post_type(  $post_id, 'wpstream_product_vod' );
                 }
 
             }
-        global $wp_rewrite; 
+        // Rewrite rules changed with the moved posts, so flush them.
+        global $wp_rewrite;
         $wp_rewrite->flush_rules( true );
 
-        update_option('wpstream_updated_50','yes');     
+        // Mark the migration complete so it never runs again.
+        update_option('wpstream_updated_50','yes');
         }
     }
     
@@ -780,7 +892,14 @@ class Wpstream_Product {
     /*
     *Remove the custom taxonomy column from the WooCommerce product list
      */
+     /**
+      * Drop the WpStream taxonomy columns from the WooCommerce products admin table.
+      *
+      * @param array $columns Existing column id => label map.
+      * @return array Filtered columns without the WpStream taxonomy columns.
+      */
      function remove_wpstream_category_column($columns) {
+        // Only strip them when the media-category column is present (WooCommerce product list).
         if (isset($columns['taxonomy-wpstream_category'])) {
             unset($columns['taxonomy-wpstream_category']);
             unset($columns['taxonomy-wpstream_actors']);

@@ -1,10 +1,16 @@
 <?php
 /**
  * Item slider
+ * Elementor widget rendering a horizontal carousel ("slider") of WpStream
+ * items - free VOD, free live channels, free bundles, or WooCommerce products.
+ * It registers the editor controls (content, filters, arrow colours/geometry),
+ * maps chosen settings to shortcode-style attributes, and delegates the markup
+ * to `wpestream_theme_slider_items()`. In edit mode it also boots the slick carousel.
  *
  * @package wpstream-theme
  */
 
+// Elementor base class plus the control/typography/border/shadow helpers used below.
 use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
 use Elementor\Repeater;
@@ -33,13 +39,17 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 	 * @return string Widget name.
 	 */
 	public function get_name() {
+		// Unique machine id Elementor stores this widget under.
 		return 'WpStreamTheme_Items_Slider';
 	}
 
 	/**
 	 * Get categories
+	 *
+	 * @return array Panel category slug(s) this widget is grouped under.
 	 */
 	public function get_categories() {
+		// Show this widget under the custom hello-wpstream panel category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -53,6 +63,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 	 * @return string Widget title.
 	 */
 	public function get_title() {
+		// Label shown on the widget tile in the editor.
 		return __( 'Items Slider', 'hello-wpstream' );
 	}
 
@@ -66,6 +77,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 	 * @return string Widget icon.
 	 */
 	public function get_icon() {
+		// Elementor icon-font class for the widget tile.
 		return 'eicon-slider-album';
 	}
 
@@ -81,6 +93,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 	 * @return array Widget scripts dependencies.
 	 */
 	public function get_script_depends() {
+		// Front-end carousel script this widget needs enqueued.
 		return array( 'owl_carousel' );
 	}
 
@@ -94,34 +107,48 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 	 * @return array The transformed data as an associative array.
 	 */
 	public function elementor_transform( $input ) {
+		// Collects the reshaped value => label pairs.
 		$output = array();
 		if ( is_array( $input ) ) {
+			// Re-key each entry: term value becomes the key, label becomes the value.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the value => label map (empty when input is not an array).
 		return $output;
 	}
 
 
 	/**
 	 * Register control
+	 * Builds the Content, Filters and Style (arrow colour + geometry) sections.
+	 * Runs when Elementor renders this widget's settings panel.
 	 */
 	protected function register_controls() {
 
+		// Scratch array for taxonomy data.
 		$taxonomy_data = array();
+		// Fetch the registered WpStream taxonomies keyed by taxonomy name.
 		$available_tax = wpstream_return_taxonomy_array();
+		// Drop post tags - not offered as a slider filter.
 		unset( $available_tax['post_tag'] );
 
+		// Convert each taxonomy's terms into SELECT2 value => label options.
 		foreach ( $available_tax as $taxonoy_name => $post_types ) :
+			// Raw term choices for this taxonomy.
 			$temp_taxonomy_values           = wpstream_theme_generate_category_values( $taxonoy_name );
+			// Normalise to the value => label shape.
 			$temp_taxonomy_values           = $this->elementor_transform( $temp_taxonomy_values );
+			// Store the normalised options back under the taxonomy name.
 			$available_tax[ $taxonoy_name ] = $temp_taxonomy_values;
 
 		endforeach;
 
 
+		// Arrow placement choices: overlaid on top or on the sides.
 		$arrow_type         =   array('top'=>'top','sideways'=>'sideways');
+		// Content types the slider can display.
 		$wpstream_items_array= array( 
 			'wpstream_product_vod'	=>	esc_html__('Free VOD','hello-wpstream'),
 			'wpstream_product'		=>	esc_html__('Free Live Channels','hello-wpstream'),		
@@ -131,11 +158,13 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		);
 
 		
+		// Sort-order options from the theme helper (when available).
 		$sort_options = array();
 		if ( function_exists( 'wstream_sort_options_array' ) ) {
 			$sort_options = wstream_sort_options_array();
 		}
 		
+		// === Content section: item type, counts, sort, card style ===
 		$this->start_controls_section(
             'section_content',
             [
@@ -143,6 +172,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
             ]
         );
 
+		// Control: which content type(s) feed the slider.
 		$this->add_control(
 			'type',
 			[
@@ -156,6 +186,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			
 		);
 
+		// Control: where the navigation arrows sit (top vs sideways).
 		$this->add_control(
 			'arrows_position',
 			[
@@ -166,6 +197,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			]
 		);
 
+		// Control: total number of items to load.
 		$this->add_control(
             'number',
             [
@@ -175,6 +207,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
             ]
         );
 			
+		// Control: how many items are visible per row.
 		$this->add_control(
 			'rownumber',
 			array(
@@ -191,6 +224,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		);
 
 
+		// Control: auto-scroll interval in ms (0 disables autoplay).
 		$this->add_control(
 				'autoscroll',
 				[
@@ -201,6 +235,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 
 				]
 		);
+		// Control: sort order for the queried items.
 		$this->add_control(
 			'sort_by',
 			[
@@ -211,6 +246,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			]
 		);
 
+		// Control: which video-card template to render.
 	$this->add_control(
 			'video_card',
 			[
@@ -223,6 +259,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 				)
 			]
 		);
+		// End Content section.
 		$this->end_controls_section();
 
 
@@ -235,6 +272,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		/*
 		* Start filters
 		*/
+		// === Filters section: restrict items by taxonomy term ===
 		$this->start_controls_section(
 			'filters_section',
 			array(
@@ -243,6 +281,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// Filter: standard WP categories.
 		$this->add_control(
 			'category_ids',
 			array(
@@ -255,6 +294,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// Filter: WpStream media categories.
 		$this->add_control(
 			'wpstream_category_ids',
 			array(
@@ -267,6 +307,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// Filter: movie-rating terms.
 		$this->add_control(
 			'movie_ratings_ids',
 			array(
@@ -279,6 +320,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// Filter: actor terms.
 		$this->add_control(
 			'actors_ids',
 			array(
@@ -291,11 +333,13 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// End Filters section.
 		$this->end_controls_section();
 
 
 	
 
+		// === Style: arrow colours (normal + hover) ===
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -304,6 +348,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)			
 		);
 
+		// Style: arrow background colour.
 		$this->add_control(
 			'arrows_main_back_color',
 			array(
@@ -317,6 +362,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// Style: arrow icon colour.
 		$this->add_control(
 			'arrows_font_color',
 			array(
@@ -333,6 +379,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		
 	
 
+		// Style: arrow hover background colour.
 		$this->add_control(
 			'dropdown_menu_back_color',
 			array(
@@ -346,6 +393,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// Style: arrow hover icon colour.
 		$this->add_control(
 			'dropdown_menu_font_color',
 			array(
@@ -360,8 +408,10 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		);
 		
 
+		// End arrow-colour section.
 		$this->end_controls_section();
 
+		// === Style: arrow geometry (radius, size, position, border, shadow) ===
 		$this->start_controls_section(
 			'arrow_style_section',
 			array(
@@ -370,6 +420,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)			
 		);
 
+		// Style: arrow corner radius.
 		$this->add_responsive_control(
 			'arrow_border_radius', [
 			'label' => esc_html__('Border Radius', 'hello-wpstream'),
@@ -381,6 +432,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			]
 		);
 
+		// Style: vertical offset of the arrows.
 		$this->add_responsive_control(
 			'arrow_margin_top', [
 		'label' => esc_html__('Arrows Top Margin', 'hello-wpstream'),
@@ -402,6 +454,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		);
 
 
+		// Style: arrow circle diameter.
 		$this->add_responsive_control(
 			'arrow_size', [
 		'label' => esc_html__('Arrow Circle Size', 'hello-wpstream'),
@@ -419,6 +472,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		],
 			]
 		);
+		// Style: arrow glyph (svg) size.
 		$this->add_responsive_control(
 			'actual_arrow_size', [
 		'label' => esc_html__('Arrow Size', 'hello-wpstream'),
@@ -437,6 +491,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			]
 		);
 
+		// Style: previous-arrow right offset (top layout only).
 		$this->add_responsive_control(
 			'arrow_margin_right', [
 		'label' => esc_html__('Previous Button - Right Position ', 'hello-wpstream'),
@@ -460,6 +515,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			]
 		);
 
+		// Style: arrow border thickness.
 		$this->add_responsive_control(
 			'arrows_border_width', [
 				'label' => esc_html__('Border Width ', 'hello-wpstream'),
@@ -476,6 +532,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			]
 		);
 
+		// Style: arrow border colour.
 		$this->add_control(
 			'arrows_border_color',
 			array(
@@ -488,6 +545,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 			)
 		);
 
+		// Style: arrow drop-shadow group control.
 		$this->add_group_control(
 			Group_Control_Box_Shadow::get_type(), [
 		'name' => 'box_shadow',
@@ -499,6 +557,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 
 
 
+		// End arrow-geometry section.
 		$this->end_controls_section();
 	}
 
@@ -515,11 +574,15 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 	 * @return string The HTML output generated from the input data.
 	 */
 	public function wpstream_send_to_shortcode( $input ) {
+		// Build a comma-separated string from the selected term values.
 		$output = '';
+		// Only process a non-empty array of values.
 		if ( !empty($input) && is_array($input)) {
+			// Track the total count so we can avoid a trailing comma.
 			$num_items = count( $input );
 			$i         = 0;
 
+			// Append each value, comma-separating all but the last.
 			foreach ( $input as $key => $value ) {
 				$output .= $value;
 				if ( ++$i !== $num_items ) {
@@ -527,16 +590,21 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 				}
 			}
 		}
+		// Return the joined "a, b, c" string.
 		return $output;
 	}
 
 
 	/**
 	 * Render
+	 * Maps editor settings to attributes, prints the slider markup via
+	 * `wpestream_theme_slider_items()`, and (in edit mode) boots slick.
 	 */
 	protected function render() {
+		// Pull the resolved control values for this widget instance.
 		$settings = $this->get_settings_for_display();
 
+		// Copy the simple scalar settings into the attributes array.
 		$attributes['type']                  = $settings['type'];
 		$attributes['arrows_position']       = $settings['arrows_position'];
 		$attributes['number']                = $settings['number'];
@@ -545,26 +613,35 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 		$attributes['sort_by']               = $settings['sort_by'];
 		$attributes['video_card'] 			 = $settings['video_card'];
 
+		// Flatten the multi-select taxonomy filters into comma-separated lists.
 		$attributes['category_ids']          = $this->wpstream_send_to_shortcode( $settings['category_ids'] );
 		$attributes['wpstream_category_ids'] = $this->wpstream_send_to_shortcode( $settings['wpstream_category_ids'] );
 		$attributes['movie_ratings_ids']     = $this->wpstream_send_to_shortcode( $settings['movie_ratings_ids'] );
 		$attributes['actors_ids']            = $this->wpstream_send_to_shortcode( $settings['actors_ids'] );
 
 
+		// Flag so the helper knows it is rendering inside Elementor.
 		$attributes['is_elementor']          = true;
 
+		// Unique DOM id for this carousel instance.
 		$slider_id                        = 'video_slider_carousel_elementor_v1_' . wp_rand( 1, 99999 );
+		// Build the slider markup from the assembled attributes.
 		$slider_data                      = wpestream_theme_slider_items( $attributes, $slider_id );
 
+		// Output the markup (helper escapes internally; phpcs ignore below).
 		print trim( $slider_data); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 
+		// In the editor preview, initialise slick so the carousel is live.
 		if ( \Elementor\Plugin::instance()->editor->is_edit_mode() ) :
 			?>
 			<script>
 
+				// For each slider on the page, initialise a slick carousel.
 				jQuery('.wpstream-item-list-slider').each(function () {
+					// Read items-per-row and autoplay period from data attributes.
 					var items = jQuery(this).attr('data-items-per-row');
 					var auto = parseInt(jQuery(this).attr('data-auto'));
+					// Build the carousel: custom arrows and responsive breakpoints.
 					var slick = jQuery(this).slick({
 						infinite: true,
 						slidesToShow: items,
@@ -590,6 +667,7 @@ class WpStreamTheme_Items_Slider extends Widget_Base {
 							}
 						]
 					});
+					// Flip the carousel direction for RTL locales.
 					if (wpstream_theme.is_rtl === '1') {
 						jQuery(this).slick('slickSetOption', 'rtl', true, true);
 						jQuery(this).slick('slidesToScroll', '-1');

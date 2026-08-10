@@ -1,4 +1,18 @@
 <?php
+/**
+ * Elementor widget: Contact Form Builder.
+ *
+ * Registers a fully configurable front-end contact form as an Elementor widget
+ * for the hello-wpstream theme. The widget lets the editor build an arbitrary
+ * list of form fields (name, email, message, address, etc.) via a repeater,
+ * style every part of the form (fields, labels, GDPR notice, submit button),
+ * and configure the outgoing email subject. The rendered markup mirrors
+ * Elementor's native form structure and is submitted over AJAX by an external
+ * script (wpstream_elementor_submit_form()).
+ *
+ * @package    Wpstream
+ * @subpackage Wpstream/hello-wpstream/elementor/widgets
+ */
 
 
 
@@ -58,15 +72,35 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		return 'eicon-form-horizontal';
 	}
 
+	/**
+	 * Retrieve the Elementor categories this widget belongs to.
+	 *
+	 * @access public
+	 *
+	 * @return array List with the single 'hello-wpstream' panel category.
+	 */
 	public function get_categories() {
+		// Place the widget under the theme's own "hello-wpstream" panel category.
 		return array( 'hello-wpstream' );
 	}
 
 
+	/**
+	 * Register the widget's Elementor controls.
+	 *
+	 * Builds the editor panel: the repeater of form fields, general form
+	 * options (input size, labels, GDPR agreement), the submit button section,
+	 * the email settings section, and all the Style-tab sections (form, field,
+	 * GDPR and button styling).
+	 *
+	 * @access protected
+	 */
 	protected function register_controls() {
 
+		// Repeater used to collect the individual form fields the editor adds.
 		$repeater = new Repeater();
 
+		// Map of selectable field types -> human-readable labels for the dropdown.
 		$form_fields = array(
 			'name' => esc_html__( 'Full Name', 'hello-wpstream' ),
 			'first_name' => esc_html__( 'First Name', 'hello-wpstream' ),
@@ -87,6 +121,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		 */
 
 
+		// Repeater control: which field type this row represents (name, email, message, ...).
 		$repeater->add_control(
 			'field_type',
 			[
@@ -97,6 +132,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Repeater control: the visible label printed above/next to this field.
 		$repeater->add_control(
 			'field_label',
 			[
@@ -106,6 +142,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Repeater control: placeholder text shown inside the empty input.
 		$repeater->add_control(
 			'placeholder',
 			[
@@ -125,6 +162,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Repeater control: toggle marking this field as required on submit.
 		$repeater->add_control(
 			'required',
 			[
@@ -147,6 +185,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// Repeater responsive control: per-field column width (fraction of the row).
 		$repeater->add_responsive_control(
 			'width',
 			[
@@ -169,6 +208,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Repeater control: textarea row count, only shown for the 'message' field type.
 		$repeater->add_control(
 			'rows',
 			[
@@ -191,6 +231,9 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// -----------------------------------------------------------------
+		// CONTENT tab: "Form Fields" section (the repeater + general options).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'wpstream-theme_area_form_fields',
 			[
@@ -200,6 +243,8 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// The repeater control itself, seeded with three default fields
+		// (name, email, message). Each row uses the controls defined above.
 		$this->add_control(
 			'form_fields',
 			[
@@ -234,6 +279,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Global input size applied to every field (xs..xl -> elementor-size-* class).
 		$this->add_control(
 			'form_field_input_size',
 			[
@@ -251,6 +297,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Toggle whether field labels are visible or only screen-reader visible.
 		$this->add_control(
 			'form_field_show_labels',
 			[
@@ -267,6 +314,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// Toggle to show a GDPR consent checkbox below the fields.
 		$this->add_control(
 			'has_gdpr_agreement',
 			[
@@ -280,6 +328,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// URL the GDPR consent text links to (e.g. the privacy policy page).
 		$this->add_control(
 			'link_gdpr_agreement', [
 				'label' => __('Gdpr link', 'hello-wpstream'),
@@ -288,6 +337,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 				'type' => Controls_Manager::TEXT,
 			]
 		);
+		// The GDPR consent sentence itself (only relevant when the toggle is on).
 		$this->add_control(
 			'gdpr_text',
 			[
@@ -301,6 +351,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// End of the "Form Fields" content section.
 		$this->end_controls_section();
 
 
@@ -310,6 +361,9 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		*/
 
 
+		// -----------------------------------------------------------------
+		// CONTENT tab: "Submit Button" section (label, size, width, align, id).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'wpstream-theme_area_submit_button',
 			[
@@ -317,6 +371,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Text printed on the submit button.
 		$this->add_control(
 			'submit_button_text',
 			[
@@ -327,6 +382,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Button size preset (xs..xl -> elementor-size-* class).
 		$this->add_control(
 			'submit_button_size',
 			[
@@ -343,6 +399,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Button column width as a percentage of its row.
 		$this->add_responsive_control(
 			'submit_button_width',
 			[
@@ -366,6 +423,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Button horizontal alignment; drives a prefix_class on the wrapper.
 		$this->add_responsive_control(
 			'submit_button_align',
 			[
@@ -394,6 +452,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Optional custom HTML id applied to the submit button element.
 		$this->add_control(
 			'wpstream-theme_submit_button_elementor',
 			[
@@ -407,6 +466,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// End of the "Submit Button" content section.
 		$this->end_controls_section();
 
 
@@ -420,6 +480,9 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		*-------------------------------------------------------------------------------------------------
 		* Email settings
 		*/
+		// -----------------------------------------------------------------
+		// CONTENT tab: "Email Settings" section (outgoing subject line).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'wpstream-theme_area_email_settings',
 			[
@@ -429,7 +492,9 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// Default subject line "New email from <site name>" used for the notification.
 		$email_subject = sprintf( esc_html__( 'New email from "%s" ', 'hello-wpstream' ), get_option( 'blogname' ) );
+		// Editable email subject control (render_type 'none' -> no live re-render).
 		$this->add_control(
 			'email_subject',
 			[
@@ -444,6 +509,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// End of the "Email Settings" content section.
 		$this->end_controls_section();
 
 		/*
@@ -453,6 +519,9 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// -----------------------------------------------------------------
+		// STYLE tab: "Form" section (column/row gaps and label styling).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'wpstream-theme_area_form_style',
 			[
@@ -461,6 +530,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Horizontal gap between form columns (splits padding across field groups).
 		$this->add_responsive_control(
 			'wpersidence_form_column_gap',
 			[
@@ -484,6 +554,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Vertical gap between form rows (bottom margin on each field group).
 		$this->add_responsive_control(
 			'wpersidence_form_row_gap',
 			[
@@ -505,6 +576,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Section heading separating the label-styling controls that follow.
 		$this->add_control(
 			'wpstream-theme_form_heading_label',
 			[
@@ -514,6 +586,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Spacing between a label and its field (RTL-aware padding rules).
 		$this->add_responsive_control(
 			'wpstream-theme_form_label_spacing',
 			[
@@ -537,6 +610,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Label text color for all field-group labels.
 		$this->add_control(
 			'wpstream-theme_form_label_color',
 			[
@@ -555,6 +629,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// Typography group control for the field labels.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			[
@@ -575,8 +650,12 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		*  Form Fields settings
 		*/
 
+		// End of the "Form" style section.
 		$this->end_controls_section();
 
+		// -----------------------------------------------------------------
+		// STYLE tab: "Field Style" section (input text, background, border).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'wpstream-theme_field_style',
 			[
@@ -585,6 +664,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Text color typed into the fields.
 		$this->add_control(
 			'wpstream-theme_field_text_color',
 			[
@@ -599,6 +679,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Typography group control for the field text.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			[
@@ -610,6 +691,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Background color of the inputs and select boxes.
 		$this->add_control(
 			'wpstream-theme_field_background_color',
 			[
@@ -625,6 +707,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Border color of the inputs and select boxes.
 		$this->add_control(
 			'wpstream-theme_field_border_color',
 			[
@@ -642,6 +725,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Per-side border width for the fields.
 		$this->add_responsive_control(
 			'field_border_width',
 			[
@@ -656,6 +740,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Per-corner border radius for the fields.
 		$this->add_responsive_control(
 			'field_border_radius',
 			[
@@ -669,6 +754,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// End of the "Field Style" section.
 		$this->end_controls_section();
 
 		/*-------------------------------------------------------------------------------------------------
@@ -679,6 +765,9 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		/*-------------------------------------------------------------------------------------------------
 		*  GDpr Style settings
 		*/
+		// -----------------------------------------------------------------
+		// STYLE tab: "GDPR" section (consent text color and typography).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'wpstream-theme_area_gdpr_style',
 			[
@@ -687,6 +776,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Text/link color for the GDPR consent wrapper.
 		$this->add_control(
 			'field_gdpr_color',
 			[
@@ -702,6 +792,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Typography group control for the GDPR consent link.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			[
@@ -719,11 +810,15 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		);
 
 
+		// End of the "GDPR" style section.
 		$this->end_controls_section();
 
 		/*-------------------------------------------------------------------------------------------------
 		*  END GDpr Style settings
 		*/
+		// -----------------------------------------------------------------
+		// STYLE tab: "Button" section (normal/hover state tabs).
+		// -----------------------------------------------------------------
 		$this->start_controls_section(
 			'wpstream-theme_area_button_style',
 			[
@@ -732,8 +827,10 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Begin the normal/hover tabbed control group for the button.
 		$this->start_controls_tabs( 'tabs_button_style' );
 
+		// --- Normal state tab ---
 		$this->start_controls_tab(
 			'tab_button_normal',
 			[
@@ -741,6 +838,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Button background color (normal state).
 		$this->add_control(
 			'submit_button_background_color',
 			array(
@@ -755,6 +853,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			)
 		);
 
+		// Button text color (normal state).
 		$this->add_control(
 			'submit_button_text_color',
 			array(
@@ -766,6 +865,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			)
 		);
 
+		// Button opacity (normal state).
 		$this->add_control(
 			'submit_button_opacity',
 			array(
@@ -784,6 +884,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			)
 		);
 
+		// Typography group control for the button label.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			[
@@ -795,6 +896,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Border group control (type/width) for the button.
 		$this->add_group_control(
 			Group_Control_Border::get_type(), [
 				'name' => 'submit_button_border',
@@ -802,6 +904,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Explicit border color (only when a border style is set).
 		$this->add_control(
 			'submit_button_border_normal_color',
 			array(
@@ -816,6 +919,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			)
 		);
 
+		// Per-corner border radius for the button.
 		$this->add_responsive_control(
 			'submit_button_border_radius',
 			[
@@ -828,6 +932,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Inner padding around the button label.
 		$this->add_responsive_control(
 			'submit_button_text_padding',
 			[
@@ -840,8 +945,10 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// End of the normal-state tab.
 		$this->end_controls_tab();
 
+		// --- Hover state tab ---
 		$this->start_controls_tab(
 			'tab_button_hover',
 			[
@@ -849,6 +956,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Button background color (hover state).
 		$this->add_control(
 			'submit_button_background_hover_color',
 			[
@@ -861,6 +969,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Button text color (hover state).
 		$this->add_control(
 			'submit_button_hover_color',
 			[
@@ -873,6 +982,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Button border color (hover state; only when a border is set).
 		$this->add_control(
 			'submit_button_hover_border_color',
 			[
@@ -889,13 +999,16 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+		// End of the hover-state tab.
 		$this->end_controls_tab();
 
+		// Close the normal/hover tabbed control group.
 		$this->end_controls_tabs();
 		/*-------------------------------------------------------------------------------------------------
 		*  End Button Style settings
 		*/
 
+		// End of the "Button" style section (and of register_controls()).
 		$this->end_controls_section();
 
 	}
@@ -906,10 +1019,23 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+	/**
+	 * Render the widget's front-end HTML.
+	 *
+	 * Reads the saved settings, resolves the email/recipient values, assembles
+	 * the Elementor render attributes for the wrapper/fields/button, and prints
+	 * the <form> markup (fields, optional GDPR consent, submit button) plus the
+	 * inline script that wires up AJAX submission.
+	 *
+	 * @access protected
+	 */
 	protected function render() {
+		// Current post is referenced for context (kept global for template parity).
 		global $post;
+		// Pull the resolved control values for this widget instance.
 		$settings = $this->get_settings_for_display();
 
+		// Whitelist of HTML tags allowed inside the GDPR consent text.
 		$allowed_html = array(
 			'a' => array(
 				'href' => array(),
@@ -923,22 +1049,26 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		);
 
 
+		// Primary recipient address (falls back to empty when unset).
 		$email_to = '';
 		if(!empty($settings['email_to'])){
 			$email_to = $settings['email_to'] ;
 		}
 
+		// Subject line for the notification email.
 		$email_subject = '';
 		if(!empty($settings['email_subject'])){
 			$email_subject = $settings['email_subject'] ;
 		}
 
 
+		// Optional CC recipient.
 		$send_copy_to = '';
 		if(!empty($settings['send_copy_to'])){
 			$send_copy_to = $settings['send_copy_to'] ;
 		}
 
+		// Optional BCC recipient.
 		$send_ccopy_to = '';
 		if(!empty($settings['send_ccopy_to'])){
 			$send_ccopy_to = $settings['send_ccopy_to'] ;
@@ -949,6 +1079,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 		/	add attributes to html classes
 		*/
 
+		// Register the base CSS classes for the wrapper, submit column and button.
 		$this->add_render_attribute(
 			[
 				'wrapper' => [
@@ -975,34 +1106,42 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Default the submit column to full width when no width was chosen.
 		if ( empty( $settings['submit_button_width'] ) ) {
 			$settings['submit_button_width'] = '100';
 		}
+		// Desktop submit column width class.
 		$this->add_render_attribute( 'wpstream-theme_submit_wrapper', 'class', 'elementor-col-' . $settings['submit_button_width'] );
 		//$this->add_render_attribute( 'wpstream-theme_submit_wrapper', 'class', ' elementor-button-align-' . $settings['submit_button_align'] );
 
+		// Tablet-specific submit column width, if configured.
 		if ( ! empty( $settings['submit_button_width_tablet'] ) ) {
 			$this->add_render_attribute( 'wpstream-theme_submit_wrapper', 'class', 'elementor-md-' . $settings['submit_button_width_tablet'] );
 		}
 
+		// Mobile-specific submit column width, if configured.
 		if ( ! empty( $settings['submit_button_width_mobile'] ) ) {
 			$this->add_render_attribute( 'wpstream-theme_submit_wrapper', 'class', 'elementor-sm-' . $settings['submit_button_width_mobile'] );
 		}
 
+		// Apply the button size class (elementor-size-*).
 		if ( ! empty( $settings['submit_button_size'] ) ) {
 			$this->add_render_attribute( 'button', 'class', 'elementor-size-' . $settings['submit_button_size'] );
 		}
 
+		// Apply the button type class when a button_type is present.
 		if ( ! empty( $settings['button_type'] ) ) {
 			$this->add_render_attribute( 'button', 'class', 'elementor-button-' . $settings['button_type'] );
 		}
 
 
+		// Apply a custom form id when provided.
 		if ( ! empty( $settings['form_id'] ) ) {
 			$this->add_render_attribute( 'form', 'id', $settings['form_id'] );
 		}
 
 
+		// Apply the custom button id from the Button ID control.
 		if ( ! empty( $settings['wpstream-theme_submit_button_elementor'] ) ) {
 			$this->add_render_attribute( 'button', 'id', $settings['wpstream-theme_submit_button_elementor'] );
 		}
@@ -1016,41 +1155,58 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 
 
+        <!-- Contact form: submitted via AJAX (see the inline script below). -->
         <form class="elementor-form wpstream_elementor_form"  id="wpstream_elementor_form-<?php echo esc_attr($this->get_id()); ?>" method="post" <?php echo esc_attr($this->get_render_attribute_string( 'form' )); ?>>
 
+            <!-- Container where success/error feedback messages are injected. -->
             <div class="warning wpstream-contact-form-message"></div>
 
+            <!-- Marker flag identifying this as an Elementor-built contact form. -->
             <input name="prop_id" type="hidden"  id="contact_form_elementor" value="1">
+            <!-- CSRF nonce verified server-side when the form is submitted. -->
             <input type="hidden" name="contact_ajax_nonce" id="agent_property_ajax_nonce"  value="<?php echo wp_create_nonce( 'ajax-property-contact' );?>" />
 
+            <!-- Email subject carried through to the notification email. -->
             <input type="hidden" id="elementor_email_subject" name="email_suject" value="<?php echo esc_attr($email_subject); ?>" />
 
+            <!-- Fields wrapper: the loop below prints one field group per configured field. -->
             <div <?php echo wp_kses_post($this->get_render_attribute_string( 'wrapper' )); ?> >
 				<?php
+				// Loop over every configured field and print its markup.
 				foreach ( $settings['form_fields'] as $key => $item ) {
+					// Propagate the global input size onto each field row.
 					$item['form_field_input_size'] = $settings['form_field_input_size'];
+					// Build this field's render attributes (classes, name, id, etc.).
 					$this->wpstream_theme_render_attributes($key, $item, $settings);
 
+					// Open the field group wrapper div.
 					print '<div ' . $this->get_render_attribute_string('field-group' . $key) . '>';
+					// Print the label when the field has one.
 					if ($item['field_label']) {
 						echo '<label ' . $this->get_render_attribute_string('label' . $key) . '>' . $item['field_label'];
+						// Append an asterisk for required fields.
 						if ($item['required']) {
 							echo '*';
 						}
 						echo '</label>';
 					}
 
+					// Print the actual input/textarea for this field.
 					$this->wpstream_render_field($item, $key);
+					// Close the field group wrapper div.
 					print '</div>';
 				} ?>
 
+                <!-- Submit column: optional GDPR consent + the submit button. -->
                 <div <?php echo esc_attr($this->get_render_attribute_string( 'wpstream-theme_submit_wrapper') ); ?>>
 
 					<?php
 					// add gdpr check if is the case
+					// Show the GDPR consent checkbox only when the agreement toggle is on.
 					if( isset($settings['has_gdpr_agreement']) && $settings['has_gdpr_agreement'] === 'yes') {
 						?>
 
+                        <!-- GDPR consent checkbox with a link to the configured policy URL. -->
                         <div class="gpr_wrapper">
                             <input type="checkbox" id="wpstream_agree_gdpr" class="wpstream_agree_gdpr" name="wpstream_agree_gdpr" />
                             <label for="wpstream_agree_gdpr">
@@ -1062,6 +1218,7 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 
 					<?php } ?>
 
+                    <!-- Submit button; label comes from the Submit Button "Text" control. -->
                     <button type="submit" <?php echo wp_kses_post($this->get_render_attribute_string( 'button' )); ?>>
 
 						<?php if ( ! empty( $settings['submit_button_text'] ) ) : ?>
@@ -1074,9 +1231,11 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
         </form>
         <script>
 
+            // Bind the AJAX submit handler once the DOM is ready.
             jQuery(document).ready(function() {
 
 
+                // External helper that intercepts submit and posts over AJAX.
                 wpstream_elementor_submit_form();
             });
         </script>
@@ -1091,7 +1250,13 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 	/*
 	*		Render required
 	*/
+	/**
+	 * Flag a render element as required (adds required="required").
+	 *
+	 * @param string $element Render-attribute element key to mark as required.
+	 */
 	private function wpstream_required_attribute( $element ) {
+		// Add the HTML required attribute to the given render element.
 		$this->add_render_attribute( $element, 'required', 'required' );
 	}
 
@@ -1100,16 +1265,25 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 	*		Render fields
 	*/
 
+	/**
+	 * Print the input control for a single field based on its type.
+	 *
+	 * @param array      $item Field configuration (type, id, etc.).
+	 * @param int|string $key  Loop key used to namespace render attributes.
+	 */
 	protected function wpstream_render_field($item, $key){
 
+		// 'message' fields render as a textarea.
 		if($item['field_type']=='message'){
 			// we have textarea
 			echo trim($this->wpstream_render_textarea( $item, $key) );
 		}else if($item['field_type']=='email'){
+			// 'email' fields render as an email input.
 			//we have email
 			$this->add_render_attribute( 'input' . $key, 'class', 'elementor-field-textual' );
 			echo '<input type="email" ' . $this->get_render_attribute_string( 'input' . $key ) . '>';
 		}else{
+			// Everything else renders as a plain text input.
 			$this->add_render_attribute( 'input' . $key, 'class', 'elementor-field-textual' );
 			echo '<input type="text" ' . $this->get_render_attribute_string( 'input' . $key ) . '>';
 		}
@@ -1121,8 +1295,19 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 	/*
 	*		Render fields attributes
 	*/
+	/**
+	 * Compute and register the render attributes for one field.
+	 *
+	 * Sets the field-group, input and label classes/ids, and applies required,
+	 * width (responsive), placeholder, value and label-visibility attributes.
+	 *
+	 * @param int|string $key      Loop key used to namespace render attributes.
+	 * @param array      $item     Field configuration for this row.
+	 * @param array      $settings Full widget settings (for label visibility).
+	 */
 	protected function wpstream_theme_render_attributes( $key, $item ,$settings ){
 
+		// Base classes/ids for the field group, its input and its label.
 		$this->add_render_attribute(
 			[
 				'field-group' . $key => [
@@ -1149,12 +1334,15 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			]
 		);
 
+		// Default the field width to full when none is set.
 		if ( empty( $item['width'] ) ) {
 			$item['width'] = '100';
 		}
 
+		// For required fields, add the required class and the required attribute.
 		if ( ! empty( $item['required'] ) ) {
 			$class = 'elementor-field-required';
+			// Optionally add the "mark required" class (note: $instance is unset here).
 			if ( ! empty( $instance['mark_required'] ) ) {
 				$class .= ' elementor-mark-required';
 			}
@@ -1162,24 +1350,30 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			$this->wpstream_required_attribute( 'input' . $key );
 		}
 
+		// Desktop column width class for the field group.
 		$this->add_render_attribute( 'field-group' . $key, 'class', 'elementor-col-' . $item['width'] );
 
+		// Tablet-specific width, if configured.
 		if ( ! empty( $item['width_tablet'] ) ) {
 			$this->add_render_attribute( 'field-group' .$key, 'class', 'elementor-md-' . $item['width_tablet'] );
 		}
 
+		// Mobile-specific width, if configured.
 		if ( ! empty( $item['width_mobile'] ) ) {
 			$this->add_render_attribute( 'field-group' . $key, 'class', 'elementor-sm-' . $item['width_mobile'] );
 		}
 
+		// Add the placeholder attribute when present.
 		if ( ! empty( $item['placeholder'] ) ) {
 			$this->add_render_attribute( 'input' . $key, 'placeholder', $item['placeholder'] );
 		}
 
+		// Add a pre-filled value when present.
 		if ( ! empty( $item['field_value'] ) ) {
 			$this->add_render_attribute( 'input' .$key, 'value', $item['field_value'] );
 		}
 
+		// Hide labels visually (screen-reader only) when labels are turned off.
 		if ( ! $settings['form_field_show_labels'] ) {
 			$this->add_render_attribute( 'label' . $key, 'class', 'elementor-screen-only' );
 		}
@@ -1194,7 +1388,16 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 	/  render textarea
 	*/
 
+	/**
+	 * Build the <textarea> markup for a 'message' field.
+	 *
+	 * @param array      $item Field configuration (rows, id, required, etc.).
+	 * @param int|string $key  Loop key used to namespace render attributes.
+	 *
+	 * @return string The rendered textarea HTML.
+	 */
 	protected function wpstream_render_textarea( $item, $key ) {
+		// Register the textarea classes plus name/id/rows attributes.
 		$this->add_render_attribute( 'textarea' . $key, [
 			'class' => [
 				'form-control',
@@ -1207,21 +1410,25 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 			'rows' => $item['rows'],
 		] );
 
+		// Mark the textarea required when the field requires it.
 		if ( $item['required'] ) {
 			$this->wpstream_required_attribute( 'textarea' . $key );
 		}
 
+		// Add the placeholder attribute when present.
 		if ( $item['placeholder'] ) {
 			$this->add_render_attribute( 'textarea' . $key, 'placeholder', $item['placeholder'] );
 		}
 
 
 
+		// Pre-fill the textarea body when a value was supplied.
 		$value ='';
 		if(!empty( $item['field_value']) ) {
 			$value =	$item['field_value'];
 		}
 
+		// Return the assembled textarea element.
 		return '<textarea '.$this->get_render_attribute_string( 'textarea'.$key ).'>'.$value.'</textarea>';
 	}
 

@@ -1,10 +1,16 @@
 <?php
 /**
  * Recent items class
+ * Elementor widget ("Blog Post List") that renders a grid of standard WP blog
+ * posts with an optional filter bar (category + sort) and pagination.
+ * It registers the content, filters, pagination and filter-bar controls plus
+ * the filter-bar/pagination colour style sections, then maps the settings to
+ * attributes and delegates markup to `wpstream_blog_list_shortcodes()`.
  *
  * @package wpstream-theme
  */
 
+// Elementor base class plus the control and box-shadow helpers used below.
 use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
 use Elementor\Group_Control_Box_Shadow;
@@ -22,6 +28,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_name() {
+		// Unique machine id Elementor stores this widget under.
 		return 'WpStream Blog Post';
 	}
 
@@ -29,6 +36,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 	 * Retrieve categories.
 	 */
 	public function get_categories() {
+		// Show this widget under the custom hello-wpstream panel category.
 		return array( 'hello-wpstream' );
 	}
 
@@ -42,6 +50,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_title() {
+		// Label shown on the widget tile in the editor.
 		return esc_html__( 'Blog Post List', 'hello-wpstream' );
 	}
 
@@ -54,6 +63,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_icon() {
+		// Elementor icon-font class for the widget tile.
 		return 'eicon-posts-masonry';
 	}
 
@@ -69,6 +79,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 	 * @access public
 	 */
 	public function get_script_depends() {
+		// No extra front-end script dependencies for this widget.
 		return array( '' );
 	}
 
@@ -83,48 +94,62 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 	 * @access protected
 	 */
 	public function elementor_transform( $input ) {
+		// Collects the reshaped value => label pairs.
 		$output = array();
 		if ( is_array( $input ) ) {
+			// Re-key each entry: term value becomes the key, label becomes the value.
 			foreach ( $input as $key => $tax ) {
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the value => label map (empty when input is not an array).
 		return $output;
 	}
 
 	/**
 	 * Register controls
+	 * Builds the Content, Filters, Pagination and Filter Bar sections plus the
+	 * Filter Bar Colours and Pagination Colours style sections.
 	 */
 	protected function register_controls() {
 
+        // Only standard post categories are offered as a filter here.
         $available_tax = array(
 			'category'              => array('post')
         );
 
+		// Normalise the category terms into SELECT2 value => label options.
 		foreach ( $available_tax as $taxonoy_name => $post_types ) :
+			// Raw term choices for this taxonomy.
 			$temp_taxonomy_values           = wpstream_theme_generate_category_values( $taxonoy_name );
+			// Normalise to the value => label shape.
 			$temp_taxonomy_values           = $this->elementor_transform( $temp_taxonomy_values );
+			// Store normalised options back under the taxonomy name.
 			$available_tax[ $taxonoy_name ] = $temp_taxonomy_values;
 
 		endforeach;
 
 	
 
+		// Pagination style choices (none / load more / numbers).
 		$pagination_type = array(
 			'0' => 'none',
 			'1' => 'Load more',
 			'2' => 'Numbers',
 		);
 
+		// Sort-order options from the theme helper (when available).
 		$sort_options = array();
 		if ( function_exists( 'wstream_sort_options_array' ) ) {
 			$sort_options = wstream_sort_options_array();
 		}
     
+        // Remove two sort options that do not apply to blog posts.
         unset( $sort_options[7]);
         unset( $sort_options[8]);
     
     
+        // === Content section: item count, per-row count, sort ===
         $this->start_controls_section(
 			'section_content',
 			array(
@@ -134,6 +159,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 
 	
 
+		// Control: total number of items to load.
 		$this->add_control(
 			'number',
 			array(
@@ -144,6 +170,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 		);
 
 		
+		// Control: how many items are visible per row.
 		$this->add_control(
 			'rownumber',
 			array(
@@ -159,6 +186,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: sort order for the queried posts.
 		$this->add_control(
 			'sort_by',
 			array(
@@ -169,11 +197,13 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// End Content section.
 		$this->end_controls_section();
 
 		/*
 		* Start filters
 		*/
+		// === Filters section: restrict posts by category ===
 		$this->start_controls_section(
 			'filters_section',
 			array(
@@ -182,6 +212,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Filter: standard WP categories.
 		$this->add_control(
 			'category_ids',
 			array(
@@ -197,11 +228,13 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 		
 		
 
+		// End Filters section.
 		$this->end_controls_section();
 
 		/*
 		* Start filters
 		*/
+		// === Pagination section: choose the pagination style ===
 		$this->start_controls_section(
 			'paginatio_section',
 			array(
@@ -210,6 +243,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: which pagination style to use.
 		$this->add_control(
 			'pagination_type',
 			array(
@@ -220,11 +254,13 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// End Pagination section.
 		$this->end_controls_section();
 
 		/*
 		* Start filters
 		*/
+		// === Filter Bar section: toggle the front-end filter bar and its parts ===
 		$this->start_controls_section(
 			'filter_bar_section',
 			array(
@@ -233,6 +269,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Control: show or hide the whole filter bar.
 		$this->add_control(
 			'show_bar',
 			array(
@@ -250,6 +287,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 
 	
 
+		// Control: show or hide the category select.
 		$this->add_control(
 			'show_bar_category',
 			array(
@@ -266,6 +304,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 		);
 
 		
+		// Control: show or hide the order-by select.
 		$this->add_control(
 			'show_bar_wpstream_sort_by',
 			array(
@@ -282,6 +321,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 		);
 
 
+		// Control: default label for the category dropdown.
 		$this->add_control(
 			'label_category',
 			array(
@@ -295,9 +335,11 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 
 		
 
+		// End Filter Bar section.
 		$this->end_controls_section();
 
 		
+		// === Style: filter bar (dropdown) colours ===
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -305,6 +347,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Style: dropdown background colour.
 		$this->add_control(
 			'dropdown_main_back_color',
 			array(
@@ -318,6 +361,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: dropdown text colour.
 		$this->add_control(
 			'dropdown_font_color',
 			array(
@@ -332,6 +376,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 		);
 
 		
+		// Style: dropdown border colour.
 		$this->add_control(
 			'dropdown_Border_color',
 			array(
@@ -345,6 +390,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: dropdown menu background colour.
 		$this->add_control(
 			'dropdown_menu_back_color',
 			array(
@@ -358,6 +404,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: dropdown menu item text colour.
 		$this->add_control(
 			'dropdown_menu_font_color',
 			array(
@@ -371,6 +418,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: dropdown menu item hover background colour.
 		$this->add_control(
 			'dropdown_menu_hover_back_color',
 			array(
@@ -384,6 +432,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: dropdown menu item hover text colour.
 		$this->add_control(
 			'dropdown_menu_hover_font_color',
 			array(
@@ -398,9 +447,11 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 		);
 
 
+		// End Filter Bar Colours section.
 		$this->end_controls_section();
 		
 		
+		// === Style: pagination colours and borders ===
 		$this->start_controls_section(
 			'pagination_section',
 			array(
@@ -408,6 +459,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Style: pagination background colour.
 		$this->add_control(
 			'pagination_main_back_color',
 			array(
@@ -423,6 +475,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination text colour.
 		$this->add_control(
 			'pagination_font_color',
 			array(
@@ -439,6 +492,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination hover background colour.
 		$this->add_control(
 			'pagination_hover_back_color',
 			array(
@@ -452,6 +506,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 			)
 		);
 
+		// Style: pagination hover text colour.
 		$this->add_control(
 			'pagination_hover_font_color',
 			array(
@@ -469,6 +524,7 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 
 
 
+		// End Pagination Colours section.
 		$this->end_controls_section();
 	}
 
@@ -484,11 +540,15 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 	 * @access protected
 	 */
 	public function wpstream_send_to_shortcode( $input ) {
+		// Build a comma-separated string from the selected values.
 		$output = '';
+		// Only process a non-empty array of values.
 		if ( !empty($input) && is_array($input) ) {
+			// Track the total count so we can avoid a trailing comma.
 			$num_items = count( $input );
 			$i         = 0;
 
+			// Append each value, comma-separating all but the last.
 			foreach ( $input as $key => $value ) {
 				$output .= $value;
 				if ( ++$i !== $num_items ) {
@@ -496,18 +556,25 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 				}
 			}
 		}
+		// Return the joined "a, b, c" string.
 		return $output;
 	}
 
 	/**
 	 * Render
+	 * Maps the editor settings to attributes and prints the blog-post list
+	 * markup via `wpstream_blog_list_shortcodes()`.
 	 */
 	protected function render() {
+		// Pull the resolved control values for this widget instance.
 		$settings = $this->get_settings_for_display();
+		// Unique id so multiple blog lists on a page do not collide.
 		$uid ='blog_sh_'. wp_unique_id();
 
+		// Flatten the selected categories into a comma-separated list.
 		$attributes['category_ids'] = isset($settings['category_ids']) ? $this->wpstream_send_to_shortcode($settings['category_ids']) : '';
 
+		// Copy the remaining settings through, defaulting missing ones to ''.
 		$attributes['number'] = isset($settings['number']) ? $settings['number'] : '';
 		$attributes['rownumber'] = isset($settings['rownumber']) ? $settings['rownumber'] : '';
 		$attributes['sort_by'] = isset($settings['sort_by']) ? $settings['sort_by'] : '';
@@ -517,8 +584,10 @@ class WpStreamTheme_Recent_Blog_Post extends \Elementor\Widget_Base {
 		$attributes['show_bar_category'] = isset($settings['show_bar_category']) ? $settings['show_bar_category'] : '';
 
 
+		// Attach the unique id for the markup helper.
 		$attributes['uid']                   = $uid;
 	
+      // Output the blog-post list markup (helper escapes; phpcs ignore below).
       echo  wpstream_blog_list_shortcodes( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 }

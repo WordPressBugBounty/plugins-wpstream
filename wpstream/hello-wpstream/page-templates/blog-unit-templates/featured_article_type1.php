@@ -2,19 +2,26 @@
 /**
  * Template featured article type 1.
  *
+ * Large hero-style featured-article unit: a full-bleed background image with an
+ * overlay carrying the "FEATURED ARTICLE" badge, title, trimmed excerpt,
+ * author/date meta, a "Read More" link and social-share controls. Expects the
+ * post to render to be passed in as $postId.
+ *
  * @package wpstream-theme
  *
  * @var int $postId Post ID.
  */
 
+// Collect the display fields for this featured post.
 $title      = get_the_title( $postId );
 $excerpt    = get_the_excerpt( $postId );
-$excerpt 	= wp_trim_words($excerpt, 40, '...'); 
+$excerpt 	= wp_trim_words($excerpt, 40, '...'); // Cap the excerpt at 40 words.
 $link       = get_permalink( $postId );
 $badge_text = esc_html__( 'FEATURED ARTICLE', 'hello-wpstream' );
 $author     = get_the_author();
 $date       = get_the_date();
 
+// Resolve the full-size featured image, falling back to a bundled default.
 $preview = wp_get_attachment_image_src( get_post_thumbnail_id( $postId ), 'full' );
 if ( empty( $preview[0] ) ) {
 	$image_url = get_theme_file_uri( '/img/default-image-video.png' );
@@ -24,27 +31,40 @@ if ( empty( $preview[0] ) ) {
 
 ?>
 
+<!-- Hero unit: featured image set as the background of the whole block. -->
 <div class="wpstream_featured_article type-1" style="background-image:url('<?php echo esc_url( $image_url ); ?>');">
+	<!-- Dark gradient overlay so the text stays readable over the image. -->
 	<div class="wpstream_category_unit_item_cover"></div>
 	<div class="container">
+		<!-- "FEATURED ARTICLE" badge. -->
 		<span class="wpstream_featured_article__badge mb-2 d-inline-block"><?php echo esc_html( $badge_text ); ?></span>
+		<!-- Post title, linked to the article. -->
 		<h1><a href="<?php echo esc_url($link); ?>"><?php echo esc_html( $title ); ?></a></h1>
+		<!-- Trimmed excerpt. -->
 		<p class="mb-25 wpstream_featured_excerpt"><?php echo esc_html( $excerpt ); ?></p>
+		<!-- Author and date meta, separated by a middot. -->
 		<p class="mb-25 wpstream_featured_meta "><?php echo esc_html( $author ) . '&nbsp;&nbsp;<span>&#183;</span>&nbsp;&nbsp;' . esc_html( $date ); ?></p>
+		<!-- Footer row: Read More link on the left, share controls on the right. -->
 		<div class="d-flex flex-wrap justify-content-between">
+			<!-- "Read More" link to the full article. -->
 			<a href="<?php echo esc_url( get_permalink( $postId ) ); ?>" class="d-flex flex-nowrap align-items-center wpstream_featured_article__link align-self-center">
+				<!-- Circular arrow icon. -->
 				<span class="flex-shrink-0 d-flex align-items-center justify-content-center me-3 rounded-circle">
 					<?php
+					// Output the inline SVG arrow (already-safe markup, escaping intentionally skipped).
 					//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					echo wpstream_theme_get_svg_icon( 'arrow-right.svg' );
 					?>
 				</span>
 				<?php echo esc_html__( 'Read More', 'hello-wpstream' ); ?>
 			</a>
+			<!-- Social share section. -->
 			<div class="wp-stream-share-icon-section align-self-center">
+				<!-- Share toggle button with icon and label. -->
 				<div class="wp-stream-share-icon btn-hover-white">
 
 					<?php
+					// Output the inline SVG share icon (already-safe markup).
 					echo wpstream_theme_get_svg_icon( 'share.svg' );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					?>
 
@@ -52,6 +72,7 @@ if ( empty( $preview[0] ) ) {
 
 				</div>
 
+				<!-- Expanded social-network share links for this post. -->
 				<div class="wpstream-social-share-main">
 
 					<?php echo wpstream_theme_show_social_share_page( $postId );//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>

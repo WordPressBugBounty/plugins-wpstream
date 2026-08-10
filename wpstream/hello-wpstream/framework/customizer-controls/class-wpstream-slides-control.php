@@ -2,6 +2,10 @@
 /**
  * Slides control
  *
+ * Registers a custom Customizer control that exposes four text inputs
+ * (top/right/bottom/left), used to capture spacing values such as padding or
+ * margin as a grouped setting.
+ *
  * @package wpstream-theme
  */
 
@@ -10,6 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Guard against re-declaration if this file is included more than once.
 if ( ! class_exists( 'Wpstream_Slides_Control' ) ) {
 	/**
 	 * Custom control for managing slide settings.
@@ -30,8 +35,10 @@ if ( ! class_exists( 'Wpstream_Slides_Control' ) ) {
 		 * @param array                $args Additional arguments.
 		 */
 		public function __construct( $manager, $id, $args = array() ) {
+			// Initialize the base control (label, description, settings, etc.).
 			parent::__construct( $manager, $id, $args );
 
+			// Fallback bounds/step/unit used when the caller omits them.
 			$defaults = array(
 				'min'  => 0,
 				'max'  => 30,
@@ -39,29 +46,38 @@ if ( ! class_exists( 'Wpstream_Slides_Control' ) ) {
 				'unit' => '',
 			);
 
+			// Merge caller-supplied args over the defaults.
 			$args = wp_parse_args( $args, $defaults );
 
+			// Store the resolved min/max bounds shared by all four inputs.
+			// Note: 'step' and 'unit' are parsed above but not assigned here.
 			$this->min  = $args['min'];
 			$this->max  = $args['max'];
 		}
 
 		/**
 		 * Render content for the custom control.
+		 *
+		 * @return void
 		 */
 		public function render_content() {
 			?>
 
+			<!-- Show the control title only when a label was provided. -->
 			<?php if ( ! empty( $this->label ) ) : ?>
 				<span class="customize-control-title"><?php echo esc_html( $this->label ); ?></span>
 			<?php endif; ?>
 
+			<!-- Show the helper description only when one was provided. -->
 			<?php if ( ! empty( $this->description ) ) : ?>
 				<span class="customize-control-description"><?php echo esc_html( $this->description ); ?></span>
 			<?php endif; ?>
 
 
+			<!-- Container for the four spacing inputs (top / right / bottom / left). -->
 			<div class="padding-margin-control">
 				<!--top-->
+				<!-- Each input binds to a named sub-value of the setting via $this->link( 'side' ). -->
 				<label for="wpstream-control-top">
 					<input class="range-slider"
 							id="wpstream-control-top"

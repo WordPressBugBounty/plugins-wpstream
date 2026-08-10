@@ -2,9 +2,16 @@
 /**
  * Class categories list
  *
+ * Defines the "Categories List" Elementor widget for the hello-wpstream theme.
+ * The widget lets an editor pick taxonomy terms and render them as a responsive
+ * list/grid of category items, with controls for categories-per-row, a design
+ * style variant, item sizing, typography, colors and box-shadow. The frontend
+ * markup is produced by the theme helper wpstreamtheme_categories_list_function().
+ *
  * @package wpstream-theme
  */
 
+// Pull in the Elementor base class and the control/group-control helpers this widget relies on.
 use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
 use Elementor\Group_Control_Box_Shadow;
@@ -35,13 +42,19 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 	 * @return string Widget name.
 	 */
 	public function get_name() {
+		// Unique internal identifier Elementor uses to reference this widget.
 		return 'WpStreamTheme_Categories_List';
 	}
 
 	/**
 	 * Get categories
+	 *
+	 * Elementor panel category (widget grouping) this widget is listed under.
+	 *
+	 * @return array Category slugs the widget belongs to.
 	 */
 	public function get_categories() {
+		// Group this widget under the theme's own "hello-wpstream" panel section.
 		return array( 'hello-wpstream' );
 	}
 
@@ -55,6 +68,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 	 * @return string Widget title.
 	 */
 	public function get_title() {
+		// Human-readable, translatable label shown on the widget tile in the editor.
 		return __( 'Categories List', 'hello-wpstream' );
 	}
 
@@ -68,6 +82,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 	 * @return string Widget icon.
 	 */
 	public function get_icon() {
+		// Elementor icon-font class used for the widget's tile icon.
 		return 'eicon-product-categories';
 	}
 
@@ -83,6 +98,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 	 * @return array Widget scripts dependencies.
 	 */
 	public function get_script_depends() {
+		// No extra registered scripts are required for this widget (empty handle).
 		return array( '' );
 	}
 
@@ -100,23 +116,37 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 	 * @return array The transformed output data.
 	 */
 	public function elementor_transform( $input ) {
+		// Reshape the taxonomy list into an Elementor-friendly value => label map.
 		$output = array();
+		// Guard against a non-array (e.g. empty/false) input before iterating.
 		if ( is_array( $input ) ) {
+			// Each entry carries a 'value' (term id/slug) and a human-readable 'label'.
 			foreach ( $input as $key => $tax ) {
+				// Key the output by the term value so it can be used as a SELECT2 option.
 				$output[ $tax['value'] ] = $tax['label'];
 			}
 		}
+		// Return the value => label map consumed by the place_list control.
 		return $output;
 	}
 
 	/**
 	 * Register controls
+	 *
+	 * Builds every control the widget exposes: the Content tab (categories,
+	 * per-row count, design style) and the Style tab sections (item sizing,
+	 * typography/colors, and box shadow).
+	 *
+	 * @return void
 	 */
 	protected function register_controls() {
+		// Fetch every available taxonomy term from the theme helper.
 		$all_tax = wpstream_theme_return_all_taxomy_array();
 
+		// Convert that list into the value => label map SELECT2 expects.
 		$all_tax_elemetor = $this->elementor_transform( $all_tax );
 
+		// --- Content tab: category selection and layout/design pickers ---
 		$this->start_controls_section(
 			'section_content',
 			array(
@@ -124,6 +154,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Multi-select of taxonomy terms to display as list items.
 		$this->add_control(
 			'place_list',
 			array(
@@ -135,6 +166,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// How many category items to place per row (2, 3 or 4; default 3).
 		$this->add_control(
 			'place_per_row',
 			array(
@@ -150,6 +182,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Design style variant (Type 1-3) driving the item layout.
 		$this->add_control(
 			'design_type',
 			array(
@@ -165,10 +198,12 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Close the Content tab section.
 		$this->end_controls_section();
 
 
 
+		// --- Style tab: per-item sizing (height, square size, spacing, radius) ---
 		$this->start_controls_section(
 			'size_section',
 			array(
@@ -177,6 +212,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Responsive image height for design types 1 and 2 (type1/type2 wrappers).
 		$this->add_responsive_control(
 			'item_height',
 			array(
@@ -211,6 +247,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Responsive square image size (height = width) used only for design type 3.
 		$this->add_responsive_control(
 			'item_height_square',
 			array(
@@ -244,6 +281,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Responsive bottom spacing between items (applied for design type 2).
 		$this->add_responsive_control(
 			'item_margin_bottom',
 			array(
@@ -283,6 +321,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Border radius applied to the item across all wrapper types plus the cover overlay.
 		$this->add_responsive_control(
 			'item_border_radius',
 			array(
@@ -300,6 +339,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Close the Item Settings section.
 		$this->end_controls_section();
 
 		/*
@@ -307,6 +347,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 		 * Start Typografy
 		 */
 
+		// --- Style tab: title/tagline/listings typography and colors ---
 		$this->start_controls_section(
 			'typography_section',
 			array(
@@ -315,6 +356,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Typography group for the category title (h4 a), defaulting to the primary global font.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -342,6 +384,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 				),
 			)
 		);
+		// Responsive bottom margin below the title.
 		$this->add_responsive_control(
 			'property_title_margin_bottom',
 			array(
@@ -372,6 +415,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Responsive bottom margin below the tagline (only shown for design types 1 and 2).
 		$this->add_responsive_control(
 			'property_tagline_margin_bottom',
 			array(
@@ -406,6 +450,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Typography group for the "listings" count text on each item.
 		$this->add_group_control(
 			Group_Control_Typography::get_type(),
 			array(
@@ -434,6 +479,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Title text color (applied with !important to override theme styling).
 		$this->add_control(
 			'tax_title_color',
 			array(
@@ -446,6 +492,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Tagline text color (conditioned on design_type 'type1').
 		$this->add_control(
 			'tax_tagline_color',
 			array(
@@ -461,6 +508,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Listings count text color.
 		$this->add_control(
 			'tax_listings_color',
 			array(
@@ -474,6 +522,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Background color behind the listings count text.
 		$this->add_control(
 			'tax_listings_color_back',
 			array(
@@ -487,6 +536,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Solid overlay color placed over the item image (default/non-hover state).
 		$this->add_control(
 			'ovarlay_color_back',
 			array(
@@ -499,6 +549,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Overlay color used when the item image is hovered.
 		$this->add_control(
 			'ovarlay_color_back_hover',
 			array(
@@ -511,12 +562,14 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Close the typography/colors Style section.
 		$this->end_controls_section();
 
 		/*
 		-------------------------------------------------------------------------------------------------
 		 * Start shadow section
 		 */
+		// --- Style tab: box-shadow group applied to the list items ---
 		$this->start_controls_section(
 			'section_grid_box_shadow',
 			array(
@@ -524,6 +577,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 				'tab'   => Controls_Manager::TAB_STYLE,
 			)
 		);
+		// Box-shadow group targeting the item across all three wrapper types.
 		$this->add_group_control(
 			Group_Control_Box_Shadow::get_type(),
 			array(
@@ -533,6 +587,7 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 			)
 		);
 
+		// Close the Box Shadow section (end of control registration).
 		$this->end_controls_section();
 
 		/*
@@ -555,28 +610,45 @@ class WpStreamTheme_Categories_List extends Widget_Base {
 	 * @return string The string representation of the input data.
 	 */
 	public function wpstream_theme_send_to_shortcode( $input ) {
+		// Concatenate the selected values into a single string.
 		$output = '';
+		// Only build a string when there is at least one value.
 		if ( !empty($input) ) {
+			// $num_items/$i are initialised here but the loop below does not use them
+			// to insert separators, so values are joined with no delimiter.
 			$num_items = count( $input );
 			$i         = 0;
 
+			// Append each value directly to the output (no comma separator added).
 			foreach ( $input as $key => $value ) {
 				$output .= $value;
 			
 			}
 		}
+		// Return the concatenated string.
 		return $output;
 	}
 
 	/**
 	 * Render
+	 *
+	 * Collect the saved settings into an attributes array and echo the list markup
+	 * produced by the theme helper wpstreamtheme_categories_list_function().
+	 *
+	 * @return void
 	 */
 	protected function render() {
+		// Pull the current (editor/live) settings for this widget instance.
 		$settings = $this->get_settings_for_display();
 
+		// Selected taxonomy terms to render.
 		$attributes['place_list']    = $settings['place_list'] ;
+		// Number of categories per row.
 		$attributes['place_per_row'] = $settings['place_per_row'];
+		// Chosen design style variant (Type 1-3).
 		$attributes['design_type']   = $settings['design_type'];
+		// Output the list HTML built by the theme helper. Escaping is intentionally
+		// skipped here because the helper returns already-built, trusted markup.
 		echo wpstreamtheme_categories_list_function( $attributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	
 	}

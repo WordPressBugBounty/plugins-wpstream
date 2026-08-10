@@ -14,7 +14,9 @@ class Wpstream_Playback_Session {
 	 * Wpstream_Playback_Session constructor.
 	 */
 	public function __construct() {
+		// Register the REST route used by the presence server to verify a session token.
 		add_action( 'rest_api_init', array( $this, 'wpstream_register_playback_session_rest_routes' ) );
+		// AJAX endpoint that issues a session token to a logged-in viewer.
 		add_action( 'wp_ajax_wpstream_issue_playback_session', array( $this, 'wpstream_ajax_issue_playback_session' ) );
 		// Logged-out viewers may still be entitled (e.g. free wpstream_product_vod); nonce + entitlement gate the call.
 		add_action( 'wp_ajax_nopriv_wpstream_issue_playback_session', array( $this, 'wpstream_ajax_issue_playback_session' ) );
@@ -26,21 +28,28 @@ class Wpstream_Playback_Session {
 	 * @return string
 	 */
 	public function wpstream_get_default_validate_playback_session_url() {
+		// Absolute, escaped URL of the verification REST route embedded in the player.
 		return esc_url_raw( rest_url( 'wpstream/v1/playback-session-verify' ) );
 	}
 
 	/**
+	 * Derive the transient key that stores a given session token's data.
+	 *
 	 * @param string $token Opaque playback session token.
 	 * @return string
 	 */
 	private function wpstream_playback_session_transient_name( $token ) {
+		// Salted SHA-256 hash so the raw token is never used directly as a storage key.
 		return 'wpstream_pbs_' . hash( 'sha256', wp_salt( 'auth' ) . $token );
 	}
 
 	/**
+	 * Time-to-live applied to each issued playback session.
+	 *
 	 * @return int TTL in seconds for issued playback sessions.
 	 */
 	public function wpstream_get_playback_session_ttl() {
+		// Default 10 minutes, overridable via the wpstream_playback_session_ttl_seconds filter.
 		return (int) apply_filters( 'wpstream_playback_session_ttl_seconds', 10 * MINUTE_IN_SECONDS );
 	}
 
@@ -51,37 +60,48 @@ class Wpstream_Playback_Session {
 	 * @return bool
 	 */
 	private function wpstream_user_entitled_for_vod_product( $product_id ) {
+		// Normalize and reject non-positive IDs up front.
 		$product_id = (int) $product_id;
 		if ( $product_id <= 0 ) {
 			return false;
 		}
 
+		// Free channel/VOD post types are viewable by anyone, so entitlement is automatic.
 		$post_type = get_post_type( $product_id );
 		if ( in_array( $post_type, array( 'wpstream_product', 'wpstream_product_vod' ), true ) ) {
 			return true;
 		}
 
+		// Anything other than a WooCommerce product cannot be entitled here.
 		if ( 'product' !== $post_type ) {
 			return false;
 		}
 
+		// Paid products require a logged-in user to check a purchase against.
 		if ( ! is_user_logged_in() ) {
 			return false;
 		}
 
+		// WooCommerce must be active for the purchase lookup helpers to exist.
 		$plugins = apply_filters( 'active_plugins', get_option( 'active_plugins', array() ) );
 		if ( ! in_array( 'woocommerce/woocommerce.php', $plugins, true ) ) {
 			return false;
 		}
 
+		// Current user and the bundle product this item may belong to.
 		$user            = wp_get_current_user();
 		$possible_bundle = (int) get_post_meta( $product_id, 'wpstream_part_of_bundle', true );
 
+		// Entitled if the user bought the product directly, or bought the bundle that contains it.
 		return (bool) ( wc_customer_bought_product( $user->user_email, $user->ID, $product_id )
 			|| ( 0 !== $possible_bundle && wc_customer_bought_product( $user->user_email, $user->ID, $possible_bundle ) ) );
 	}
 
+	/**
+	 * Register the GET REST route the presence server calls to verify a session.
+	 */
 	public function wpstream_register_playback_session_rest_routes() {
+		// Public read-only route; the token itself is the credential (permission_callback returns true).
 		register_rest_route(
 			'wpstream/v1',
 			'/playback-session-verify',
@@ -98,12 +118,20 @@ class Wpstream_Playback_Session {
 		);
 	}
 
+	/**
+	 * REST callback: confirm a playback session token is present and still valid.
+	 *
+	 * @param WP_REST_Request $request Incoming verification request.
+	 * @return WP_REST_Response Success payload, or a 401 error response.
+	 */
 	public function wpstream_rest_verify_playback_session( WP_REST_Request $request ) {
+		// Prefer the token from the query param; fall back to the custom request header.
 		$session = trim( (string) $request->get_param( 'playbackSession' ) );
 		if ( '' === $session && ! empty( $_SERVER['HTTP_X_WPSTREAM_PLAYBACK_SESSION'] ) ) {
 			$session = trim( (string) wp_unslash( $_SERVER['HTTP_X_WPSTREAM_PLAYBACK_SESSION'] ) );
 		}
 
+		// No token supplied at all: reject as unauthorized.
 		if ( '' === $session ) {
 			return new WP_REST_Response(
 				array(
@@ -114,6 +142,7 @@ class Wpstream_Playback_Session {
 			);
 		}
 
+		// Look up the token's stored data; missing/expired or malformed data is a rejection.
 		$data = get_transient( $this->wpstream_playback_session_transient_name( $session ) );
 		if ( ! is_array( $data ) || empty( $data['product_id'] ) ) {
 			return new WP_REST_Response(
@@ -125,18 +154,26 @@ class Wpstream_Playback_Session {
 			);
 		}
 
+		// Token resolved to a valid session: report success.
 		return new WP_REST_Response( array( 'success' => true ) );
 	}
 
+	/**
+	 * AJAX callback: issue a fresh playback session token to an entitled viewer.
+	 */
 	public function wpstream_ajax_issue_playback_session() {
+		// Verify the request carries a valid issuing nonce before doing any work.
 		check_ajax_referer( 'wpstream_playback_session_issue', 'nonce' );
 
+		// Read and sanitize the requested product ID from the POST body.
 		$product_id = isset( $_POST['productId'] ) ? intval( wp_unslash( $_POST['productId'] ) ) : 0;
 
+		// Deny issuance unless the current viewer is entitled to this product.
 		if ( ! $this->wpstream_user_entitled_for_vod_product( $product_id ) ) {
 			wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
 		}
 
+		// Generate an opaque token and its TTL, then persist the session data under the hashed key.
 		$token = wp_generate_password( 56, false, false );
 		$ttl   = $this->wpstream_get_playback_session_ttl();
 		set_transient(
@@ -149,6 +186,7 @@ class Wpstream_Playback_Session {
 			$ttl
 		);
 
+		// Return the token to the player, which will present it to the presence server.
 		wp_send_json_success(
 			array(
 				'playbackSession' => $token,

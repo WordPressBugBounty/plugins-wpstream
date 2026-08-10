@@ -1,3 +1,13 @@
+/*
+ * Video.js player skin overrides for WPStream ("vjs-wpstream").
+ *
+ * Custom styling applied on top of the default Video.js theme: transparent
+ * control bar, control button sizing/opacity, the live-edge control, volume
+ * panel behaviour, and SVG icon backgrounds for the fullscreen/PiP buttons.
+ * Scoped to the .vjs-wpstream player and the featured-player wrapper.
+ */
+
+/* Control bar: fully transparent background, fixed height, centred controls. */
 .vjs-wpstream.vjs-theme-default .vjs-control-bar {
     background-color: hsl(0 0% 100% / 0);
     padding: 0px 12px;
@@ -6,6 +16,7 @@
     align-items: center;
 }
 
+/* Individual control buttons: sizing, slight transparency, hover transition. */
 .vjs-wpstream .vjs-control{
     height: 44px;
     width: 34px;
@@ -16,12 +27,14 @@
     width: 3em;
 }
 
+/* Narrow the seek/progress bar. */
 .video-js .vjs-progress-control{
     width: 4em;
     min-width: 4em;
 }
 
 
+/* Enlarge the control icon glyphs. */
 .vjs-wpstream .vjs-button>.vjs-icon-placeholder:before {
     font-size: 2.1em;
     line-height: 44px;
@@ -29,6 +42,7 @@
 
 }
 
+/* Remove default button hover chrome; only bump opacity to full. */
 .vjs-wpstream .button:hover,
 .vjs-wpstream button:hover,
 .vjs-wpstream input[type="button"]:hover,
@@ -38,6 +52,7 @@
     opacity: 1;
 }
 
+/* Live-edge control: sizing and vertical centring. */
 .vjs-wpstream  .vjs-live-control {
     font-size: 1.1em;
     line-height: 3em;
@@ -45,31 +60,38 @@
     align-items: center;
 }
 
+/* "LIVE" label width inside the live control. */
 .vjs-wpstream  .vjs-live-control .vjs-live-display {
     width: 4em;
 }
 
+/* Featured-player wrapper: drop the live display's top margin. */
 .wpstream-featured-player-wrapper .vjs-live-display {
     margin-top: 0 !important;
 }
 
+/* Featured-player wrapper: hide flagged elements once playback starts. */
 .wpstream-featured-player-wrapper .hide_on_play {
     display: none;
 }
 
+/* Volume slider: remove surrounding margin. */
 .vjs-wpstream .vjs-volume-panel .vjs-volume-control {
     margin: 0px 0px 0px 0px;
 }
 
+/* Volume tooltip: static positioning nudged up. */
 .vjs-wpstream .vjs-volume-panel .vjs-volume-control .vjs-volume-tooltip {
     position: static;
     margin-top: -20px;
 }
 
+/* Force transparent backgrounds on all player buttons. */
 .vjs-wpstream .vjs-button{
     background-color: transparent!important;
 }
-    
+
+/* Fullscreen button: custom "enter fullscreen" SVG icon. */
 .vjs-wpstream  .vjs-fullscreen-control{
     background-image: url(images/fullscreen_simple.svg)!important;
     background-position: 50%!important;
@@ -78,6 +100,7 @@
 }
 
 
+/* While in fullscreen: swap to the "exit fullscreen" SVG icon. */
 .vjs-wpstream.vjs-fullscreen   .vjs-fullscreen-control{
     background-image: url(images/fullscreen_full.svg)!important;
     background-position: 50%!important;
@@ -85,6 +108,7 @@
     background-size: 40%!important;
 }
 
+/* Picture-in-picture button: custom SVG icon. */
 .vjs-wpstream  .vjs-picture-in-picture-control{
     background-image: url(images/pip_player.svg)!important;
     background-position: 67% 54%!important;
@@ -92,37 +116,44 @@
     background-size: 50%!important;
 }
 
+/* Keep the fullscreen icon the same size on hover (no zoom). */
 .vjs-wpstream  .vjs-fullscreen-control:hover{
     background-size: 40%!important;
 }
 
+/* Hide the default Video.js fullscreen glyph so only our SVG shows. */
 .vjs-wpstream .vjs-fullscreen-control .vjs-icon-placeholder:before,
 .vjs-wpstream .vjs-icon-fullscreen-enter:before {
     content: "";
     display: none;
 }
 
-.vjs-wpstream.vjs-fullscreen .vjs-fullscreen-control .vjs-icon-placeholder:before, 
+/* Placeholder rule for the fullscreen-exit glyph (intentionally empty). */
+.vjs-wpstream.vjs-fullscreen .vjs-fullscreen-control .vjs-icon-placeholder:before,
 .vjs-wpstream .vjs-icon-fullscreen-exit:before{
-    
+
 }
 
 
+/* Time display: vertical line-height alignment. */
 .vjs-wpstream .vjs-time-control{
     line-height: 44px;
     line-height: 3em;
 }
 
 
+/* Centre big "play" button: subtle grey border. */
 .vjs-wpstream .vjs-big-play-button{
     border: .06666em solid #595656;
 }
 
+/* Volume panel: animate width and reserve space. */
 .video-js.vjs-default-skin .vjs-volume-panel {
     transition: width 1s;
     width: 4em;
 }
 
+/* On hover, expand the mute control within the volume panel. */
 .video-js.vjs-default-skin .vjs-volume-panel:hover .vjs-mute-control {
     width: 4em;
 }

@@ -2,19 +2,26 @@
 /**
  * General
  *
+ * Registers the "General" section of the theme's Redux options panel. Holds
+ * site-wide layout preferences: the overall container width and the "back to
+ * top" button toggle. Loaded from framework/options/main.php.
+ *
  * @package wpstream-theme
  */
 
+// The shared Redux option-set name (defined in theme-options.php).
 global $wpstream_opt_name;
+// Register this section against the theme's Redux option set.
 Redux::setSection(
 	$wpstream_opt_name,
 	array(
-		'title'  => esc_html__( 'General', 'hello-wpstream' ),
-		'id'     => 'general-options',
-		'desc'   => '',
-		'icon'   => 'el-icon-dashboard el-icon-small',
+		'title'  => esc_html__( 'General', 'hello-wpstream' ),   // Panel section title.
+		'id'     => 'general-options',                           // Unique section identifier.
+		'desc'   => '',                                          // Optional section description (unused).
+		'icon'   => 'el-icon-dashboard el-icon-small',           // Elusive icon shown in the panel nav.
 		'fields' => array(
 
+			// Field: pick the max site container width from a preset button set.
 			array(
 				'id'       => 'wpstream_site_width',
 				'type'     => 'button_set',
@@ -28,6 +35,7 @@ Redux::setSection(
 				),
 				'default'  => '1210px',
 			),
+			// Field: on/off switch controlling the "back to top" scroll button.
 			array(
 				'id'       => 'backtotop',
 				'type'     => 'switch',

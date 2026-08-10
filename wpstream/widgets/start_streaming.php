@@ -1,4 +1,15 @@
 <?php
+/**
+ * Elementor widget: WpStream - Start Streaming.
+ *
+ * Registers the "Start Streaming" Elementor widget under the plugin's own
+ * widget category. It exposes a single product/free-product id control and,
+ * on render, delegates to the plugin's live-stream unit wrapper to print the
+ * broadcaster UI for that channel (or the user's first free/paid channel).
+ *
+ * @package    Wpstream
+ * @subpackage Wpstream/widgets
+ */
 namespace ElementorWpStream\Widgets;
 
 use Elementor\Widget_Base;
@@ -7,6 +18,12 @@ use Elementor\Controls_Manager;
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 
+/**
+ * Elementor widget class for the WpStream broadcaster (start streaming).
+ *
+ * Implements the standard Elementor widget contract: identity (name/title/icon),
+ * editor controls, frontend render, and the editor preview template.
+ */
 class Wpstream_Start_Streaming_Base extends Widget_Base {
 
 	/**
@@ -19,10 +36,17 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 * @return string Widget name.
 	 */
 	public function get_name() {
+		// Internal identifier Elementor uses to reference this widget.
 		return 'Wpstream_Start_Streaming';
 	}
 
+        /**
+         * Retrieve the widget categories.
+         *
+         * @return array List of Elementor category slugs this widget belongs to.
+         */
         public function get_categories() {
+		// Group this widget under the plugin's own "wpstream" category.
 		return [ 'wpstream' ];
 	}
         
@@ -37,6 +61,7 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 * @return string Widget title.
 	 */
 	public function get_title() {
+            // Wrap the translated label in the theme's widget-title markup.
             return '<div class="wpestate_elementor_widget_title">'.__( 'WpStream - Start Streaming', 'wpstream' ).'</div>';
 	}
 
@@ -50,6 +75,7 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 * @return string Widget icon.
 	 */
 	public function get_icon() {
+		// Elementor icon-font class shown for this widget in the panel.
 		return 'eicon-play-o';
 	}
 
@@ -67,6 +93,7 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 * @return array Widget scripts dependencies.
 	 */
 	public function get_script_depends() {
+	// No extra script handles are registered as dependencies.
 	return [ '' ];
 	}
 
@@ -80,9 +107,18 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 * @access protected
 	 */
      
+        /**
+         * Flatten a list of {value,label} pairs into a value => label map.
+         *
+         * @param array $input List of arrays each holding 'value' and 'label'.
+         * @return array Map keyed by each item's 'value' with its 'label'.
+         */
         public function elementor_transform($input){
+            // Accumulator for the resulting value => label map.
             $output=array();
+            // Only iterate when we were actually handed an array.
             if( is_array($input) ){
+                // Re-key each entry so the option value becomes the map key.
                 foreach ($input as $key=>$tax){
                     $output[$tax['value']]=$tax['label'];
                 }
@@ -90,11 +126,19 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
             return $output;
         }
 
+        /**
+         * Register the widget's editor controls.
+         *
+         * @access protected
+         */
         protected function _register_controls() {
+                // Theme-wide taxonomy list kept in scope (unused by this widget).
                 global $all_tax;
                
+                // Local scratch array; declared but not used by this widget.
                 $featured_places_array =array(1=>1,2=>2,3=>3);
 
+		// Open the "Content" settings section.
 		$this->start_controls_section(
 			'section_content',
 			[
@@ -105,6 +149,8 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 		
           
                 
+                // Text field: the product / free-product id to stream on.
+                // Left blank, we stream on the user's first free/paid channel.
                 $this->add_control(
 			'item_id',
 			[
@@ -118,6 +164,7 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
               
                 
                 
+		// Close the "Content" settings section.
 		$this->end_controls_section();
 
 		
@@ -133,12 +180,22 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 * @access protected
 	 */
         
+         /**
+          * Join array values into a single comma-separated string.
+          *
+          * @param array|string $input Values to concatenate; '' short-circuits to empty.
+          * @return string Comma-separated list, or empty string when nothing to join.
+          */
          public function wpresidence_send_to_shortcode($input){
+            // Start with an empty result buffer.
             $output='';
+            // Nothing to concatenate for an empty input.
             if($input!==''){
+                // Track the total so we can skip the trailing separator.
                 $numItems = count($input);
                 $i = 0;
 
+                // Append each value, comma-separating all but the last.
                 foreach ($input as $key=>$value){
                     $output.=$value;
                     if(++$i !== $numItems) {
@@ -149,16 +206,28 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
             return $output;
         }
         
+	/**
+	 * Render the widget on the frontend.
+	 *
+	 * Reads the item id control and delegates to the plugin's live-stream unit
+	 * wrapper, which echoes the broadcaster UI for that channel.
+	 *
+	 * @access protected
+	 */
 	protected function render() {
+            // Pull the saved control values for this widget instance.
             $settings = $this->get_settings_for_display();
 
+            // The chosen product/free-product id to broadcast on.
             $attributes['id']                   =   $settings['item_id'] ;  
           
+            // Main plugin instance that renders the live-stream unit.
             global $wpstream_plugin;
            
           
             
            // echo  $wpstream_plugin->admin->wpstream_live_stream_unit(   $attributes['id'],'front' );
+            // Echo the broadcaster UI wrapper for the chosen id, in front-end mode.
             echo  $wpstream_plugin->wpstream_live_stream_unit_wrapper(   $attributes['id'],'front' );
 	}
 
@@ -174,6 +243,7 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	protected function content_template() {
 		?>
 		<div class="title">
+			<!-- Backbone/Underscore template token echoed as the live editor preview. -->
 			{{{ settings.title }}}
 		</div>
 		<?php

@@ -1,14 +1,32 @@
+/**
+ * WpStream admin onboarding wizard styles.
+ *
+ * Styles the guided first-run onboarding experience shown inside wp-admin:
+ * the centered onboarding modal/wrapper, the contextual "bubble" tooltips that
+ * point at page elements, the account register/login step, the per-content
+ * setup steps (live channel, PPV/free VOD), the accordion sections, the call-to
+ * -action buttons, the full-screen dark modal backgrounds, and the responsive
+ * adjustments that keep the wizard usable on short/narrow viewports.
+ *
+ * Loaded on the plugin's admin onboarding screens only.
+ */
+
+/* Onboarding wrapper: the fixed, centered panel that hosts the wizard steps.
+   Hidden by default; JS toggles it on. Width is offset by half via negative
+   margin-left to center it against left:50%. */
 .wpstream_on_boarding_wrapper{
     background-color: #fff;
     position: fixed;
     width: 500px;
     top: 125px;
     left: 50%;
-    margin-left: -250px;    
+    margin-left: -250px;
     z-index: 10002;
     display: none;
 }
 
+/* Contextual tooltip bubble: floating hint anchored beside a target element.
+   Hidden by default and positioned absolutely relative to its anchor. */
 #wpstream_onboard_bubble{
     position: absolute;
     z-index: 10002;
@@ -19,6 +37,9 @@
     display: none;
 }
 
+/* Bubble arrows: the little CSS triangle "pointer" on the side of a bubble,
+   drawn with the classic transparent-border trick. Left/right variants point
+   the bubble toward its anchor on either side. */
 .boarding-left-arrow:after{
     content: " ";
     position: absolute;
@@ -48,6 +69,8 @@
 
 
 
+/* Shared card chrome: the drop shadow, padding, rounded corners and border
+   applied to both the bubble and the main wrapper so they read as one surface. */
 #wpstream_onboard_bubble,
 .wpstream_on_boarding_wrapper{
     box-shadow: 8px 8px 7px 1px #0606061f;
@@ -57,6 +80,8 @@
 }
 
 
+/* Wrapper overrides: bump the wrapper padding and give it the light purple
+   fill used across the onboarding UI. */
 .wpstream_on_boarding_wrapper{
     padding: 30px;
     min-height: 60px;
@@ -65,6 +90,9 @@
 }
 
 
+/* Wizard steps: each step is a hidden panel toggled into view by JS, with a
+   centered heading. wpstream_has_credential is the variant shown once the user
+   already has WpStream credentials. */
 .wpstream_step_wrapper{
     display: none;
 }
@@ -90,6 +118,9 @@
     padding: 0px 0px 0px 0px;
 }
 
+/* Register / option panels: the boxed sub-sections inside a step (account
+   registration form and generic option groups) with their own padded, bordered
+   purple card. */
 .wpstream_on_board_register_wrapper,
 .wpstream_step_wrapper .wpstream_option_wrapper {
     max-width: 100%;
@@ -116,6 +147,7 @@
     align-items: center;
 }
 
+/* Login explanation blurb: the small centered helper text above the login form. */
 .wpstream_on_board_login_wrapper_explanations{
     margin-bottom: 35px;
     font-size: 14px;
@@ -124,12 +156,15 @@
     text-align: center;
 }
 
+/* Register/login submit buttons stretch full width of their card. */
 .wpstream_onboard_register,
 .wpstream_onboard_login{
     width:100%;
 
 }
 
+/* Auth toggles hidden by default: the login action link and the register/login
+   panels start collapsed and are revealed by JS as the user switches modes. */
 #wpstream_onboarding_action_login,
 .wpstream_on_board_register_wrapper,
 .wpstream_on_board_login_wrapper{
@@ -138,6 +173,8 @@
 
 
 
+/* Inline status messages: green success "notification" pill (hidden until JS
+   shows it), a red error variant, and the "checking account status" text. */
 .wpstream_onboarding_notification{
     background: #45a73f;
     padding: 5px 10px;
@@ -166,15 +203,18 @@
 }
 
 
+/* Option inputs span the full width of their row. */
 .wpstream_step_wrapper .wpstream_option input{
     width: 100%;
 
 }
 
+/* Register action link hidden by default. */
 #wpstream_onboarding_action_register{
     display: none;
 }
 
+/* The login/register mode-switch links: small underlined clickable text. */
 #wpstream_onboarding_action_login,
 #wpstream_onboarding_action_register{
     font-size: 14px;
@@ -185,12 +225,14 @@
     margin-bottom: 10px;
 }
 
+/* Step 1 is the only step visible on load. */
 .wpstream_step_1{
     display: block;
 }
 
 
 
+/* The "or" divider between two alternative actions (e.g. login vs register). */
 .wpstram_or{
     text-align: center;
     font-size: 14px;
@@ -198,6 +240,7 @@
     font-weight: 500;
 }
 
+/* Warning callout: soft-red boxed notice used for onboarding warnings. */
 .wpstream_warning_onboarding{
     background: #ffe5e5;
     border: 1px solid #ff4c4c8c;
@@ -212,6 +255,8 @@
 
 
 
+/* Accordion header: the clickable collapsible section title (live/VOD setup),
+   with a purple hover state. */
 .wpstream_accordion_header{
     padding: 20px 10px;
     border: 1px solid #ccc;
@@ -235,6 +280,7 @@
 }
 
 
+/* Live-setup sub-block and the field labels used throughout the steps. */
 .wpstream_onboard_live{
     padding: 10px;
     border: 1px solid #ccc;
@@ -248,6 +294,7 @@
 }
 
 
+/* Accordion body: the padded purple panel revealed under an accordion header. */
 .wpstream_accordion_container{
     padding: 30px;
     border-radius: 5px;
@@ -256,6 +303,8 @@
     border: 1px solid #e8dbfc;
 }
 
+/* Onboarding form fields: shared white text-input styling for every channel /
+   VOD name and price input across the live, PPV and free-VOD setup steps. */
 #wpstream_free_vod_file_name_for_ppv,
 #wpstream_onboarding_vod_price,
 #wpstream_onboarding_ppv_vod_name,
@@ -273,6 +322,8 @@
     margin-bottom: 15px;
 }
 
+/* Width tweaks: cap the PPV VOD name field, make the editable post-name a
+   positioning context, and force the VOD file-name fields to full width. */
 #wpstream_onboarding_ppv_vod_name{
 max-width: 450px;
 }
@@ -287,6 +338,7 @@ max-width: 450px;
     width: 100%;
 }
 
+/* Legacy "on board" trigger button (brown). */
 #wpstream_on_board{
     background-color: brown;
     padding: 15px;
@@ -298,6 +350,9 @@ max-width: 450px;
     margin: 20px;
 }
 
+/* Primary action buttons: the shared purple pill styling for every wizard/
+   bubble control (next, prev, finish, upload, try again, install, view VOD,
+   start channel, close). */
 #wpstream_onboarding_view_vod,
 .wpstream_upload_video,
 .wpstream_onboarding_tryagain,
@@ -320,24 +375,28 @@ max-width: 450px;
     line-height: 1.4em;
 }
 
+/* Extra top margin for the try-again / install-plugin buttons. */
 .wpstream_onboarding_tryagain,
 .wpstream_install_plugin{
     margin: 30px 0px 0px 0px;
 }
 
 
+/* Positioning contexts so absolutely-positioned bubbles/controls anchor here. */
 #post-body,
 .wpstream_initial_onboarding_controls_wrapper{
     position: relative;
 }
 
 
+/* Start-channel button laid out as its own block. */
 #wpstream_onboarding_start_chanel{
     display: block;
     width: fit-content;
     margin: 10px 0px;
 }
 
+/* Shared dark-purple hover state for the action buttons above. */
 .wpstream_onboard_initial_bubble_prev:hover,
 #wpstream_onboarding_view_vod:hover,
 .wpstream_onboarding_tryagain:hover,
@@ -350,6 +409,7 @@ max-width: 450px;
 }
 
 
+/* Progress dots: the row of small round step indicators under a bubble. */
 .wpstream_round_bubble{
     text-align: center;
 }
@@ -366,10 +426,13 @@ max-width: 450px;
 
 
 
+/* The bubble "finish" button is hidden until the last step. */
 .wpstream_onboard_bubble_finish{
     display: none;
 }
 
+/* Modal backdrop: full-screen dark dimming layer behind the onboarding modal
+   (hidden until the wizard opens). */
 .wpstream_modal_background_onboard {
     position: fixed;
     z-index: 10001;
@@ -382,6 +445,7 @@ max-width: 450px;
     display: none;
 }
 
+/* Decorative background image layer sitting behind the backdrop content. */
 .wpstream_modal_back{
     position: absolute;
     width: 100%;
@@ -397,6 +461,7 @@ max-width: 450px;
 
 
 
+/* Secondary backdrop variant (lower z-index) for a second modal layer. */
 .wpstream_modal_background_onboard2 {
     position: fixed;
     z-index: 1000;
@@ -409,6 +474,8 @@ max-width: 450px;
     display: none;
 }
 
+/* Close (X) button: the top-right dismiss control on the onboarding panel,
+   using a background-image icon; a second rule nudges it for the initial modal. */
 .wpstream_close_onboarding{
     width:30px;
     height: 30px;
@@ -435,6 +502,7 @@ max-width: 450px;
 
 
 
+/* "Acknowledge / close" text button inside the modal. */
 #wpstrean_close_modal_ack{
     font-size: 14px;
     margin-top: 20px;
@@ -442,6 +510,7 @@ max-width: 450px;
     margin-bottom: 0px;
 }
 
+/* Confirmation text shown when the user tries to close mid-onboarding. */
 .wpstream_close_onboarding_warning{
     color: #1d2327;
     margin: 15px 0px 0px 0px;
@@ -453,6 +522,7 @@ max-width: 450px;
 }
 
 
+/* Bubble body text and its line-break spacer. */
 #wpstream_onboard_bubble_content{
     color: #1d2327;
     margin: 0px 0px 15px 0px;
@@ -468,6 +538,7 @@ max-width: 450px;
     margin-bottom: 10px;
 }
 
+/* Bubble title heading (note: id spells "tile"), forced with !important. */
 #wpstream_onboard_bubble_tile{
     margin: 15px 0px 15px 0px!important;
     line-height: 1.3em!important;
@@ -479,6 +550,7 @@ max-width: 450px;
     font-weight: 600!important;
 }
 
+/* Start-channel button, distinct green "success" styling with a green hover. */
 #wpstream_onboarding_start_chanel {
     padding: 9px 20px;
     width: auto;
@@ -501,6 +573,8 @@ max-width: 450px;
     color: #fff;
 }
 
+/* Purple call-to-action buttons: register/login, quick-start trigger and the
+   VOD/live "action" buttons, with a shared dark-purple hover. */
 .wpstream_onboard_register,
 .wpstream_onboard_login,
 #wpstream_trigger_quick_start,
@@ -521,6 +595,8 @@ max-width: 450px;
     background-color: #221466;
 }
 
+/* Sample inline icons: small square glyph badges (settings/camera/view) used
+   in the instructional copy, each set via a background-image SVG with a hover. */
 .wpstream_sample_icon_settings{
     width: 37px;
     height: 37px;
@@ -557,6 +633,8 @@ max-width: 450px;
 }
 
 
+/* Quick-start card: the white bordered panel promoting the quick-start flow,
+   with its heading and paragraph styles. */
 .wpstream_quick_start_wrapper{
     background: #fff;
     margin: 5px 15px 2px;
@@ -577,6 +655,8 @@ max-width: 450px;
 }
 
 
+/* Responsive: short-viewport tweaks. As screen height shrinks the wizard moves
+   up, narrows, drops the logo and tightens spacing so it still fits on screen. */
 @media screen and (max-height: 850px) {
     .wpstream_on_boarding_wrapper{
         top: 45px;
@@ -635,8 +715,10 @@ max-width: 450px;
 }
 
 
+/* Responsive: narrow (mobile) viewports. The wizard goes full-screen and form
+   fields/links stretch to fit the small width. */
 @media screen and (max-width: 768px) {
-    
+
     .wpstream_on_boarding_wrapper {
         position: fixed;
         width: 100%;
@@ -664,12 +746,15 @@ max-width: 450px;
 
 }
 
+/* Loading spinner shown full-width inside an accordion while work is pending. */
 .wpstream_accordion_container .spinner {
     visibility: visible;
     background-position: center;
     width: 100%;
 }
 
+/* Strip the default admin link box-shadow from links inside a warning box
+   (uses CSS nesting). */
 .wpstream_warning_onboarding {
     a {
         box-shadow: none;

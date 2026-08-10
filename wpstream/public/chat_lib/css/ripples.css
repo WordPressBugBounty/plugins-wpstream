@@ -1,6 +1,15 @@
+/*
+ * Material-style "ripple" click effect (compiled from a Sass source; see the
+ * sourceMappingURL at the bottom). Provides the positioning host, the clipping
+ * wrapper, and the animated ripple circle plus its on/out transition states.
+ * Used to give buttons/controls in the chat UI a tactile ripple on click.
+ */
+
+/* Host element: establishes a positioning context for the ripple overlay. */
 .withripple {
   position: relative;
 }
+/* Overlay that clips ripples to the host's bounds; ignores pointer events. */
 .ripple-wrapper {
   position: absolute;
   top: 0;
@@ -12,6 +21,7 @@
   border-radius: inherit;
   pointer-events: none;
 }
+/* The ripple circle itself: centred on the click, starts invisible at scale 1. */
 .ripple {
   position: absolute;
   width: 20px;
@@ -29,11 +39,13 @@
   opacity: 0;
   pointer-events: none;
 }
+/* Active state: fade the ripple in while it scales/expands. */
 .ripple.ripple-on {
   transition: opacity 0.15s ease-in 0s, -webkit-transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
   transition: opacity 0.15s ease-in 0s, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
   opacity: 0.1;
 }
+/* Release state: fade the ripple back out. */
 .ripple.ripple-out {
   transition: opacity 0.1s linear 0s !important;
   opacity: 0;

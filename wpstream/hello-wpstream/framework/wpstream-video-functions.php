@@ -1,17 +1,33 @@
 <?php
 /**
+ * Video / player presentation helpers for the hello-wpstream companion theme.
+ *
+ * These functions build the front-end player experience on single content pages:
+ * the player wrapper (with an optional live-chat column), the video/trailer
+ * player output, the "not live" placeholder, past-broadcast listings, video-card
+ * column classes, and the Better Messages chat-room integration.
+ *
+ * @package    Wpstream
+ * @subpackage Wpstream/hello-wpstream
+ */
+
+/**
  * CHeck if we display chat
  *
  * @package wpstream-theme
  */
 
  if ( ! function_exists( 'wpstream_theme_check_if_show_chat' ) ) :
+	// Return true when the chat column should render for this content, based on the
+	// post type and the matching theme-customizer toggle.
 	function wpstream_theme_check_if_show_chat($post_id){
+		// Resolve the post type and default to "chat off".
 		$post_type = get_post_type($post_id);
 		$show_chat = false;
 
 		
 
+		// Each supported post type enables chat via its own customizer switch.
 		if($post_type==='product' && get_theme_mod( 'wpstream_product_how_chat' )  ){
 			$show_chat = true;
 		}else if($post_type==='wpstream_product' && get_theme_mod( 'wpstream_free_to_view_live_show_chat' )  ){
@@ -30,21 +46,33 @@ endif;
 /**
  * Display video player wrapper .
  *
+ * Outputs the player region for a single item. When chat is enabled the player
+ * and chat sit in two Bootstrap columns; otherwise the player fills the row.
+ * The row is also flagged when the current user already owns the product.
+ *
+ * @param int $post_id The ID of the content being displayed.
+ * @return void Markup is printed directly.
+ *
  * @package wpstream-theme
  */
 
 if ( ! function_exists( 'wpstream_theme_display_player_wrapper' ) ) :
 function wpstream_theme_display_player_wrapper($post_id){
+	// Plugin singleton used by the player-rendering methods called below.
 	global $wpstream_plugin;
 		$current_user           =       wp_get_current_user();
 			
+		// CSS flag added when the logged-in user has already purchased this product.
 		$woo_product_bought_class='';
+		// Only WooCommerce products can be "bought"; bundles are excluded further down.
 		if ( is_singular( 'product' ) && function_exists('wc_get_product') ) {
 				$product    = wc_get_product( $post_id );
 				$product_type 		  =   $product->get_type();
+				// Bundles are handled by their own logic, so skip the ownership check for them.
 				if ( 'wpstream_bundle' !== $product_type ) {
 
 
+					// Mark the row as "bought" when Woo confirms this user purchased the product.
 					if ( function_exists( 'wc_customer_bought_product' ) &&  wc_customer_bought_product( $current_user->user_email, $current_user->ID, $post_id ) ) {
 							$woo_product_bought_class='wpstream_woo_product_bought';
 					}
@@ -52,17 +80,22 @@ function wpstream_theme_display_player_wrapper($post_id){
 		}
 
 
+	// Open the row, tagging it with the "bought" class when applicable.
 	print '<div class="row '.esc_attr(	$woo_product_bought_class).'">';
 
+		// Chat enabled: player in an 8-col column, chat in a 4-col column.
 		if(wpstream_theme_check_if_show_chat($post_id)){
 			print '<div class="col-md-8 wpstream_theme_display_player_wrapper_with_chat">';
+				// Player column.
 				wpstream_theme_display_player( $post_id );
 			print '</div>';
 
 			print '<div class="col-md-4 wpstream_theme_display_player_chat_wrapper">';
+				// Chat column.
 				wpstream_theme_display_better_messages_chat($post_id);
 			print '</div>';
 		}else{
+			// Chat disabled: player fills the whole row.
 			wpstream_theme_display_player( $post_id );
 		}
 
@@ -77,6 +110,13 @@ endif;
 /**
  * Display better messages chat
  *
+ * Renders the Better Messages chat room bound to this content: creates the room
+ * on first use, then prints its shortcode. Shows a notice when the Better
+ * Messages plugin is not active.
+ *
+ * @param int $post_id The ID of the content the chat belongs to.
+ * @return void Markup is printed directly.
+ *
  * @package wpstream-theme
  */
 
@@ -86,15 +126,20 @@ if ( ! function_exists( 'wpstream_theme_display_better_messages_chat' ) ) :
 function wpstream_theme_display_better_messages_chat($post_id){
 
 	
+	// Only proceed when the Better Messages plugin is available.
 	if(function_exists('better_messages')){
 
+		// Look up the chat room already linked to this post, if any.
 		$chat_post_id=get_post_meta( $post_id, 'wpstream_chat_post_id',true );
+		// No room yet: create one and store its ID against the post.
 		if(intval($chat_post_id)===0){
 			$chat_post_id  = wpstream_create_better_messages_chat($post_id);
 		}
 
+		// Render the chat room via its Better Messages shortcode.
 		print do_shortcode('[bp_better_messages_chat_room id="'.intval($chat_post_id).'"]');
 	}else{
+		// Plugin missing: tell the user what to install.
 		esc_html_e('For chat support you need to install Better Messages plugin','hello-wpstream');
 	}
 	
@@ -107,6 +152,12 @@ endif;
 /**
  * Create Better messages chat room 
  *
+ * Creates a Better Messages chat post (post type bpbm-chat) owned by the current
+ * user and links it back to the content via post meta.
+ *
+ * @param int $post_id The content the new chat room is attached to.
+ * @return int|null New chat room post ID, or null when Better Messages is inactive.
+ *
  * @package wpstream-theme
  */
 
@@ -115,18 +166,23 @@ endif;
  if ( ! function_exists( 'wpstream_create_better_messages_chat' ) ) :
 	function wpstream_create_better_messages_chat($post_id){
 		
+		// Bail silently unless Better Messages is available.
 		if(function_exists('better_messages')){
+			// The chat room is authored by the current user.
 			$current_user           =   wp_get_current_user();
 			$userID                 =   $current_user->ID;
 
+			// Build the chat post: titled after the content, published, owned by the user.
 			$post = array(
 				'post_title'	=> sanitize_text_field(get_the_title( $post_id )),
 				'post_status'	=> 'publish',
 				'post_type'   => 'bpbm-chat',
 				'post_author' => $userID,
 		);
+			// Insert the chat room and remember its ID on the source content.
 			$chat_post_id =  wp_insert_post($post );
 			update_post_meta( $post_id, 'wpstream_chat_post_id',$chat_post_id );
+			// Hand the new chat room ID back to the caller.
 			return $chat_post_id;
 
 		}
@@ -149,12 +205,15 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 	 * @return void
 	 */
 	function wpstream_theme_display_player( $post_id ) {
+		// Plugin singleton and current user (used by the player methods / ownership checks).
 		global $wpstream_plugin;
 		$current_user = wp_get_current_user();
 
+		// Featured image used as the player's poster background.
 		$poster_id            =   get_post_thumbnail_id($post_id);
 		$poster_data          =   wp_get_attachment_image_src($poster_id,'full');
 	
+		// Resolve the poster URL from the attachment data when present.
 		$poster_url           =   '';
 		if(isset($poster_data[0])){
 			$poster_url=$poster_data[0];
@@ -162,6 +221,7 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 		?>
 		
 
+            <!-- Poster image shown behind the player until playback/trailer begins -->
             <?php if( $poster_url!='' ) {
 			    echo '<div class="wpstream_video_poster_holder wpstream_hide_on_trailer" style="background-image:url(' . esc_attr($poster_url) . ');"></div>';
             } ?>
@@ -172,9 +232,12 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 
 			<div class="wpstream_title_wrapper_simple wpstream_hide_on_trailer">
 				<?php
+				// Products render the add-to-cart section; other types render author + title.
 				if ( 'product' === get_post_type( $post_id )  ) {
+					// WooCommerce product: purchase / add-to-cart UI.
 					include WPSTREAM_PLUGIN_PATH . '/hello-wpstream/template-parts/single/product-add-to-cart-section.php';
 				} else {
+					// Free / other content: author block, followed by the title heading.
 					include WPSTREAM_PLUGIN_PATH . '/hello-wpstream/template-parts/single/post-author-content-simple.php'; ?>
 					<h1 class="wpstream_title"><?php echo esc_html( get_the_title( $post_id ) ); ?></h1>
 				<?php
@@ -183,14 +246,20 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 			</div>
 
         <?php
+		// Unique suffix so the trailer mute/unmute button IDs never collide on a page.
 		$now                              = time().rand(0,1000000);
 		$mute_trailer_button_element_id   = 'wpstream_live_video_mute_trailer_btn_' . $now;
 		$unmute_trailer_button_element_id = 'wpstream_live_video_unmute_trailer_btn_' . $now;
+		// Attachment ID of the optional trailer clip (0 when none is set).
 		$trailer_attachment_id = intval (get_post_meta( $post_id, 'video_trailer', true ));;
 
+        // Free live events (wpstream_product): show the "not live" placeholder and,
+        // when a trailer exists, the play-trailer button plus its mute/unmute controls.
         if( function_exists('wpstream_theme_not_live_section' ) && 'wpstream_product' === get_post_type( $post_id ) ) {
             echo '<div class="wpstream_live_channel_actions_wrapper wpstream_video_on_demand_actions_wrapper">';
+                // "We are not live" / status message.
                 print wpstream_theme_not_live_section( $post_id );
+                // Trailer controls only when a trailer clip is attached.
                 if ( $trailer_attachment_id !== 0 ) {
                     echo '<button type="button" class="wpstream_player_controls wpstream_video_on_demand_play_trailer" aria-label="' . esc_attr__( 'Play Trailer', 'wpstream' ) . '">
                         <svg width="30" height="24" viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -214,20 +283,26 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
         ?>
 
 		<?php
+		// VOD and WooCommerce products: build the play-video / play-trailer action bar,
+		// honouring the site's "start muted" and "autoplay trailer" options.
 		if ( 'wpstream_product_vod' === get_post_type( $post_id ) || get_post_type( $post_id ) === 'product' ) {
+			// Read the "trailer starts muted" site option.
 			$muted = false;
 			$wpstream_vod_start_muted   =   intval ( get_option('wpstream_vod_start_muted','') );
 			if($wpstream_vod_start_muted===1){
 				$muted=true;
 			}
 
+			// Read the "autoplay trailer" site option.
 			$autoplay = false;
 			$wpstream_vod_autoplay      =   intval  ( get_option('wpstream_vod_autoplay','') );
 			if($wpstream_vod_autoplay===1){
 				$autoplay=true;
 			}
 
+			// Wrapper carries the muted/autoplay preferences as data-attributes for the JS.
 			echo '<div class="wpstream_video_on_demand_actions_wrapper" data-trailer-muted-default="' . ( $muted ? '1' : '0' ) . '"' . ( $autoplay && $trailer_attachment_id !== 0 ? ' data-autoplay-trailer="1"' : '' ) . '>';
+			// Primary "Play Video" button (with inline play-icon SVG).
 			echo '<button type="button" class="wpstream_player_controls wpstream_video_on_demand_play_video_wrapper" aria-label="' . esc_attr__( 'Play Video', 'wpstream' ) . '">
 						<span class="wpstream_video_on_demand_play_video">
 							<svg width="29" height="30" viewBox="0 0 29 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -236,6 +311,7 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 						</span>
 						' . esc_html__( 'Play Video', 'wpstream' ) . '
 					</button>';
+			// Add the "Play Trailer" button and its mute/unmute controls when a trailer exists.
 			if ( $trailer_attachment_id !== 0 ) {
 				echo '<button type="button" class="wpstream_player_controls wpstream_video_on_demand_play_trailer" aria-label="' . esc_attr__( 'Play Trailer', 'wpstream' ) . '">
 							<svg width="30" height="24" viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -259,11 +335,14 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 		?>
 
 			<?php
+			// The viewer is entitled to watch: pick the correct player for the content type.
 			if ( $wpstream_plugin->main->wpstream_player->wpstream_check_if_player_can_dsplay_theme( $post_id ) ) {
 
+				// Subscriptions only ever show a trailer here.
 				if ( 'subscription' === get_post_type( $post_id )  ) {
 					$wpstream_plugin->main->wpstream_player->wpstream_video_on_demand_player_only_trailer( $post_id );
 				} elseif ( 'product' === get_post_type( $post_id ) && function_exists('wc_get_product')  ) {
+					// WooCommerce product: bundles show only a trailer, others the full player.
 					$product      = wc_get_product( $post_id );
 					$product_type = $product->get_type();
 					if ( 'wpstream_bundle' === $product_type ) {
@@ -272,18 +351,22 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 						$wpstream_plugin->main->wpstream_player->wpstream_video_player_shortcode( $post_id );
 					}
 				} else {
+					// Free content: the full video player shortcode.
 					$wpstream_plugin->main->wpstream_player->wpstream_video_player_shortcode( $post_id );
 				}
 			} elseif ( get_post_type( $post_id ) === 'product'  && function_exists('wc_get_product') ) {
 
+				// Not entitled and this is a product: show the appropriate "buy" prompt.
 				$product      = wc_get_product( $post_id );
 				$product_type = $product->get_type();
 
 				if ( 'subscription' === $product_type ) {
+					// Subscription: prompt only when the user has no active subscription.
 					if ( ! wcs_user_has_subscription( $current_user->ID, $post_id, 'active' ) ) {
 						$wpstream_plugin->main->wpstream_player->wpstream_display_no_buy_message( 'nobuy', $post_id );
 					}
 				} else {
+					// Any other product type: show the standard no-purchase message.
 					$wpstream_plugin->main->wpstream_player->wpstream_display_no_buy_message( 'nobuy', $post_id );
 				}
 			}
@@ -304,9 +387,14 @@ if ( ! function_exists( 'wpstream_display_trailer' ) ) {
 	 */
 	function wpstream_display_trailer( $post_id, $poster_thumb = '' ) {
 
+		// Bundle this item may belong to, and the current user (for ownership checks).
 		$possible_bundle = get_post_meta( $post_id, 'wpstream_part_of_bundle', true );
 		$current_user    = wp_get_current_user();
 
+		// In several "already has access" cases the plugin's own player renders the
+		// trailer, so this theme-side trailer must NOT render. Each branch below detects
+		// one of those cases and bails early.
+		// Case 1: a purchased video-on-demand product.
 		if (
 			get_post_type( $post_id ) === 'product' &&
 			function_exists('wc_get_product') &&
@@ -333,14 +421,17 @@ if ( ! function_exists( 'wpstream_display_trailer' ) ) {
 		) {
 			echo 'do not display trailer player - trailer in plugin';
 			return; // We will display trailer in the plugin player.
+		// Case 4: free VOD content also renders its trailer in the plugin player.
 		} elseif ( get_post_type( $post_id ) === 'wpstream_product_vod' ) {
 			echo 'do not display trailer player - trailer in plugin';
 			return; // We will display trailer in the plugin player.
 		}
 
+		// Otherwise build the theme-side trailer markup into a buffer.
 		$return = '';
 		ob_start();
 
+		// Resolve the trailer clip, its URL, poster and MIME type.
 		$video_attachment_id = get_post_meta( $post_id, 'video_trailer', true );
 		$attachment_url      = wp_get_attachment_url( $video_attachment_id );
 		$poster_thumb        = get_the_post_thumbnail_url( $post_id, 'full' );
@@ -350,6 +441,7 @@ if ( ! function_exists( 'wpstream_display_trailer' ) ) {
 			$video_type = $attachment_metadata['mime_type'];
 		}
 
+		// Only emit the <video> element when the trailer file actually resolves.
 		if ( $attachment_url ) {
 			?>
 
@@ -365,9 +457,11 @@ if ( ! function_exists( 'wpstream_display_trailer' ) ) {
 			</video>
 
 			<?php
+			// Prompt letting the viewer un-mute the (autoplaying, muted) trailer.
 			print '<div class="wpstream_video_on_demand_play_trailer_sound">' . esc_html__( 'play trailer with sound','hello-wpstream' ) . '</div>';
 		}
 
+		// Capture the buffered markup and return it.
 		$return = ob_get_contents();
 		ob_end_clean();
 
@@ -383,9 +477,12 @@ if ( ! function_exists( 'wpstream_display_trailer' ) ) {
  * @return string The string of column classes.
  */
 function wpstream_video_cards_column_class( $per_row ) {
+	// Normalise the requested number of cards per row.
 	$per_row = intval( $per_row );
+	// Default classes correspond to 3 cards per row on md+ screens.
 	$return = 'col-12 col-sm-6 col-md-4 col-lg-4';
 	
+	// Override the default with the class set matching the requested per-row count.
 	if ( 4 === $per_row ) {
 		$return = 'col-12 col-sm-6 col-md-4 col-lg-3';
 	}else if ( 2 === $per_row ) {
@@ -405,21 +502,28 @@ function wpstream_video_cards_column_class( $per_row ) {
  * @return string The HTML markup for the non-live section.
  */
 function wpstream_theme_not_live_section( $channel_id ) {
+    // Load the cached event status/error for this channel (written by the polling code).
     $transient_name = 'event_data_to_return_'.   $channel_id;
     $event_data = get_transient( $transient_name );
 	$status = isset( $event_data['status'] ) ? $event_data['status'] : '';
+    // Channels with a stored embed URL render an immediate status box; channels
+    // without one show a spinner placeholder while the front-end polls the live state.
     $embedUrl = get_post_meta( $channel_id, 'embedUrl', true );
 
     if ( $embedUrl ) {
+	    // Embed mode: open the status box and pick its state CSS classes from $status.
 	    $return_string   = '<div class="wpstream_not_live_mess wpstream_live_channel_status"><div class="wpstream_not_live_mess_back"></div>';
 	    $message_classes = array( 'wpstream_live_channel_status_message' );
+	    // Stopped / starting / unknown states get the plain "message" modifier class.
 	    if ( in_array( $status, array( 'stopped', 'stopping', 'starting' ) ) || $status === '' ) {
 		    $message_classes[] = 'wpstream_not_live_mess_mess';
 	    }
+	    // An "active" channel that has not started streaming gets the init-state class.
 	    if ( in_array( $status, array( 'active' ) ) ) {
 		    $message_classes[] = 'wpstream_player_state_init_class wpstream_not_live_mess_mess';
 	    }
 
+	    // Emit the message container, then the actual message text per status/error.
 	    $return_string .= '<div class="' . esc_attr( implode( ' ', $message_classes ) ) . '">';
 	    if ( ( in_array( $status, array( 'stopped', 'stopping', 'starting' ) ) || $status === '' ) ||
 	         ( isset( $event_data['error'] ) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ) {
@@ -429,9 +533,13 @@ function wpstream_theme_not_live_section( $channel_id ) {
 		    $return_string .= esc_html__( 'The live stream has not yet started', 'hello-wpstream' );
 	    }
     } else {
+	    // No embed URL yet: render a hidden container that the JS reveals once it knows
+	    // whether to show a "not live" message or keep showing the loading spinner.
 	    $return_string  = '<div class="wpstream_not_live_mess wpstream_theme_not_live_section " style="display: none"><div class="wpstream_not_live_mess_back"></div>';
 	    $return_string .= '<div class="wpstream_not_live_mess_mess">';
 
+	    // If the cached status already says stopped/starting (or the channel is unknown),
+	    // show the "not live" text immediately; otherwise keep the loading spinner.
 	    if ( ( isset( $event_data['status']) &&
 	           in_array( $event_data['status'], array( 'stopped', 'stopping', 'starting' ) ) ) ||
 	         ( isset($event_data['error']) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ){
@@ -441,6 +549,7 @@ function wpstream_theme_not_live_section( $channel_id ) {
 	    }
     }
 
+	// Close the message and outer status containers, then return the markup.
 	$return_string .= '</div>';
 	$return_string .= '</div>';
 	return $return_string;
@@ -453,11 +562,14 @@ function wpstream_theme_not_live_section( $channel_id ) {
  * @return string The HTML markup for past broadcasts.
  */
 function wpstream_past_broascast_for_non_live_section( $channel_id ) {
+	// Identify the channel's author; their VOD library is what we list below.
 	$wpstream_get_post_type = get_post_type( $channel_id );
 	$author_id              = wpstream_get_author_id( $channel_id );
+	// Whether to serve the query from cache, and the cache key for this author.
 	$use_transient          = wpstream_return_use_transient();
 	$transient_key          = 'wpstream_product_broadcaster_vod_query_' . $author_id;
 
+	// Query: the 3 most recent VOD posts attached to this channel.
 	$broadcaster_video_query_args = array(
 		'post_status'    => 'publish',
 		'post_type'      => 'wpstream_product_vod',
@@ -475,16 +587,21 @@ function wpstream_past_broascast_for_non_live_section( $channel_id ) {
 		),
 	);
 
+	// Run the query (cached when $use_transient is true).
 	$query = wpstream_custom_query( $broadcaster_video_query_args, $transient_key, $use_transient );
 
+	// Only build markup when there is at least one past broadcast to show.
 	$return = '';
 	if ( $query->found_posts > 0 ) {
+		// Open the broadcaster section and its row wrapper.
 		$return .= '<section class="wpstream_section wpstream_broadcaster_section">';
 		$return .= '<div class="row wpstream_past_broascast_for_non_live_section_wrapper">';
+		// Render the past-broadcast template into a buffer and append it.
 		ob_start();
 		include WPSTREAM_PLUGIN_PATH . '/hello-wpstream/template-parts/single/not-live-past-broadcast.php';
 		$return .= ob_get_contents();
 		ob_end_clean();
+		// Close the row and section.
 		$return .= '</div></section>';
 	}
 

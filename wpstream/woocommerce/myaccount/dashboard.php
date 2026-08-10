@@ -23,14 +23,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 
+<!-- Greeting line: welcomes the logged-in customer and offers a sign-out link. -->
 <p>
 	<?php
+		// Print "Hello <name> (not <name>? Sign out)": bold display name plus a logout URL back to My Account.
 		echo sprintf( esc_attr__( 'Hello %s%s%s (not %2$s? %sSign out%s)', 'woocommerce' ), '<strong>', esc_html( $current_user->display_name ), '</strong>', '<a href="' . esc_url( wc_logout_url( wc_get_page_permalink( 'myaccount' ) ) ) . '">', '</a>' );
 	?>
 </p>
 
+<!-- Intro copy: links to the orders, edit-address and edit-account endpoints. -->
 <p>
 	<?php
+		// Print the intro sentence, injecting endpoint URLs for orders / addresses / account details.
 		echo sprintf( esc_attr__( 'From your account dashboard you can view your %1$srecent orders%2$s, manage your %3$sshipping and billing addresses%2$s and %4$sedit your password and account details%2$s.', 'woocommerce' ), '<a href="' . esc_url( wc_get_endpoint_url( 'orders' ) ) . '">', '</a>', '<a href="' . esc_url( wc_get_endpoint_url( 'edit-address' ) ) . '">', '<a href="' . esc_url( wc_get_endpoint_url( 'edit-account' ) ) . '">' );
 	?>
 </p>
@@ -41,6 +45,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	 *
 	 * @since 2.6.0
 	 */
+	// Modern dashboard hook (2.6.0+): where extensions inject their dashboard content.
 	do_action( 'woocommerce_account_dashboard' );
 
 	/**
@@ -48,6 +53,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	 *
 	 * @deprecated 2.6.0
 	 */
+	// Deprecated pre-account hook, still fired for backward compatibility.
 	do_action( 'woocommerce_before_my_account' );
 
 	/**
@@ -55,5 +61,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	 *
 	 * @deprecated 2.6.0
 	 */
+	// Deprecated post-account hook, still fired for backward compatibility.
 	do_action( 'woocommerce_after_my_account' );
 ?>

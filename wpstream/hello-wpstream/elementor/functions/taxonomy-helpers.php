@@ -3,9 +3,18 @@
 /**
  * Elementor taxonomy helpers functions
  *
+ * Small helper library used by the WpStream Elementor widgets to describe the
+ * theme's taxonomies. It exposes three building blocks:
+ *   - wpstream_theme_generate_category_values(): term label/value pairs for a
+ *     single taxonomy (used to populate widget autocomplete/select controls),
+ *   - wpstream_return_taxonomy_array(): the master map of taxonomy => post types
+ *     the taxonomy applies to,
+ *   - wpstream_return_taxonomy_labels(): human-readable labels for those taxonomies.
+ *
  * @package wpstream-theme
  */
 
+// Block direct access: this file only makes sense loaded inside WordPress.
 if ( !defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
@@ -31,14 +40,18 @@ if ( ! function_exists( 'wpstream_theme_generate_category_values' ) ) {
 	 * @return array The category values.
 	 */
 	function wpstream_theme_generate_category_values( $taxonomy_name ) {
+		// Decide whether the transient cache layer is active (guarded in case the helper isn't loaded).
 		$use_transient = function_exists( 'wpstream_return_use_transient' ) ? wpstream_return_use_transient() : false;
 
+		// Normalise any falsy value to a strict boolean false.
 		$use_transient = ! $use_transient ? false : $use_transient;
 
+		// Build the per-taxonomy cache key.
 		$transient_name = 'wpstream_taxonomy_value_terms_' . $taxonomy_name;
 
 		// If transients are not used or the transient doesn't exist, fetch and cache the terms.
 		if ( ! $use_transient || false === ( $item_taxonomy_values = wpstream_request_transient_cache( $transient_name ) ) ) {//phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.Found
+			// Fetch every term of this taxonomy, including empty ones (hide_empty => false).
 			$terms_category = get_terms(
 				array(
 					'taxonomy'   => $taxonomy_name,
@@ -46,10 +59,12 @@ if ( ! function_exists( 'wpstream_theme_generate_category_values' ) ) {
 				)
 			);
 
+			// A malformed taxonomy name yields a WP_Error; return an empty set instead of erroring out.
 			if ( is_wp_error( $terms_category ) ) {
 				return array();
 			}
 
+			// Reduce each term object to a simple label/value pair for the widget controls.
 			$item_taxonomy_values = array_map(
 				function ( $term ) {
 					return array(
@@ -66,6 +81,7 @@ if ( ! function_exists( 'wpstream_theme_generate_category_values' ) ) {
 			}
 		}
 
+		// Return the label/value list (freshly built here, or read from cache above).
 		return $item_taxonomy_values;
 	}
 }
@@ -77,6 +93,7 @@ if ( ! function_exists( 'wpstream_return_taxonomy_array' ) ) {
 	 * @return array Taxonomy array.
 	 */
 	function wpstream_return_taxonomy_array() {
+	// Master map: taxonomy slug => the post types that taxonomy is registered against.
 		$taxonomy_array = array(
 			'category'              => array(
 				'wpstream_product',
@@ -120,6 +137,7 @@ if ( ! function_exists( 'wpstream_return_taxonomy_array' ) ) {
 
 		);
 
+		// Hand back the taxonomy => post-types map.
 		return $taxonomy_array;
 	}
 }
@@ -131,6 +149,7 @@ if ( ! function_exists( 'wpstream_return_taxonomy_labels' ) ) {
 	 * @return array Taxonomy labels.
 	 */
 	function wpstream_return_taxonomy_labels() {
+	// Human-readable labels for the taxonomies, keyed by slug, for use in widget UI.
 		$taxonomy_array = array(
 			'category'              => esc_html__( 'Category', 'hello-wpstream' ),
 			'post_tag'              => esc_html__( 'Tags', 'hello-wpstream' ),
@@ -139,6 +158,7 @@ if ( ! function_exists( 'wpstream_return_taxonomy_labels' ) ) {
 			'wpstream_movie_rating' => esc_html__( 'Media Rating', 'hello-wpstream' ),
 		);
 
+		// Hand back the taxonomy => label map.
 		return $taxonomy_array;
 	}
 }
