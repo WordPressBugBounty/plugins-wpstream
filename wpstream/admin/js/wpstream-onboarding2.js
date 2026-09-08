@@ -190,17 +190,27 @@ const ONBOARD=(function(){
                 right:"-30px",
                 top:"100px",
                 arrow:"boarding-left-arrow"},
-            {id: 4, 
-                selector: "#post-body", 
+            {id: 4,
+                // Also match the block editor's content canvas: #post-body only exists in the classic editor.
+                selector: "#post-body, .editor-visual-editor",
                 title: "The VOD Page",
                 content:"This is the page that your <strong>viewers</strong> see when they <strong>watch</strong> your VOD.<div class='onboard_line_break'></div>  To see it yourself, click the permalink. Page will open in a new tab.  <div id=\"wpstream_onboarding_view_vod\">View VOD Page</div>",
                 left:"350px",
                 right:"0px",
                 top:"-10px",
-                arrow:"boarding-left-arrow"},
+                arrow:"boarding-left-arrow",
+                // Block editor: there's no permalink row under the title, so anchor
+                // to the editor header's "View <post type>" link instead (the
+                // closest equivalent action) and point the arrow at it from the left.
+                blockEditor: {
+                    selector: '.editor-header a.components-button.has-icon[href^="http"]',
+                    left: "728px",
+                    top: "-22px",
+                    arrow: "boarding-right-arrow"
+                }},
     
-            /*{id: 5, 
-                selector: "#post-body", 
+            /*{id: 5,
+                selector: "#post-body, .editor-visual-editor",
                 title: "And Thats it",
                 content:"That's it , you users will be free to view this Video on Demand",
                 left:"350px",
@@ -243,16 +253,27 @@ const ONBOARD=(function(){
                 right:"-30px",
                 top:"135px",
                 arrow:"boarding-left-arrow"},
-            {id: 5, 
-                selector: "#post-body", 
+            {id: 5,
+                // Also match the block editor's content canvas: #post-body only exists in the classic editor.
+                selector: "#post-body, .editor-visual-editor",
                 title: "The VOD Page",
                 content:"This is the page that your <strong>viewers</strong> see when they <strong>watch</strong> your VOD.<div class='onboard_line_break'></div>To see it yourself, click the permalink. Page will open in a new tab.<div class='onboard_line_break'></div><div id=\"wpstream_onboarding_view_vod\">View VOD Page</div>.",
                 left:"350px",
                 right:"0px",
                 top:"-10px",
-                arrow:"boarding-left-arrow"},
-            {id: 4, 
-                selector: "#post-body", 
+                arrow:"boarding-left-arrow",
+                // Block editor: there's no permalink row under the title, so anchor
+                // to the editor header's "View <post type>" link instead (the
+                // closest equivalent action) and point the arrow at it from the left.
+                blockEditor: {
+                    selector: '.editor-header a.components-button.has-icon[href^="http"]',
+                    left: "728px",
+                    top: "-22px",
+                    arrow: "boarding-right-arrow"
+                }},
+            {id: 4,
+                // Also match the block editor's content canvas: #post-body only exists in the classic editor.
+                selector: "#post-body, .editor-visual-editor",
                 title: "Your PPV VOD is now for sale.",
                 content:"Upon successful purchase, your viewers will be able to watch it as many times as they like.",
                 left:"350px",
@@ -483,8 +504,8 @@ const ONBOARD=(function(){
 
 	    // Load the list when the user reaches the create-VOD step.
 	    jQuery('.wpstream_step_2_create_vod').on('click', function() {
-            // check the current object
-            var data_control = 'wpstream_onboard_vod_free';
+            // The list is fetched before the user picks Free or Pay-Per-View, so the
+            // response feeds both panels below.
             // Ask the server for the list of available recordings.
             jQuery.ajax({
                 type: 'POST',
@@ -502,19 +523,15 @@ const ONBOARD=(function(){
                             data.videos === '' ||
                             Array.isArray(data.videos) && data.videos.length === 0
                         ) {
-                            // No videos found
-                            wpstream_no_videos_notice(data_control === 'wpstream_onboard_vod_free' ? '' : '_for_ppv');
+                            // No videos found: the notice replaces both panels.
+                            wpstream_no_videos_notice('');
                         } else {
-                            // Build the dropdown and reveal it, for either the free or PPV flow.
-                            if ( data_control === 'wpstream_onboard_vod_free' ) {
-                                wpstream_create_videos_list_content(data.videos, '');
-                                jQuery('#wpstream_onboard_vod_free > .spinner').css('display', 'none');
-                                jQuery('#wpstream_onboard_vod_free > .wpstream-step-container').css('display', 'block');
-                            } else {
-                                wpstream_create_videos_list_content(data.videos, '_for_ppv');
-                                jQuery('#wpstream_onboard_vod_ppv > .spinner').css('display', 'none');
-                                jQuery('#wpstream_onboard_vod_ppv > .wpstream-step-container').css('display', 'block');
-                            }
+                            // Build the dropdown in both the free and the PPV panel, then
+                            // swap each panel's spinner for its form.
+                            wpstream_create_videos_list_content(data.videos, '');
+                            wpstream_create_videos_list_content(data.videos, '_for_ppv');
+                            jQuery('#wpstream_onboard_vod_free > .spinner, #wpstream_onboard_vod_ppv > .spinner').css('display', 'none');
+                            jQuery('#wpstream_onboard_vod_free > .wpstream-step-container, #wpstream_onboard_vod_ppv > .wpstream-step-container').css('display', 'block');
                         }
                     }
                 },
@@ -816,8 +833,9 @@ const ONBOARD=(function(){
 	 * @return {Promise<void>}
 	 */
 	async function wpstream_fetchCaptcha () {
-		// Request a fresh challenge from the server.
-		fetch( wpstream_admin_control_vars.admin_url + 'admin-ajax.php?action=wpstream_get_captcha_challenge' )
+		// Request a fresh challenge from the server, presenting the wizard nonce the handler verifies.
+		var nonce = jQuery('#wpstream_onboarding_nonce').val();
+		fetch( wpstream_admin_control_vars.admin_url + 'admin-ajax.php?action=wpstream_get_captcha_challenge&security=' + encodeURIComponent( nonce ) )
 			.then( response => response.json() )
 			.then( async function( result ) {
 				// Only proceed if the challenge has all required fields.
@@ -846,18 +864,18 @@ const ONBOARD=(function(){
 						}
 					} else {
 						// Could not solve within the range: offer a retry.
-						console.log( 'Security check: could not solve PoW challenge' );
+						console.error( 'Security check: could not solve PoW challenge' );
 						wpstream_captcha_show_retry();
 					}
 				} else {
 					// Malformed/failed challenge: offer a retry.
-					console.log( 'Security check init failed', result );
+					console.error( 'Security check init failed', result );
 					wpstream_captcha_show_retry();
 				}
 			} )
 			.catch( function( error ) {
 				// Network/parse error: offer a retry.
-				console.log( 'Security check error', error );
+				console.error( 'Security check error', error );
 				wpstream_captcha_show_retry();
 			} );
 	}
@@ -1344,8 +1362,102 @@ const ONBOARD=(function(){
     */
 
     /**
+     * Check whether a given branch/step's target element is actually visible on
+     * the current page (exists, not display:none/hidden, and has real size). The
+     * block editor collapses the admin menu to 0x0 in fullscreen mode, and some
+     * steps only apply to the WooCommerce (PPV) layout, so a step's target can be
+     * legitimately absent even though the step definition itself exists.
+     *
+     * @param {number} branch Branch index into BubbleFreeVod.
+     * @param {number} step   Step index within that branch.
+     * @return {boolean} True if the step's target can be anchored to.
+     */
+    function wpstream_step_target_visible(branch,step){
+        var layout = wpstream_step_layout(branch,step);
+        if(!layout){
+            return false;
+        }
+        // .first() so a comma-separated selector (e.g. a classic-editor target with
+        // a block-editor fallback) is always judged/positioned against the same
+        // single element as wpstream_show_bubble/wpstream_position_bubble use.
+        var el = jQuery(layout.selector).first();
+        // Must exist, be visible per jQuery (covers display:none/detached), and have real size.
+        return el.length > 0 && el.is(':visible') && ( el.outerWidth() > 0 || el.outerHeight() > 0 );
+    }
+
+    /**
+     * Resolve the effective anchor (selector/left/top/arrow) for a branch/step,
+     * applying the step's optional `blockEditor` override — a step can carry a
+     * `blockEditor: { selector, left, top, arrow }` object used instead of its
+     * defaults whenever the current screen is a block editor page. Some steps
+     * point at something that only exists in the classic editor layout (e.g. the
+     * permalink row under the title) and need an entirely different anchor,
+     * offsets AND arrow direction in the block editor rather than just a
+     * fallback selector. Every function that reads a step's anchor goes through
+     * this resolver so the override is honoured consistently everywhere.
+     *
+     * @param {number} branch Branch index into BubbleFreeVod.
+     * @param {number} step   Step index within that branch.
+     * @return {Object|null} { selector, left, top, arrow }, or null if the step doesn't exist.
+     */
+    function wpstream_step_layout(branch,step){
+        var info = BubbleFreeVod[branch] && BubbleFreeVod[branch][step];
+        if(!info){
+            return null;
+        }
+        if( info.blockEditor && document.body.classList.contains('block-editor-page') ){
+            return info.blockEditor;
+        }
+        return info;
+    }
+
+    /**
+     * Find the first step in a branch whose target element is visible, so the
+     * tour can start there instead of on a step that can never be shown.
+     *
+     * @param {number} branch Branch index into BubbleFreeVod.
+     * @return {number} The first visible step index, or -1 if none are visible.
+     */
+    function wpstream_first_visible_bubble_step(branch){
+        for( var step = 0; step < BubbleFreeVod[branch].length; step++ ){
+            if( wpstream_step_target_visible( branch, step ) ){
+                return step;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Poll for the first visible bubble step in a branch instead of checking
+     * only once. The block editor moves its classic meta boxes (e.g. the
+     * "Live Streaming" sidebar box every step past 0 targets) into their final
+     * visible position asynchronously after DOMContentLoaded, so a single
+     * synchronous check right at page load can miss every target even though
+     * they become visible moments later. Gives up after ~8 seconds.
+     *
+     * @param {number}   branch       Branch index into BubbleFreeVod.
+     * @param {function} callback     Called with the first visible step index, or -1 if none appeared in time.
+     * @param {number}   [attemptsLeft] Remaining polls (internal, used for recursion).
+     * @return {void}
+     */
+    function wpstream_wait_for_first_visible_bubble_step(branch,callback,attemptsLeft){
+        if( typeof attemptsLeft === 'undefined' ){
+            attemptsLeft = 40; // 40 * 200ms = 8s
+        }
+        var step = wpstream_first_visible_bubble_step(branch);
+        if( step !== -1 || attemptsLeft <= 0 ){
+            callback(step);
+            return;
+        }
+        setTimeout(function(){
+            wpstream_wait_for_first_visible_bubble_step(branch,callback,attemptsLeft-1);
+        },200);
+    }
+
+    /**
      * On a channel/VOD edit screen reached with ?onboard=yes&branch=N, build the
-     * help-bubble overlay for that branch and start the guided tour.
+     * help-bubble overlay for that branch and start the guided tour once a
+     * visible starting step is found.
      *
      * @return {void}
      */
@@ -1371,36 +1483,66 @@ const ONBOARD=(function(){
         // Convert to the 0-based index used by BubbleFreeVod.
         branch=branch-1;
 
+        // Start at the first step whose target actually exists/is visible on this
+        // page (e.g. skip the menu-highlight step when the block editor's
+        // fullscreen mode has collapsed the admin menu to zero size). If nothing
+        // in this branch ever gets a visible target, don't show any tour UI.
+        wpstream_wait_for_first_visible_bubble_step(branch,function(startStep){
+            if(startStep === -1){
+                return;
+            }
 
-        // Build the help-bubble markup (title/content are filled in later per step).
-        var help_bubble_to_insert='<div id="wpstream_onboard_bubble" data-bubble-step="0"><div class="wpstream_close_onboarding"></div>'+
-        '<h2 id="wpstream_onboard_bubble_tile"></h2>'+ 
-        '<p id="wpstream_onboard_bubble_content"></p>'+
-        '<span class="wpstream_onboard_bubble_prev">Prev</span>'+
-        '<span class="wpstream_onboard_bubble_next">Next</span>'+
-        '<span class="wpstream_onboard_bubble_finish">Finish</span>'+
-        // '<ul class="wpstream_round_bubble">';
-        // for (let step = 0; step < BubbleFreeVod[branch].length ; step++) {
-        //   help_bubble_to_insert=help_bubble_to_insert+'<li></li>';    
-        // }
+            // Build the help-bubble markup (title/content are filled in later per step).
+            var help_bubble_to_insert='<div id="wpstream_onboard_bubble" data-bubble-step="0"><div class="wpstream_close_onboarding"></div>'+
+            '<h2 id="wpstream_onboard_bubble_tile"></h2>'+
+            '<p id="wpstream_onboard_bubble_content"></p>'+
+            '<span class="wpstream_onboard_bubble_prev">Prev</span>'+
+            '<span class="wpstream_onboard_bubble_next">Next</span>'+
+            '<span class="wpstream_onboard_bubble_finish">Finish</span>'+
+            // '<ul class="wpstream_round_bubble">';
+            // for (let step = 0; step < BubbleFreeVod[branch].length ; step++) {
+            //   help_bubble_to_insert=help_bubble_to_insert+'<li></li>';
+            // }
 
-        //help_bubble_to_insert=help_bubble_to_insert+'</ul>'+
-        '</div><div class="wpstream_modal_background_onboard2"></div>';
+            //help_bubble_to_insert=help_bubble_to_insert+'</ul>'+
+            '</div><div class="wpstream_modal_background_onboard2"></div>';
 
-        // Insert the bubble + backdrop into the admin content area.
-        jQuery('#wpcontent').append(help_bubble_to_insert);
+            // Insert the bubble + backdrop into document.body (not into the admin
+            // content area) so the bubble is never a descendant of a scrollable
+            // container (clips it) or an inner stacking context (loses to the
+            // backdrop's z-index) such as the block editor's sidebar.
+            jQuery(document.body).append(help_bubble_to_insert);
 
-        // Render the first bubble for this branch.
-        wpstream_show_bubble(0,branch);
-        // Hide the WooCommerce header so it doesn't overlap the bubble.
-        jQuery('.woocommerce-layout__header').hide();
-        // Reveal the backdrop and bubble.
-        jQuery('.wpstream_modal_background_onboard2,#wpstream_onboard_bubble').show();
+            // Render the first visible bubble for this branch.
+            wpstream_show_bubble(startStep,branch);
+            // Hide the WooCommerce header so it doesn't overlap the bubble.
+            jQuery('.woocommerce-layout__header').hide();
+            // Reveal the backdrop and bubble.
+            jQuery('.wpstream_modal_background_onboard2,#wpstream_onboard_bubble').show();
 
-        // Wire up the close controls and the next/prev bubble navigation.
-        wpstream_on_boarding_close();
-        wpstream_bubble_controls(branch);
+            // Keep the bubble pinned to its target as the page (or an inner
+            // scroll container, e.g. the block editor sidebar) scrolls, and on
+            // resize. Registered once here, for the lifetime of this tour.
+            // Scroll listener uses the capture phase because scroll events on
+            // inner scrollable elements don't bubble to window; capturing them
+            // on the way down is the only way window can observe them.
+            // The reposition itself is deferred one frame via requestAnimationFrame
+            // instead of running synchronously in the listener: WP core's own
+            // scroll handler (common.js pinMenu) toggles #adminmenuwrap between
+            // relative/absolute/fixed on scroll, which moves the very targets we
+            // anchor to. Because our listener is registered with capture:true it
+            // otherwise runs BEFORE that core handler on the same scroll event, so
+            // we'd occasionally position against the pre-pin rect and never get
+            // another scroll event to correct it. Running one frame later
+            // guarantees every other handler for that event (including core's)
+            // has already applied its layout change before we read rects.
+            window.addEventListener('scroll', function(){ requestAnimationFrame(wpstream_position_bubble); }, true);
+            window.addEventListener('resize', function(){ requestAnimationFrame(wpstream_position_bubble); });
 
+            // Wire up the close controls and the next/prev bubble navigation.
+            wpstream_on_boarding_close();
+            wpstream_bubble_controls(branch);
+        });
     }
 
 
@@ -1515,9 +1657,68 @@ const ONBOARD=(function(){
     */
 
     /**
-     * Render a specific help bubble: move it next to its target element, fill in
-     * its title/content/arrow/position, toggle the next vs finish button, scroll
-     * it into view, and (re)bind the per-step action handlers.
+     * Position the current help bubble against its current step's target,
+     * using viewport coordinates (the bubble is `position: fixed`). Re-reads
+     * the branch/step from the bubble's own data attributes rather than taking
+     * them as parameters so it can be called from the scroll/resize listeners
+     * registered once by wpstream_local_modal_onboarding, without those
+     * listeners needing to track which step is currently showing.
+     *
+     * The anchor is the target's own box if the target itself establishes a
+     * positioning context (position != static — including a fixed ancestor
+     * like the pinned admin menu), otherwise the box of its nearest positioned
+     * ancestor (its offsetParent). getBoundingClientRect() always reflects the
+     * live viewport position, so calling this again on scroll/resize keeps the
+     * bubble pinned to a target that moves for any reason: normal page scroll,
+     * scrolling inside a container (e.g. the block editor sidebar), or a fixed
+     * ancestor that doesn't move at all. The step's "right" value is never
+     * used: left plus the bubble's fixed width already fully determine its
+     * horizontal box.
+     *
+     * @return {void}
+     */
+    function wpstream_position_bubble(){
+        var current_bubble = jQuery('#wpstream_onboard_bubble');
+        // Nothing to position if the tour isn't showing.
+        if( current_bubble.length === 0 ){
+            return;
+        }
+
+        var branch = parseInt( current_bubble.attr('data-branch'), 10 );
+        var step   = parseInt( current_bubble.attr('data-bubble-step'), 10 );
+        var layout = wpstream_step_layout(branch,step);
+        if( !layout ){
+            return;
+        }
+
+        // .first() keeps this consistent with wpstream_step_target_visible when
+        // a step's selector matches more than one element (e.g. a classic-editor
+        // target with a block-editor fallback).
+        var target = jQuery(layout.selector).first();
+        if( target.length === 0 ){
+            return;
+        }
+
+        var anchorEl  = ( target.css('position') !== 'static' ) ? target[0] : target.offsetParent()[0];
+        var anchorBox = anchorEl.getBoundingClientRect();
+
+        current_bubble.css({
+            'left'  : ( anchorBox.left + parseFloat(layout.left) ) + 'px',
+            'right' : 'auto',
+            'top'   : ( anchorBox.top + parseFloat(layout.top) ) + 'px'
+        });
+    }
+
+    /**
+     * Render a specific help bubble: fill in its title/content/arrow, position
+     * it next to its target element, toggle the next vs finish button, scroll
+     * the target into view, and (re)bind the per-step action handlers.
+     *
+     * The bubble is NOT re-parented into the target (it lives permanently in
+     * document.body, appended once by wpstream_local_modal_onboarding) so it can
+     * never be clipped by a scrollable ancestor or lose to another element's
+     * z-index inside an inner stacking context — both of which happened when it
+     * was appended inside the block editor's sidebar.
      *
      * @param {number} current_bubble_step Index of the step within the branch.
      * @param {number} branch              Branch index into BubbleFreeVod.
@@ -1525,39 +1726,59 @@ const ONBOARD=(function(){
      */
     function wpstream_show_bubble(current_bubble_step,branch){
 
-        // Detach the bubble from its current position so it can be re-parented.
-        var current_bubble      =   jQuery('#wpstream_onboard_bubble');
-        current_bubble.detach();
+        var current_bubble  =   jQuery('#wpstream_onboard_bubble');
 
-        // Pull this step's definition and its fields.
+        // Pull this step's definition (title/content are the same regardless of
+        // layout) and its effective anchor/arrow (which the block editor may
+        // override via wpstream_step_layout).
         var new_info        =   BubbleFreeVod[branch][current_bubble_step];
         var new_title       =   new_info.title;
-        var new_selector    =   new_info.selector;
         var new_content     =   new_info.content;
-        var new_css         =   new_info.css;
-        var new_left        =   new_info.left;
-        var new_top         =   new_info.top;
-        var new_right       =   new_info.right;
-        var new_arrow       =   new_info.arrow;
+        var layout           =   wpstream_step_layout(branch,current_bubble_step);
+        var new_arrow       =   layout.arrow;
+
+        // Target element this step points at. Callers are expected to only pass
+        // steps whose target is visible (see wpstream_step_target_visible), but
+        // bail out safely rather than throwing if that's ever not the case.
+        // .first() keeps this consistent with wpstream_step_target_visible/
+        // wpstream_position_bubble when a step's selector matches more than one
+        // element (e.g. a classic-editor target with a block-editor fallback).
+        var target = jQuery(layout.selector).first();
+        if( target.length === 0 ){
+            return;
+        }
 
         // Fill in title and content.
         current_bubble.find('#wpstream_onboard_bubble_tile').html(new_title);
         current_bubble.find('#wpstream_onboard_bubble_content').html(new_content);
-        // Record the current step index on the bubble.
+        // Record the current step index and branch on the bubble so
+        // wpstream_position_bubble (also called from the scroll/resize
+        // listeners) can find the right step definition on its own.
         current_bubble.attr('data-bubble-step',current_bubble_step);
+        current_bubble.attr('data-branch',branch);
         // Reset then apply the arrow direction class.
         current_bubble.removeClass('boarding-left-arrow boarding-right-arrow');
         current_bubble.addClass(new_arrow);
-        // Position the bubble.
-        current_bubble.css({
-            'left':new_left,
-            'right':new_right,
-            'top':new_top
-        });
 
+        // Position the bubble against its target now; the scroll/resize
+        // listeners keep it pinned there afterwards.
+        wpstream_position_bubble();
 
-        // Show "next" if another step follows, otherwise show "finish".
-        if( BubbleFreeVod[branch].hasOwnProperty(parseInt(current_bubble_step+1)) ){
+        // Show "next" only if a LATER step in this branch actually has a
+        // visible target on this page/layout, otherwise show "finish". A plain
+        // "does a next index exist" check (the old behaviour) could leave
+        // "Next" showing on the last step with any visible target when the
+        // remaining steps all target elements absent from the current editor
+        // (e.g. classic-only steps in the block editor), making it a dead
+        // button that never advances the bubble.
+        var hasLaterVisibleStep = false;
+        for( var laterStep = current_bubble_step + 1; laterStep < BubbleFreeVod[branch].length; laterStep++ ){
+            if( wpstream_step_target_visible( branch, laterStep ) ){
+                hasLaterVisibleStep = true;
+                break;
+            }
+        }
+        if( hasLaterVisibleStep ){
             current_bubble.find('.wpstream_onboard_bubble_next').show();
             current_bubble.find('.wpstream_onboard_bubble_finish').hide();
         }else{
@@ -1565,14 +1786,11 @@ const ONBOARD=(function(){
             current_bubble.find('.wpstream_onboard_bubble_finish').show().css('display','inline-block');
         }
 
-
-
-        // Attach the bubble next to this step's target element.
-        jQuery(new_selector).append(current_bubble);
-
-        // Scroll the target (with some headroom) into view.
+        // Scroll the target (with some headroom) into view. Runs the bubble's
+        // scroll listener throughout the animation, so it tracks the target
+        // as the page scrolls.
         jQuery('html, body').animate({
-            scrollTop: jQuery(new_selector).offset().top-200
+            scrollTop: target.offset().top-200
         }, 1000);
 
         // (Re)bind the per-step interactive triggers used by some bubbles.
@@ -1769,9 +1987,11 @@ const ONBOARD=(function(){
 
 
     /**
-     * Bind the bubble next/prev controls to move through the tour, clamping to
-     * the branch bounds (going below the first step re-opens the account modal)
-     * and reporting each navigation to telemetry.
+     * Bind the bubble next/prev controls to move through the tour, skipping any
+     * step whose target isn't visible on this page (e.g. a WooCommerce-only step
+     * while touring the free-channel branch), clamping to the branch bounds
+     * (going below the first visible step re-opens the account modal), and
+     * reporting each navigation to telemetry.
      *
      * @param {number} branch Branch index into BubbleFreeVod.
      * @return {void}
@@ -1784,19 +2004,28 @@ const ONBOARD=(function(){
             var current_bubble_step =   jQuery('#wpstream_onboard_bubble').attr('data-bubble-step');
 
             current_bubble_step     =   parseInt(current_bubble_step,10);
-            // Advance or go back, reporting the direction to telemetry.
+            // Last step index available in this branch.
+            var max_length          =   BubbleFreeVod[branch].length-1;
+
+            // Advance or go back, skipping over steps with no visible target in
+            // that direction, and report the direction to telemetry.
             if( jQuery(this).hasClass('wpstream_onboard_bubble_next')){
                 current_bubble_step++;
+                while( current_bubble_step <= max_length && !wpstream_step_target_visible( branch, current_bubble_step ) ){
+                    current_bubble_step++;
+                }
 	            wpstream_track_onboarding_step( 'onboard_wpstream_navigation_' + branch_to_string(wpstreamonboarding_js_vars.branch), 'onboarding_step_' + current_bubble_step, 'button', 'next' );
             }else{
                 current_bubble_step--;
+                while( current_bubble_step >= 0 && !wpstream_step_target_visible( branch, current_bubble_step ) ){
+                    current_bubble_step--;
+                }
 				wpstream_track_onboarding_step( 'onboard_wpstream_navigation_' + branch_to_string(wpstreamonboarding_js_vars.branch), 'onboarding_step_' + current_bubble_step, 'button', 'prev' );
             }
 
-            // Going back past the first step returns to the account/quick-start modal.
+            // Going back past the first visible step returns to the account/quick-start modal.
             if( current_bubble_step<0){
                 current_bubble_step=0;
-                var url      = window.location.href;
                 jQuery('#wpstream_onboard_bubble,.wpstream_modal_background_onboard2').hide();
 
                 jQuery('.wpstream_on_boarding_wrapper').show();
@@ -1805,8 +2034,6 @@ const ONBOARD=(function(){
             }
 
             // Clamp the step to the last bubble in this branch.
-            var max_length = BubbleFreeVod[branch].length-1;
-
             if( current_bubble_step>max_length){
                 current_bubble_step=max_length;
             }

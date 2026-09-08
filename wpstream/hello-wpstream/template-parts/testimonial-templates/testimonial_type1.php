@@ -7,6 +7,12 @@
  *
  * @var array $testimonial Testimonial data (text, image, name, job).
  */
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 ?>
 
 <!-- Testimonial item: quote icon column beside the content column. -->

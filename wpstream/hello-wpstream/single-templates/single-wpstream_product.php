@@ -12,6 +12,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Output the theme header.
 get_header();
 // Current post being displayed.

@@ -26,9 +26,12 @@
 }
 
 /* Contextual tooltip bubble: floating hint anchored beside a target element.
-   Hidden by default and positioned absolutely relative to its anchor. */
+   Hidden by default. Fixed (viewport-relative, not page-relative) so JS can
+   keep it pinned to its target across page scroll, scroll of an inner
+   container (e.g. the block editor sidebar), and window resize by simply
+   re-reading the target's current getBoundingClientRect() on those events. */
 #wpstream_onboard_bubble{
-    position: absolute;
+    position: fixed;
     z-index: 10002;
     background: #fff;
     left: 175px;
@@ -585,6 +588,11 @@ max-width: 450px;
     background-color:#4e2ee6
 }
 
+/* The quick-start trigger sizes to its label instead of the shared fixed button height. */
+#wpstream_trigger_quick_start{
+    height: auto;
+}
+
 .wpstream_onboard_register:hover,
 .wpstream_onboard_login:hover,
 #wpstream_trigger_quick_start:hover,
@@ -746,11 +754,14 @@ max-width: 450px;
 
 }
 
-/* Loading spinner shown full-width inside an accordion while work is pending. */
+/* Loading spinner shown full-width and centred inside an accordion while work is
+   pending (core floats it right, which pushes it to the bottom corner). */
 .wpstream_accordion_container .spinner {
     visibility: visible;
     background-position: center;
     width: 100%;
+    float: none;
+    margin: 0 auto;
 }
 
 /* Strip the default admin link box-shadow from links inside a warning box

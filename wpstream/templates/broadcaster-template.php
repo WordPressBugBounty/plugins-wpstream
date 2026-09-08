@@ -81,7 +81,6 @@ wp_localize_script(
 		'obs_uri'               => $obs_uri,                                       // RTMP ingest URI
 		'obs_stream'            => $obs_stream,                                     // OBS stream key
         'channel_id'            => $channel_id,                                     // channel being broadcast to
-		'is_channel_live'       => get_post_meta($channel_id, 'status', true),      // current live status flag
 		'whip_url'              => get_post_meta($channel_id, 'whipUrl', true),     // WebRTC WHIP publish endpoint
 		'no_video_audio_access' => esc_html__('We couldn’t access your camera or microphone. Please allow permissions and reload the page.', 'wpstream'),
 		'no_audio_access'       => esc_html__('We couldn’t access your microphone. Please allow permissions and reload the page.', 'wpstream'),
@@ -92,7 +91,10 @@ wp_localize_script(
                 '<a href="https://wpstream.net/pricing/" target="_blank">',
                 '</a>'
         ),
-        'is_onboarding'         => $is_onboarding  // whether we are inside the onboarding wizard
+        'is_onboarding'         => $is_onboarding,  // whether we are inside the onboarding wizard
+		// Gates the broadcaster's diagnostic console logging: silent in production,
+		// verbose only when the site opts into SCRIPT_DEBUG.
+		'debug'                 => defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG,
 	)
 );
 
@@ -120,11 +122,22 @@ if ( $is_onboarding ) {
 
 	<?php wp_head(); ?>
 
-	<!-- Load required libraries in correct order -->
-	<script src="https://cdn.jsdelivr.net/npm/underscore@1.12.0/underscore-min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/ovenlivekit@latest/dist/OvenLiveKit.min.js"></script>
+	<!-- Load the bundled libraries in correct order (underscore first, then the WHIP publisher) -->
+	<script src="<?php echo esc_url( WPSTREAM_PLUGIN_DIR_URL . 'public/js/vendor/underscore-min.js?ver=1.12.0' ); ?>"></script>
+	<script src="<?php echo esc_url( WPSTREAM_PLUGIN_DIR_URL . 'public/js/vendor/OvenLiveKit.min.js?ver=1.5.8' ); ?>"></script>
 </head>
 <body class="wpstream-broadcaster-page">
+<?php
+/**
+ * Fires at the top of the broadcaster page body, before the header.
+ *
+ * @since 4.14.0
+ *
+ * @param int  $channel_id    Channel being broadcast to.
+ * @param bool $is_onboarding Whether the page was opened from the onboarding wizard.
+ */
+do_action( 'wpstream_before_broadcaster_page', intval( $channel_id ), $is_onboarding );
+?>
 <!-- Top bar: WpStream logo (links home) and a static section label. -->
 <header class="broadcaster-header">
 	<div class="header-container">
@@ -163,6 +176,16 @@ if ( $is_onboarding ) {
 
 		<!-- Settings panel: start/stop controls, connection status, and device pickers. -->
 		<div class="settings-panel" id="settingsPanel">
+			<?php
+			/**
+			 * Fires at the top of the broadcaster settings panel, before the start/stop controls.
+			 *
+			 * @since 4.14.0
+			 *
+			 * @param int $channel_id Channel being broadcast to.
+			 */
+			do_action( 'wpstream_broadcaster_settings_panel_before', intval( $channel_id ) );
+			?>
 			<div>
 				<?php
 				// Nonce consumed by the AJAX call that starts the live event.
@@ -227,10 +250,31 @@ if ( $is_onboarding ) {
 					</select>
 				</div>
 			</div>
+			<?php
+			/**
+			 * Fires at the bottom of the broadcaster settings panel, after the device pickers.
+			 *
+			 * @since 4.14.0
+			 *
+			 * @param int $channel_id Channel being broadcast to.
+			 */
+			do_action( 'wpstream_broadcaster_settings_panel_after', intval( $channel_id ) );
+			?>
 		</div>
 	</div>
 </div>
 
+<?php
+/**
+ * Fires at the end of the broadcaster page body, before the footer scripts.
+ *
+ * @since 4.14.0
+ *
+ * @param int  $channel_id    Channel being broadcast to.
+ * @param bool $is_onboarding Whether the page was opened from the onboarding wizard.
+ */
+do_action( 'wpstream_after_broadcaster_page', intval( $channel_id ), $is_onboarding );
+?>
 <!-- wp_footer() prints footer scripts, including the enqueued broadcaster.js. -->
 <?php wp_footer(); ?>
 </body>

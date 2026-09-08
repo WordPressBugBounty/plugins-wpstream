@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 if ( ! function_exists( 'wpstream_testimonial_slider' ) ) :
 function wpstream_testimonial_slider($settings,$slider_id ){
 
@@ -508,9 +514,6 @@ if ( ! function_exists( 'wpstream_theme_simple_player' ) ) :
 					$product    = wc_get_product( $product_id );
 					// Current user (used for the purchase check).
 					$current_user   =   wp_get_current_user();
-
-					// NOTE: leftover debug output ('xxx1 product') printed into the page.
-					print 'xxx1 product';
 
 					// Not purchased yet: render the add-to-cart call to action.
 					if ( function_exists( 'wc_customer_bought_product' ) && ! wc_customer_bought_product( $current_user->user_email, $current_user->ID,$product_id) ) {

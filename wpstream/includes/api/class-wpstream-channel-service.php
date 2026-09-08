@@ -1,13 +1,20 @@
 <?php
 /**
- * Thin client for the WPStream "channel/create" API endpoint.
+ * Thin client for the WPStream channel registration API endpoints.
  *
- * Wraps the shared API connection object and exposes channel creation,
- * resolving the access token and site domain before issuing the cURL call.
+ * Wraps the shared API connection object and exposes channel creation and
+ * deletion, resolving the access token and site domain before issuing the
+ * cURL call.
  *
  * @package    Wpstream
  * @subpackage Wpstream/includes/api
  */
+
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 class Wpstream_Channel_Service {
 	/** @var object Shared API connection providing the token and cURL helpers. */
@@ -16,7 +23,7 @@ class Wpstream_Channel_Service {
 	/**
 	 * Store the injected API connection dependency.
 	 *
-	 * @param object $api_connection Connection exposing wpstream_get_token() and wpstream_baker_do_curl_base().
+	 * @param object $api_connection Connection exposing authorized_request().
 	 */
 	public function __construct( $api_connection ) {
 		$this->api_connection = $api_connection;
@@ -30,37 +37,51 @@ class Wpstream_Channel_Service {
 	 * @return array|false Decoded API response, or false when no token is available.
 	 */
 	public function create_channel( $channel_id, $domain = null ) {
-		// Retrieve the WPStream account access token via the connection.
-		$access_token = $this->api_connection->wpstream_get_token();
+		return $this->registration_request( 'channel/create', $channel_id, $domain );
+	}
 
-		// Without a token the account is not linked, so there is nothing to call.
-		if ( ! $access_token ) {
-			return false;
-		}
+	/**
+	 * Delete a channel on the WPStream API.
+	 *
+	 * The service keys channels by the same (channel_id, domain) pair creation
+	 * sent, so the request carries that exact pair. It only removes the
+	 * channel's registration at the service; stored recordings are separate
+	 * objects and are not touched.
+	 *
+	 * @param int         $channel_id Channel post ID.
+	 * @param string|null $domain     Site domain. Defaults to the current site host.
+	 * @return array|false Decoded API response, or false when the call could not be made.
+	 */
+	public function delete_channel( $channel_id, $domain = null ) {
+		return $this->registration_request( 'channel/delete', $channel_id, $domain );
+	}
 
+	/**
+	 * Issue one channel registration call: the (channel_id, domain) pair that
+	 * identifies a channel at the service, POSTed to the given endpoint.
+	 *
+	 * @param string      $endpoint   API path, e.g. 'channel/create'.
+	 * @param int         $channel_id Channel post ID.
+	 * @param string|null $domain     Site domain. Defaults to the current site host.
+	 * @return array|false Decoded API response, or false when the call could not be made.
+	 */
+	private function registration_request( $endpoint, $channel_id, $domain ) {
 		// Default the domain to the current site's host when the caller omits it.
 		if ( null === $domain ) {
 			$parsed = parse_url( get_site_url() );
 			$domain = isset( $parsed['host'] ) ? $parsed['host'] : '';
 		}
 
-		// Assemble the POST body the remote endpoint expects.
+		// Assemble the POST body the remote endpoint expects; the access token
+		// is injected by the connection's authorized transport.
 		$curl_post_fields = array(
-			'access_token' => $access_token,
-			'channel_id'   => intval( $channel_id ),
-			'domain'       => $domain,
+			'channel_id' => intval( $channel_id ),
+			'domain'     => $domain,
 		);
 
-		// Issue the request to the channel/create endpoint through the shared cURL helper.
-		$curl_response = $this->api_connection->wpstream_baker_do_curl_base(
-			'channel/create',
-			$curl_post_fields,
-			true,
-			false,
-			WPSTREAM_TIMEOUT_CONST
-		);
+		$response = $this->api_connection->authorized_request( $endpoint, $curl_post_fields, WPSTREAM_TIMEOUT_CONST );
 
-		// Decode the JSON response into an associative array for the caller.
-		return json_decode( $curl_response, JSON_OBJECT_AS_ARRAY );
+		// Callers expect an array or false — not-connected and transport failures map to false.
+		return is_wp_error( $response ) ? false : $response;
 	}
 }

@@ -4,11 +4,11 @@
  * Data-attribute driven player initializer for the WpStream plugin.
  *
  * Instead of printing an inline <script> next to every embedded player, the PHP
- * templates render a wrapper element carrying `data-wpstream-bootstrap="live"`,
- * `"live-low-latency"` or `"vod"` plus a set of `data-*` configuration attributes.
+ * templates render a wrapper element carrying `data-wpstream-bootstrap="live"` or
+ * `"vod"` plus a set of `data-*` configuration attributes.
  * This IIFE scans the DOM for those markers, reads the attributes into a settings
  * object, and hands them to the matching global player-initialization function
- * (`wpstream_player_initialize`, `wpstream_player_initialize_vod`, or `initPlayer`).
+ * (`wpstream_player_initialize` or `wpstream_player_initialize_vod`).
  *
  * Because the player library scripts may load after this file, initialization is
  * retried on a short timer, and a MutationObserver picks up players injected into
@@ -18,12 +18,9 @@
 (function () {
   "use strict";
 
-  // Selector for standard (non low-latency) live player wrappers awaiting bootstrap.
+  // Selector for live player wrappers awaiting bootstrap.
   const LIVE_SELECTOR =
-    '.wpstream_live_player_wrapper[data-wpstream-bootstrap="live"]:not(.wpstream_low_latency)';
-  // Selector for low-latency (WebRTC/WHEP) live player wrappers.
-  const LIVE_LOW_LATENCY_SELECTOR =
-    '.wpstream_live_player_wrapper[data-wpstream-bootstrap="live-low-latency"]';
+    '.wpstream_live_player_wrapper[data-wpstream-bootstrap="live"]';
   // Selector for on-demand (VOD) <video> elements awaiting bootstrap.
   const VOD_SELECTOR = 'video[data-wpstream-bootstrap="vod"]';
   // Maximum number of retry passes while waiting for player libraries to load.
@@ -285,60 +282,7 @@
   }
 
   /**
-   * Initialize a low-latency (WebRTC/WHEP) live player wrapper by delegating to
-   * the global initPlayer(), then optionally wiring up chat/stats websockets.
-   *
-   * @param {Element} wrapper The .wpstream_live_player_wrapper element.
-   * @return {boolean} True when handled; false when initPlayer is not yet
-   *                   available and a retry is warranted.
-   */
-  function initializeLowLatencyPlayer(wrapper) {
-    // Skip elements already bootstrapped.
-    if (wrapper.dataset.wpstreamBootstrapped === "1") {
-      return true;
-    }
-
-    // Low-latency player library not loaded yet; signal caller to retry.
-    if (typeof window.initPlayer !== "function") {
-      return false;
-    }
-
-    // Required inputs: target video id and the low-latency content URL.
-    const videoElementId = getAttr(wrapper, "data-video-element-id");
-    const lowLatencyUri = getAttr(wrapper, "data-content-url");
-    // Missing either input: mark handled so it is not retried.
-    if (!videoElementId || !lowLatencyUri) {
-      wrapper.dataset.wpstreamBootstrapped = "1";
-      return true;
-    }
-
-    // initPlayer expects the literal strings "muted"/"autoplay" (or empty).
-    const muted = parseBool(getAttr(wrapper, "data-muted")) ? "muted" : "";
-    const autoplay = parseBool(getAttr(wrapper, "data-autoplay"))
-      ? "autoplay"
-      : "";
-
-    // Start the low-latency player.
-    window.initPlayer(videoElementId, lowLatencyUri, muted, autoplay);
-
-    // When available, subscribe to the websocket feed for chat and live stats.
-    if (typeof window.wpstream_read_websocket_info === "function") {
-      // Event id sourced from data-event-id, falling back to the product id.
-      const eventId = getAttr(wrapper, "data-event-id") || getAttr(wrapper, "data-product-id");
-      // Chat and stats endpoints.
-      const chatUri = getAttr(wrapper, "data-chat-url");
-      const statsUri = getAttr(wrapper, "data-stats-uri");
-      // Open the websocket info channel bound to this wrapper's DOM id.
-      window.wpstream_read_websocket_info(eventId, null, wrapper.id, chatUri, statsUri);
-    }
-
-    // Mark the wrapper as done.
-    wrapper.dataset.wpstreamBootstrapped = "1";
-    return true;
-  }
-
-  /**
-   * Find every live, low-latency and VOD player under `root` and initialize each.
+   * Find every live and VOD player under `root` and initialize each.
    * If any initialization failed because its library was not yet loaded, schedule
    * another whole-document pass (up to MAX_RETRIES).
    *
@@ -353,14 +297,6 @@
     for (const player of livePlayers) {
       // A false return means the library is not ready; retry later.
       if (!initializeLivePlayer(player)) {
-        needsRetry = true;
-      }
-    }
-
-    // Initialize low-latency live players.
-    const lowLatencyPlayers = collectNodes(root, LIVE_LOW_LATENCY_SELECTOR);
-    for (const player of lowLatencyPlayers) {
-      if (!initializeLowLatencyPlayer(player)) {
         needsRetry = true;
       }
     }
@@ -405,16 +341,11 @@
             continue;
           }
 
-          // Check the added subtree for any of the three player kinds.
+          // Check the added subtree for either player kind.
           const liveNodes = collectNodes(node, LIVE_SELECTOR);
-          const liveLowLatencyNodes = collectNodes(node, LIVE_LOW_LATENCY_SELECTOR);
           const vodNodes = collectNodes(node, VOD_SELECTOR);
           // If any players are present, bootstrap this subtree and stop this pass.
-          if (
-            liveNodes.length > 0 ||
-            liveLowLatencyNodes.length > 0 ||
-            vodNodes.length > 0
-          ) {
+          if (liveNodes.length > 0 || vodNodes.length > 0) {
             bootstrapPlayers(node);
             return;
           }

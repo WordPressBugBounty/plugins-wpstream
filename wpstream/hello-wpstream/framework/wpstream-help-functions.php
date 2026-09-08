@@ -6,6 +6,12 @@
  * @subpackage Wpstream/hello-wpstream
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 if ( ! function_exists( 'wpstream_theme_featured_image' ) ) {
 	/**
 	 * Display the featured image for a post or page with additional functionality.
@@ -125,7 +131,7 @@ if ( ! function_exists( 'wpstream_theme_featured_image' ) ) {
 		if ( ( get_post_type( $post_id ) === 'product' && has_term( 'live_stream', 'product_type', $post_id ) || get_post_type( $post_id ) === 'wpstream_product' ) ) {
 
 			// Map of the current user's live events keyed by post ID.
-			$live_events = wpestream_integrations_get_current_user_live_events('no');
+			$live_events = wpestream_integrations_get_current_user_live_events();
 			if ( is_array( $live_events) && array_key_exists( $post_id, $live_events ) ) {
 				$return_string .= '<div class="wpstream_featured_image_live_tag">' . esc_html_x( 'LIVE', 'Card tag', 'hello-wpstream' ) . '</div>';
 			}
@@ -185,6 +191,7 @@ if ( ! function_exists( 'wpstream_theme_get_svg_icon' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wpstream_get_count_like_post' ) ) :
 /**
  * Get the count of likes for a specific post.
  *
@@ -195,6 +202,7 @@ function wpstream_get_count_like_post( $post_id ) {
 	// Read the accumulated like counter stored in post meta and cast it to an int.
 	return intval( get_post_meta( $post_id, 'wpstream_like_items', true ) );
 }
+endif;
 
 if ( ! function_exists( 'wpstream_query_arguments_add_order_by' ) ) {
 	/**

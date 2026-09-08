@@ -9,6 +9,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // The shared Redux option-set name (defined in theme-options.php).
 global $wpstream_opt_name;
 // Register this section against the theme's Redux option set.

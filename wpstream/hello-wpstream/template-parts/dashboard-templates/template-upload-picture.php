@@ -9,6 +9,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Current user identity and the custom/small profile image references.
 $current_user        = wp_get_current_user();// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 $user_id             = $current_user->ID;// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited

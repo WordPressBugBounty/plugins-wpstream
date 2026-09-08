@@ -9,6 +9,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 ?>
 
 <!-- Sidebar wrapper: visible only on large screens (Bootstrap d-none d-lg-block). -->

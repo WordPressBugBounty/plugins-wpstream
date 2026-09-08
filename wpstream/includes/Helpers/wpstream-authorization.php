@@ -31,6 +31,10 @@ if ( ! function_exists( 'wpstream_can_manage_channel' ) ) {
 	 * ingest credentials; the same ownership rule guards all of those actions,
 	 * so no per-action branching is needed here.
 	 *
+	 * Deliberately not filterable: this is the only IDOR guard on the
+	 * non-nonced start/stop/WHIP/RTMP-key endpoints. Widen who may broadcast
+	 * through wpstream_user_can_stream instead.
+	 *
 	 * @param int $user_id    The acting user's ID (0/guest is always denied).
 	 * @param int $channel_id The channel post ID being acted upon.
 	 * @return bool True if the user may manage the channel, false otherwise.

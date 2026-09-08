@@ -11,6 +11,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Current product post and its ID.
 global $post;
 $product_id = $post->ID;

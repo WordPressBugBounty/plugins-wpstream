@@ -12,6 +12,12 @@
  * @var WP_Query $query The query whose posts are looped and rendered as cards.
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Track whether we are rendering inside the WpStream dashboard page template.
 $is_wpstream_theme_dashboard = false;
 

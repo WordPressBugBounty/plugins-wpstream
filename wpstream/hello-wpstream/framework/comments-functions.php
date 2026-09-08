@@ -12,6 +12,12 @@
  * @package wp-stream
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Replace the comment form title with one that includes the comment count.
 add_filter( 'comment_form_defaults', 'wpstream_theme_custom_comment_title', 20 );
 

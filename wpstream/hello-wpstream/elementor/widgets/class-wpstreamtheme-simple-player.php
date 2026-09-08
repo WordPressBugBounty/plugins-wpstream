@@ -11,6 +11,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
 

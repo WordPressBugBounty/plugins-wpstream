@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Wc product bundle class.
  *
@@ -23,10 +29,13 @@ class WC_Product_Wpstream_Bundle extends WC_Product {
 	 * it as supporting AJAX add-to-cart so bundles can be added without a page
 	 * reload.
 	 *
-	 * @param mixed $product Объект продукта, который будет использоваться для инициализации.
-	 *                       (Product object/ID used to initialize this instance.)
+	 * The default mirrors WC_Product's own signature: narrowing it would make an
+	 * argument-less `new WC_Product_Wpstream_Bundle()` a fatal, even though the
+	 * parent contract allows it.
+	 *
+	 * @param mixed $product Product object/ID used to initialize this instance.
 	 */
-	public function __construct( $product ) {
+	public function __construct( $product = 0 ) {
 		// Let the base WC_Product set up all standard product data first.
 		parent::__construct( $product );
 			// Advertise AJAX add-to-cart support for this bundle product type.

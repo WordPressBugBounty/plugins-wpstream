@@ -181,6 +181,9 @@ function wpstream_dashboard_user_menu() {
  * @param {string} button_id Id of the save button to bind.
  */
 function wpstream_edit_address_function(button_id) {
+    // Which address this button saves: the shipping modal's button saves
+    // shipping, every other caller is the billing modal.
+    var address_type = button_id === 'wpstream_edit_address_save_shipping' ? 'shipping' : 'billing';
     jQuery('#' + button_id).on('click', function () {
             // Security nonce and AJAX endpoint.
             var nonce = jQuery('input[name="wpstream_nonce"]').val();
@@ -206,12 +209,12 @@ function wpstream_edit_address_function(button_id) {
                 type: 'POST',
                 url: wpstream_admin_ajax_url, // WordPress AJAX URL,
                 dataType: 'json',
-                // Action, nonce, collected fields, and address type (sent as 'billing').
+                // Action, nonce, collected fields, and which address is saved.
                 data: {
                     action: 'wpstream_dashboard_save_user_address',
                     nonce: nonce,
                     inputData: inputData,
-                    type: 'billing'
+                    type: address_type
                 },
                 success: function (response) {
 

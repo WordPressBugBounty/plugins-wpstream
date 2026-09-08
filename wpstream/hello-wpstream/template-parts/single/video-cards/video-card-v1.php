@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Accumulates the CSS classes applied to the card's outer grid cell.
 $class = '';
 

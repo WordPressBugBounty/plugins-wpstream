@@ -15,7 +15,9 @@
  * optional global wpstream_track_onboarding_step().
  */
 // Registry of active setInterval poll timers, keyed by show id (and "stop"+id).
-var counters={};
+// Namespaced (not a bare `counters`) so a co-loaded script can never clobber
+// the live handles and orphan a running poll.
+var wpstream_poll_timers={};
 
 // post_type can be FTV or PPV channel or VOD
 var post_type = null;
@@ -32,9 +34,9 @@ jQuery(document).ready(function ($) {
     // Begin polling any channels already flagged as pending/live.
     wpstream_check_live_connections();
     // Wire the settings/broadcast modal open/close behavior.
-    wpestate_start_modal_actions();
+    wpstream_start_modal_actions();
     // Wire the error modal's dismiss button.
-    wpestate_start_modal_error_actions();
+    wpstream_start_modal_error_actions();
     // Enable hover tooltips.
     wpstream_tooltip();
     // Enable copy-to-clipboard buttons.
@@ -339,7 +341,7 @@ function wpstream_bind_start_event(button){
               
        
                 // API reachable.
-                if(data.conected===true){
+                if(data.connected===true){
              
                         // err1: generic start failure.
                         if(data.event_data==='err1'){
@@ -361,7 +363,7 @@ function wpstream_bind_start_event(button){
                             var counter =  setInterval( function (){
 								wpstream_check_live_connections_on_start(parent,show_id,data.event_data,data)
                             },10000);
-                            counters['stop'+show_id]=counter;
+                            wpstream_poll_timers['stop'+show_id]=counter;
                     
                         }
                         
@@ -453,7 +455,7 @@ function wpstream_bind_stop_event(button){
             success: function (data) {
 
                 // API reachable: poll until the channel reports stopped.
-                if(data.conected===true){
+                if(data.connected===true){
                     
                     // Prevent further clicks on the button.
                     thisButton.unbind('click');
@@ -461,7 +463,7 @@ function wpstream_bind_stop_event(button){
                     // Poll status every 10s; store the timer.
                     var counter =  setInterval( function (){ 
                         wpstream_check_live_connections_on_start(parent,show_id,'',data)},10000);
-                        counters["stop"+show_id]=counter;
+                        wpstream_poll_timers["stop"+show_id]=counter;
 
                 // API not connected: show the error.
                 }else{
@@ -594,31 +596,24 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
                 // Link the live-data button to the stats URL.
                 parent.parent().find('.wpstream_live_data').attr('href',server_status.live_data_url);         
                 // Stop the fast (10s) start poll.
-                clearInterval( counters["stop"+show_id]);
+                clearInterval( wpstream_poll_timers["stop"+show_id]);
 
 				// Clear any existing slow poll for this channel.
-				if (counters[show_id]) {
-					clearInterval(counters[show_id]);
+				if (wpstream_poll_timers[show_id]) {
+					clearInterval(wpstream_poll_timers[show_id]);
 				}
 				// Read the server id from context.
 				var server_id   =   jQuery(this).attr('data-server-id');
 				// Start slow (60s) database status polling.
-				counters[show_id] = setInterval( function (){
+				wpstream_poll_timers[show_id] = setInterval( function (){
 					wpstream_check_live_connections_from_database(parent,show_id,server_id);
 				},60000);
 
-                // Fire optional integration notifications.
-                if (typeof wpstream_integration_notifications === 'function') {
-                    wpstream_integration_notifications(show_id);
-                }
-
                 
             // Channel stopped:
-            }else if(server_status.status==='stopped' ){    
-             // (debug log)
-             console.log('stopped status from _on_start');
+            }else if(server_status.status==='stopped' ){
                 // Stop the fast poll.
-                clearInterval( counters["stop"+show_id]);
+                clearInterval( wpstream_poll_timers["stop"+show_id]);
                 // Restore the stopped-state UI.
                 wpstream_event_stopped_make_actions(parent);
 
@@ -628,7 +623,7 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
                 wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'status_error');
                
                 // Stop the fast poll.
-                clearInterval( counters["stop"+show_id]);
+                clearInterval( wpstream_poll_timers["stop"+show_id]);
                 // Show a failure message in the status area.
                 var curent_content = parent.find('.wpstream_channel_status');
                 curent_content.html('<div class="wpstream_channel_status not_ready_to_stream"><span class="dashicons dashicons-dismiss"></span>'+wpstream_start_streaming_vars.failed_event_creation+'</div>');
@@ -966,7 +961,7 @@ function wpstream_show_error_on_stop(text,parent){
  * Wire the settings/broadcast modals: close buttons, Escape-to-close, the modal
  * triggers, and the external-broadcast option switcher.
  */
-function wpestate_start_modal_actions(){
+function wpstream_start_modal_actions(){
 
     // Close button hides the modal and its backdrop.
     jQuery('.wpstream_close_modal').on('click',function(event){
@@ -1069,7 +1064,7 @@ function wpstream_tooltip(){
 /**
  * Wire the error modal's OK button to close it and clear its message.
  */
-function wpestate_start_modal_error_actions(){
+function wpstream_start_modal_error_actions(){
     // On OK:
     jQuery('.wpstream_error_ok').on('click',function(event){
         // Hide the modal.
@@ -1301,16 +1296,11 @@ function wpstream_adjust_settings(input_element){
    
     // Which setting was toggled.
     var attr_value = input_element.attr('data-attr-ajaxname');
-    // (debug log)
-    console.log(attr_value);
 
  
 
     // Speed options are mutually exclusive with encryption.
     if( attr_value === 'adaptive_bitrate' || attr_value==='low_latency'){
-        // (debug log)
-        console.log('perform ');
-
         // Defer briefly so the checkbox state settles first.
         var timer = setTimeout(function() {
            
@@ -1325,9 +1315,6 @@ function wpstream_adjust_settings(input_element){
 
     // Toggling encrypt clears the speed options.
     if( attr_value === 'encrypt'){
-        // (debug log)
-        console.log('perform2 ');
-
         // Defer briefly so the checkbox state settles first.
         var timer = setTimeout(function() {
            
@@ -1353,25 +1340,54 @@ function wpstream_adjust_settings(input_element){
 *
 */ 
 
+/** Tell the customer that an optimistic settings change was not persisted. */
+function wpstream_show_settings_save_error() {
+    jQuery('.wpstream_error_content').text('Changes were not saved. Please try again.');
+    jQuery('.wpstream_modal_background').show();
+    jQuery('.wpstream_error_modal_notification').show();
+}
+
+/** Restore one modal's settings inputs from a pre-click snapshot. */
+function wpstream_restore_settings_inputs(holder, previous) {
+    holder.find('.wpstream_event_option_item').each(function () {
+        var key = jQuery(this).attr('data-attr-ajaxname');
+        if (Object.prototype.hasOwnProperty.call(previous, key)) {
+            jQuery(this).prop('checked', previous[key]);
+        }
+    });
+}
+
 /**
  * Persist per-event streaming option toggles: when a modal option changes,
  * gather all option states and save them via AJAX.
  */
 function wpstream_save_options_actions(){
     // On any per-event option click:
-    jQuery('.wpestate_settings_modal .wpstream_event_option_item').on('click',function(){
+    jQuery('.wpstream_settings_modal .wpstream_event_option_item').on('click',function(){
+
+        var clicked  = jQuery(this);
+        var previous = {};
 
         // Apply the mutual-exclusion rules.
-        wpstream_adjust_settings(jQuery(this));
+        wpstream_adjust_settings(clicked);
 
         // The option group container.
-        var holder  =   jQuery(this).parents('.wpstream_event_streaming_local');
+        var holder  =   clicked.parents('.wpstream_event_streaming_local');
         // The event's show id.
-        var show_id =   jQuery(this).parents('.event_list_unit').find('.start_event').attr('data-show-id');
+        var show_id =   clicked.parents('.event_list_unit').find('.start_event').attr('data-show-id');
         // Accumulator for option name -> 0/1.
         var optionarray ={};
         // CSRF nonce for the AJAX call.
         var nonce               =   jQuery('#wpstream_start_event_nonce').val();
+
+        // Click handlers observe the clicked checkbox after its optimistic DOM
+        // toggle. All siblings still show the persisted state, so invert only
+        // the clicked value to reconstruct the complete pre-click snapshot.
+        holder.find('.wpstream_event_option_item').each(function () {
+            previous[jQuery(this).attr('data-attr-ajaxname')] = jQuery(this).prop('checked');
+        });
+        previous[clicked.attr('data-attr-ajaxname')] = !clicked.prop('checked');
+
         // Defer so toggled states settle before reading them.
         var timer = setTimeout(function() {
             // Collect every option's checked state.
@@ -1379,9 +1395,6 @@ function wpstream_save_options_actions(){
                 optionarray[jQuery(this).attr('data-attr-ajaxname')]=jQuery(this).prop("checked") ? 1 : 0 ;
             });
 
-
-            // JSON snapshot of the options (the object is what is actually sent below).
-            var myJSON = JSON.stringify(optionarray);
             // Save the option set for this event.
             jQuery.ajax({
                 type: 'POST',
@@ -1394,11 +1407,17 @@ function wpstream_save_options_actions(){
                     'security'          :   nonce
                                 
                 },
-                // Success: no UI change needed.
+                // HTTP success can still carry an application-level rejection.
                 success: function (data) {
+					if (!data || true !== data.success) {
+						wpstream_restore_settings_inputs(holder, previous);
+						wpstream_show_settings_save_error();
+					}
                 },
-                // Error: ignored.
+                // Transport/server failure: restore the last displayed state.
                 error: function (jqXHR,textStatus,errorThrown) {
+					wpstream_restore_settings_inputs(holder, previous);
+					wpstream_show_settings_save_error();
                 }
                 
             });
@@ -1413,15 +1432,31 @@ function wpstream_save_options_actions(){
  * individual option inputs accordingly.
  */
 function wpstream_save_use_global_event_options() {
-	// On toggle click:
-	jQuery('.wpestate_settings_modal #local_event_options_enabled').on('click',function(){
+	// On toggle click. Bound by class, not id: every channel card prints its own
+	// copy of the modal, so the toggle id is duplicated across cards.
+	jQuery('.wpstream_settings_modal .wpstream_local_event_options_toggle').on('click',function(){
 		// CSRF nonce for the AJAX call.
 		var nonce   = jQuery('#wpstream_start_event_nonce').val();
 		// The event's show id.
 		var show_id = jQuery(this).parents('.event_list_unit').find('.start_event').attr('data-show-id');
 
-		// Local checked state as 1/0.
-		var use_global_settings = jQuery(this).prop("checked") ? 1 : 0 ;
+		// This card's modal and the toggle state, captured at click time — the
+		// success callback must only ever touch the card the user is editing.
+		var toggle          = jQuery(this);
+		var modal           = toggle.closest('.wpstream_settings_modal');
+		var checked         = toggle.prop("checked");
+		var previousChecked = !checked;
+		var previousOptions = {};
+		modal.find('.wpstream_event_option_item').each(function () {
+			previousOptions[jQuery(this).attr('data-attr-ajaxname')] = jQuery(this).prop('checked');
+		});
+
+		var restorePreviousMode = function () {
+			toggle.prop('checked', previousChecked);
+			modal.find('.wpstream_event_option_item').prop('disabled', !previousChecked);
+			wpstream_restore_settings_inputs(modal, previousOptions);
+			wpstream_show_settings_save_error();
+		};
 		// Save the preference.
 		jQuery.ajax({
 			type: 'POST',
@@ -1430,18 +1465,33 @@ function wpstream_save_use_global_event_options() {
 			data: {
 				'action'     : 'wpstream_update_use_global_event_options',
 				'show_id'    : show_id,
-				'use_global' : jQuery(this).prop("checked") ? 0 : 1 ,
+				'use_global' : checked ? 0 : 1 ,
 				'security'   : nonce
 			},
-			// Enable/disable the option inputs based on the toggle.
+			// Enable/disable this modal's option inputs, then repaint them from
+			// the settings the channel now resolves to. The toggle moves the
+			// channel onto a different settings map (its own, or its creation
+			// snapshot) than the one this modal was rendered with; without the
+			// repaint the switches keep the old map, and the next option click
+			// would save those stale values over the channel's real settings.
 			success: function (data) {
-				jQuery('.wpestate_settings_modal .wpstream_event_option_item').each(function(){
-					jQuery(this).prop("disabled", !jQuery('#local_event_options_enabled').prop("checked"));
-				});
+				if (!data || true !== data.success) {
+					restorePreviousMode();
+					return;
+				}
+				modal.find('.wpstream_event_option_item').prop("disabled", !checked);
+				if (data && data.options) {
+					modal.find('.wpstream_event_option_item').each(function () {
+						var key = jQuery(this).attr('data-attr-ajaxname');
+						if (Object.prototype.hasOwnProperty.call(data.options, key)) {
+							jQuery(this).prop('checked', 1 === parseInt(data.options[key], 10));
+						}
+					});
+				}
 			},
-			// Log on error.
+			// Transport/server failure restores the last displayed mode and map.
 			error: function (jqXHR,textStatus,errorThrown) {
-				console.log('error');
+				restorePreviousMode();
 			}
 		});
 	});
@@ -1479,7 +1529,7 @@ function wpstream_check_live_connections(){
 				wpstream_check_live_connections_from_database(acesta,show_id,server_id)
             },60000);
             // Remember the timer by show id.
-            counters[show_id]=counter_long;
+            wpstream_poll_timers[show_id]=counter_long;
 
         });
     }
@@ -1543,19 +1593,19 @@ function wpstream_check_live_connections_from_database( acesta,channel_id,server
                 // Link the live-data button.
                 acesta.find('.wpstream_live_data').attr('href',server_status.live_data_url);
                 // Stop any fast start poll.
-                clearInterval( counters["stop"+channel_id]);
+                clearInterval( wpstream_poll_timers["stop"+channel_id]);
          
             // Channel stopped:
             }else if(server_status.status==='stopped' ){
 	            // Stop the fast poll.
-	            clearInterval( counters["stop"+channel_id]);
+	            clearInterval( wpstream_poll_timers["stop"+channel_id]);
 	            // Restore the stopped-state UI.
 	            wpstream_event_stopped_after_status_check(acesta);
             // Channel errored:
             }else if(server_status.status==='error' ){
                 
                 // Stop the fast poll.
-                clearInterval( counters["stop"+channel_id]);
+                clearInterval( wpstream_poll_timers["stop"+channel_id]);
                 // Target the status area...
                 var curent_content = acesta.find('.wpstream_channel_status ');
                 
@@ -1619,22 +1669,16 @@ function wpstream_check_server_status(url_param,callback) {
 }
 
 /**
- * Convert megabits to gigabits, rounded to one decimal, clamped at 0.
+ * Convert megabytes to gigabytes, floored to two decimals and clamped at 0.
  *
- * @param {number} megabits Value in megabits.
- * @return {number} Value in gigabits (>= 0).
+ * @param {number} megabytes Value in megabytes.
+ * @return {number} Value in gigabytes (>= 0).
  */
-function wpstream_convert_mb_to_gb(megabits) {
-	// Divide by 1000 to get gigabits.
-	let gigabit = megabits / 1000;
-	// Round to one decimal place.
-	gigabit = parseFloat( gigabit.toFixed( 1 ) );
-
-	// Never return a negative value.
-	if ( gigabit < 0 ) {
-		return 0
+function wpstream_convert_mb_to_gb(megabytes) {
+	const numericMegabytes = Number( megabytes );
+	if ( ! Number.isFinite( numericMegabytes ) || numericMegabytes <= 0 ) {
+		return 0;
 	}
-// Return the converted value.
 
-	return gigabit;
+	return Math.floor( ( numericMegabytes / 1024 ) * 100 ) / 100;
 }

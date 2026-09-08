@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Description of tweet_login
  *
@@ -463,7 +469,7 @@ class wpstream_theme_Social_Login {
 		// Configure the Google client with app credentials, redirect and scopes.
 		$g_client = new Google_Client();
 
-		$g_client->setApplicationName( 'Login to WpResidence' );
+		$g_client->setApplicationName( 'Login to WpStream' );
 		$g_client->setClientId( $this->google_client_id );
 		$g_client->setClientSecret( $this->google_client_secret );
 		$g_client->setRedirectUri( $this->redirect );
@@ -486,7 +492,7 @@ class wpstream_theme_Social_Login {
 
 		// Rebuild the Google client with the same configuration used to create the auth URL.
 		$g_client = new Google_Client();
-		$g_client->setApplicationName( 'Login to WpResidence' );
+		$g_client->setApplicationName( 'Login to WpStream' );
 		$g_client->setClientId( $this->google_client_id );
 		$g_client->setClientSecret( $this->google_client_secret );
 		$g_client->setRedirectUri( $this->redirect );
@@ -567,8 +573,8 @@ class wpstream_theme_Social_Login {
 			// Create the new user with the OpenID identity code as the password.
 			$user_id = wp_create_user( $social_username, $openid_identity_code, $email );
 
-			// Run the theme's post-registration role/profile setup.
-			$this->wpstream_theme_register_as_user( $social_username, $user_id, $firsname, $lastname );
+			// Run the theme's post-registration role/profile setup (0 = plain user type).
+			$this->wpstream_theme_register_as_user( $social_username, $user_id, 0, $firsname, $lastname );
 		}
 
 		// Look up the user by email to log them in.
@@ -583,9 +589,6 @@ class wpstream_theme_Social_Login {
 			wp_clear_auth_cookie();
 			wp_set_current_user( $user->ID );
 			wp_set_auth_cookie( $user->ID );
-
-			// Note: wpstream_theme_update_old_users() is not defined in this class.
-			$this->wpstream_theme_update_old_users( $user->ID );
 
 			// Redirect to the configured landing page (user dashboard).
 			wp_safe_redirect( $this->redirect );
@@ -680,7 +683,7 @@ class wpstream_theme_Social_Login {
 			$app_type  = esc_html__( 'Developer', 'hello-wpstream' );
 		}
 		// Roles that require admin approval (empty here, so nothing matches below).
-		$admin_submission_user_role = '';
+		$admin_submission_user_role = array();
 
 		// Default new submissions to published unless the role requires approval.
 		$post_approve = 'publish';

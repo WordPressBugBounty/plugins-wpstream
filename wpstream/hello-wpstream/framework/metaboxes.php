@@ -11,8 +11,15 @@
  */
 
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Register the per-post settings box last (PHP_INT_MAX priority) so it wins over earlier additions.
 add_filter( 'rwmb_meta_boxes', 'wpstream_theme_register_metabox', PHP_INT_MAX );
+if ( ! function_exists( 'wpstream_theme_register_metabox' ) ) :
 /**
  * Register metabox.
  * Adds theme settings to the post page.
@@ -87,10 +94,12 @@ function wpstream_theme_register_metabox( $meta_boxes ) {
 
 	return $meta_boxes;
 }
+endif;
 
 // Register the VOD-to-channel attachment box.
 add_filter( 'rwmb_meta_boxes', 'wpstream_metabox_vod_to_channel' );
 
+if ( ! function_exists( 'wpstream_metabox_vod_to_channel' ) ) :
 /**
  * Define metabox for attaching VOD to Channel.
  *
@@ -118,7 +127,9 @@ function wpstream_metabox_vod_to_channel( $meta_boxes ) {
 
 	return $meta_boxes;
 }
+endif;
 
+if ( ! function_exists( 'wpstream_get_channels_for_metaboxes' ) ) :
 /**
  * Get channels for metaboxes.
  *
@@ -185,9 +196,11 @@ function wpstream_get_channels_for_metaboxes() {
 
 	return $options;
 }
+endif;
 
 // Register the image gallery box (the field read by gallery-functions.php).
 add_filter( 'rwmb_meta_boxes', 'wpstream_theme_register_gallery_metabox' );
+if ( ! function_exists( 'wpstream_theme_register_gallery_metabox' ) ) :
 /**
  * Register gallery metabox for specified post types.
  *
@@ -214,9 +227,11 @@ function wpstream_theme_register_gallery_metabox( $meta_boxes ) {
 
 	return $meta_boxes;
 }
+endif;
 
 // Register the trailer / preview / logo upload boxes.
 add_filter( 'rwmb_meta_boxes', 'wpstream_theme_register_video_trailer_metabox' );
+if ( ! function_exists( 'wpstream_theme_register_video_trailer_metabox' ) ) :
 /**
  * Register video trailer metabox for specified post types.
  *
@@ -277,3 +292,4 @@ function wpstream_theme_register_video_trailer_metabox( $meta_boxes ) {
 
 	return $meta_boxes;
 }
+endif;

@@ -16,6 +16,12 @@
  * @subpackage Wpstream/includes
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Wires up the dashboard AJAX actions and provides their callbacks.
  */
@@ -102,15 +108,15 @@ class WpStream_Ajax {
 		// Validate the onboarding nonce before hitting the API.
 		check_ajax_referer( 'wpstream_onboarding_video_list_nonce', 'security' );
 
-		// Resolve the API auth token and pull the remote video list.
-		$token = $this->main->wpstream_live_connection->wpstream_get_token();
+		// Check connectivity and pull the remote video list.
+		$connected = $this->main->wpstream_live_connection->is_connected();
 		$videos_list = $this->main->wpstream_live_connection->wpstream_get_videos();
 
 		// cleanup any previous echo before sending json
 		ob_end_clean();
 
-		// A valid token means the list is trustworthy; return it.
-		if ( $token ) {
+		// A connected account means the list is trustworthy; return it.
+		if ( $connected ) {
 			echo json_encode( array(
 				'success' => true,
 				'videos' => $videos_list,
@@ -211,14 +217,15 @@ class WpStream_Ajax {
 			die();
 		}
 
-		// Collect and sanitize the submitted channel fields.
+		// Collect and sanitize the submitted channel fields; every key may be
+		// absent on a malformed request, so read them with safe defaults.
 		$thumb_id     = isset( $_POST['thumb_id'] ) ? intval( $_POST['thumb_id'] ) : 0;
-		$title        = sanitize_text_field( $_POST['title'] );
-		$description  = sanitize_text_field( $_POST['description'] );
-		$channel_paid = intval( $_POST['channel_paid'] );
-		$images       = sanitize_text_field( $_POST['images'] );
-	        // Strip stray leading/trailing commas from the CSV image-id list.
-	        $images       = trim($images,',');
+		$title        = sanitize_text_field( $_POST['title'] ?? '' );
+		$description  = sanitize_text_field( $_POST['description'] ?? '' );
+		$channel_paid = intval( $_POST['channel_paid'] ?? 0 );
+		$images       = sanitize_text_field( $_POST['images'] ?? '' );
+	        // Strip stray commas and enforce the gallery limit on the CSV image-id list.
+	        $images       = wpstream_limit_gallery_images( $images );
 	        $channel_price=0;
 		// Paid channels carry a price; read it as a float when supplied.
 		if ( isset( $_POST['channel_price'] ) ) {
@@ -227,7 +234,8 @@ class WpStream_Ajax {
 		// $postID was already read and ownership-checked above.
 
 		// Free channels use the custom post type; paid ones become WooCommerce products.
-		$new_post_type = 'wpstream_product';
+		$previous_access = 'product' === get_post_type( $postID ) ? 'paid' : 'free';
+		$new_post_type   = 'wpstream_product';
 		if ( $channel_paid == 1 ) {
 			// Paid: switch to the product post type and persist the price meta.
 			$new_post_type = 'product';
@@ -275,7 +283,7 @@ class WpStream_Ajax {
 			/*
 			* Manage categories
 			*/
-			if(isset( $_POST['selected_categories'])):
+			if(isset( $_POST['selected_categories']) && is_array( $_POST['selected_categories'])):
 				// Assign the submitted terms per taxonomy.
 				$categories = $_POST['selected_categories'];
 				foreach ( $categories as $taxonomy => $term_ids ) {
@@ -300,10 +308,36 @@ class WpStream_Ajax {
 
 			$video_preview = $this->wpstream_theme_return_preview_video( $postID );
 
+			$access = $channel_paid == 1 ? 'paid' : 'free';
+			if ( $access !== $previous_access ) {
+				/**
+				 * Fires when a dashboard save moved a channel between free and paid.
+				 *
+				 * The post type has already switched (`wpstream_product` ↔ `product`).
+				 *
+				 * @since 4.14.0
+				 *
+				 * @param int    $channel_id Channel post ID.
+				 * @param string $access     New access: `free` or `paid`.
+				 * @param string $previous   Access before the save.
+				 */
+				do_action( 'wpstream_channel_access_changed', intval( $postID ), $access, $previous_access );
+			}
+
+			/**
+			 * Fires after a channel was saved from the front-end dashboard.
+			 *
+			 * @since 4.14.0
+			 *
+			 * @param int $channel_id Channel post ID.
+			 * @param int $user_id    User who saved it.
+			 */
+			do_action( 'wpstream_dashboard_channel_saved', intval( $postID ), get_current_user_id() );
+
 			// Return the refreshed thumbnail, gallery, taxonomy HTML and video URLs.
 			wp_send_json_success(
 				array(
-					'succes'     => true,
+					'success'     => true,
 					's'          => $images,
 					'thumburl'   => get_the_post_thumbnail_url( $postID, 'wpstream_featured_unit_cards' ),
 					'images'     => $this->wpstream_build_html_gallery_dashboard( $gallery_images ),
@@ -564,7 +598,7 @@ class WpStream_Ajax {
 		// Report success back to the dashboard.
 		wp_send_json_success(
 			array(
-				'succes'  => true,
+				'success'  => true,
 				'message' => esc_html__( 'Changes saved successfully.', 'wpstream' ),
 			)
 		);
@@ -584,7 +618,7 @@ class WpStream_Ajax {
 		if ( ! isset( $_POST['security'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['security'] ) ), 'wpstream_profile_image_upload' ) ) {
 			wp_send_json_error(
 				array(
-					'succes'  => false,
+					'success'  => false,
 					'message' => esc_html__( 'Permission denied nonce', 'wpstream' ),
 				)
 			);
@@ -592,28 +626,22 @@ class WpStream_Ajax {
 			die();
 		}
 
-		// Read the attachment id to delete.
-		if ( isset( $_POST['image_id'] ) ) {
-			$image_id = intval( $_POST['image_id'] );
-		}
-		$user_id = get_current_user_id();
+		// Read the attachment id to delete (0 when absent — never a valid attachment).
+		$image_id = isset( $_POST['image_id'] ) ? intval( wp_unslash( $_POST['image_id'] ) ) : 0;
+		$user_id  = get_current_user_id();
 
-		// Get the attachment author.
-		$attachment = get_post( $image_id );
+		// Apply the shared, null-safe deletion policy (framework/ajax-upload.php):
+		// existence + attachment type + ownership or delete_post capability. Using
+		// the helper avoids dereferencing a null attachment and no longer leaks the
+		// owner's user id back to a non-owner in the error payload.
+		$can_delete = function_exists( 'wpstream_user_can_delete_attachment' )
+			&& wpstream_user_can_delete_attachment( $image_id );
 
-		// Ownership check: only the attachment's author may delete it.
-		if ( empty( $attachment ) || intval( $attachment->post_author ) !== intval( $user_id ) ) {
+		if ( ! $can_delete ) {
 			wp_send_json_error(
 				array(
-
-					'succes'  => false,
-
-					'author'  => $attachment->post_author,
-
-					'userid'  => $user_id,
-
+					'success'  => false,
 					'message' => esc_html__( 'Permission denied!!!', 'wpstream' ),
-
 				)
 			);
 
@@ -630,7 +658,7 @@ class WpStream_Ajax {
 		// Return success plus the fallback avatar URL for the UI to swap in.
 		wp_send_json_success(
 			array(
-				'succes'  => true,
+				'success'  => true,
 				'default' => function_exists('wpstream_get_author_profile_image_url_by_author_id') ? wpstream_get_author_profile_image_url_by_author_id($user_id) : '',
 				'message' => esc_html__( 'Changes saved successfully.', 'wpstream' ),
 			)
@@ -722,7 +750,7 @@ class WpStream_Ajax {
 		if ( $existing_user && $existing_user->ID !== $user_id ) {
 			wp_send_json_error(
 				array(
-					'succes'      => false,
+					'success'      => false,
 					'failaccount' => esc_html__( 'Email already exists.', 'wpstream' ),
 				)
 			);
@@ -732,7 +760,7 @@ class WpStream_Ajax {
 		if ( empty( $email ) || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
 			wp_send_json_error(
 				array(
-					'succes'      => false,
+					'success'      => false,
 					'failaccount' => esc_html__( 'Invalid Email Format', 'wpstream' ),
 				)
 			);
@@ -756,7 +784,7 @@ class WpStream_Ajax {
 			if ( $new_password1 !== $new_password2 ) {
 				wp_send_json_error(
 					array(
-						'succes'   => false,
+						'success'   => false,
 						'failpass' => esc_html__( 'Passwords do not match!', 'wpstream' ),
 					)
 				);
@@ -767,7 +795,7 @@ class WpStream_Ajax {
 				// The supplied current password must verify against the stored hash.
 				wp_send_json_error(
 					array(
-						'succes'   => false,
+						'success'   => false,
 						'failpass' => esc_html__( 'Current Password is not right!', 'wpstream' ),
 					)
 				);
@@ -784,7 +812,7 @@ class WpStream_Ajax {
 		// Send a response to the client.
 		wp_send_json_success(
 			array(
-				'succes'          => true,
+				'success'          => true,
 				'passwordchanged' => $passwordchanged,
 				'message'         => esc_html__( 'Changes saved successfully.', 'wpstream' ),
 			)
@@ -858,65 +886,44 @@ class WpStream_Ajax {
 		// Validate the channel-list nonce.
 		check_ajax_referer( 'wpstream_user_channel_list', 'security' );
 		// Requested channel type ('paid' triggers a WooCommerce product).
-		if ( isset( $_POST['channel_type'] ) ) {
-			$channel_type = sanitize_text_field( wp_unslash( $_POST['channel_type'] ) );
-		}
+		$channel_type = isset( $_POST['channel_type'] ) ? sanitize_text_field( wp_unslash( $_POST['channel_type'] ) ) : 'free';
 		$current_user = wp_get_current_user();
+		$access = 'paid' === $channel_type ? 'paid' : 'free';
+		$request = array(
+			'actor_id' => intval( $current_user->ID ),
+			'owner_id' => intval( $current_user->ID ),
+			'kind'     => 'live_channel',
+			'access'   => $access,
+			'title'    => 'paid' === $access ? 'My New Paid Channel' : 'My New Free Channel',
+		);
+		if ( 'paid' === $access ) {
+			// The existing dashboard creates an unpriced product that users price later.
+			$request['price'] = 0;
+		}
 
-		// These functions should be implemented in the plugin or be accessible
-		// Resolve the per-user limit, paid-channel permission, and current count
-		// (falling back to safe defaults when the theme helpers are unavailable).
-		$maxim_channels_per_user = function_exists('wpstream_return_max_channels_per_user') ? wpstream_return_max_channels_per_user() : 100;
-		$allow_user_paid_channels = function_exists('wpstream_return_user_can_create_paid') ? wpstream_return_user_can_create_paid() : false;
-		$how_many_posts = function_exists('wpstream_theme_return_user_channel_list') ? wpstream_theme_return_user_channel_list( '', 'found_posts' ) : 0;
-
-		// Allow creation while under the limit, or unconditionally for admins.
-		if ( ( $how_many_posts < $maxim_channels_per_user ) || current_user_can( 'manage_options' ) ) {
-			// Default to a free channel.
-			$post_type = 'wpstream_product';
-			$title     = 'My New Free Channel';
-
-			// Upgrade to a paid product when allowed and requested.
-			if ( ( $allow_user_paid_channels || current_user_can( 'manage_options' ) ) && 'paid' === $channel_type ) {
-				$post_type = 'product';
-				$title     = 'My New Paid Channel';
-			}
-
-			// Insert the new published channel owned by the current user.
-			$post_data = array(
-				'post_title'  => $title,
-				'post_status' => 'publish',
-				'post_author' => $current_user->ID,
-				'post_type'   => $post_type,
+		$result = $this->main->streaming_content_creation->create( $request );
+		if ( ! empty( $result['success'] ) ) {
+			$post_id = intval( $result['content_id'] );
+			// Selection is a dashboard workflow effect, not a creation effect.
+			update_user_meta( $current_user->ID, 'wpstream_start_streaming_channel', $post_id );
+			echo wp_json_encode(
+				array(
+					'success' => true,
+					'message' => 'Post created with ID: ' . $post_id,
+				)
 			);
-
-			$post_id = wp_insert_post( $post_data );
-
-			if ( ! is_wp_error( $post_id ) ) {
-				// On success, make the new channel the user's active one.
-				update_user_meta( $current_user->ID, 'wpstream_start_streaming_channel', $post_id );
-
-				echo wp_json_encode(
-					array(
-						'success' => true,
-						'message' => 'Post created with ID: ' . $post_id,
-					)
-				);
-			} else {
-				// Report the insertion error back to the client.
-				echo wp_json_encode(
-					array(
-						'success' => false,
-						'message' => 'Error creating post: ' . $post_id->get_error_message(),
-					)
-				);
-			}
-		} else {
-			// Limit reached and not an admin: refuse creation.
+		} elseif ( 'channel_limit_reached' === ( $result['error'] ?? '' ) ) {
 			echo wp_json_encode(
 				array(
 					'success' => false,
 					'message' => esc_html__( 'Your reached the maximum number of channels', 'wpstream' ),
+				)
+			);
+		} else {
+			echo wp_json_encode(
+				array(
+					'success' => false,
+					'message' => esc_html__( 'Error creating channel.', 'wpstream' ),
 				)
 			);
 		}
@@ -987,16 +994,18 @@ class WpStream_Ajax {
 				$taxonomies_raw = sanitize_text_field( wp_unslash( $_POST['taxonomies'] ) );
 				$taxonomies     = is_array( $taxonomies_raw ) ? array_map( 'sanitize_text_field', $taxonomies_raw ) : array();
 			}
-			// Strip surrounding whitespace and stray commas from the image id list.
-			$images = rtrim( ltrim( trim( $images ), ',' ), ',' );
+			// Strip stray commas and enforce the gallery limit on the image id list.
+			$images = wpstream_limit_gallery_images( $images );
 
 			// Store the gallery/price differently for products vs custom channels.
 			if ( get_post_type( $post_id ) === 'product' ) {
 				update_post_meta( $post_id, '_product_image_gallery', $images );
 				update_post_meta( $post_id, '_regular_price', $price );
 			} else {
-				// Free channels append each image id as its own gallery meta row.
+				// Free channels store each image id as its own gallery meta row;
+				// clear the old gallery first so the limited list replaces it.
 				$images_array = explode( ',', $images );
+				delete_post_meta( $post_id, 'wpstream_theme_gallery' );
 				foreach ( $images_array as $key => $value ) :
 					add_post_meta( $post_id, 'wpstream_theme_gallery', $value );
 				endforeach;
@@ -1079,8 +1088,12 @@ class WpStream_Ajax {
 				$current_user      = wp_get_current_user();
 				$user_id           = $current_user->ID;
 
-				// Get the current array of post IDs.
+				// Get the current array of post IDs; users who never saved
+				// anything have '' here, which array_filter() rejects.
 				$watch_later_item_ids = get_user_meta( $user_id, $meta_key, true );
+				if ( ! is_array( $watch_later_item_ids ) ) {
+					$watch_later_item_ids = array();
+				}
 
 				// Remove the specific ID from the array.
 				$watch_later_item_ids = array_filter(

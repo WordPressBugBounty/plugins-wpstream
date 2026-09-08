@@ -10,6 +10,12 @@
  * @subpackage Wpstream/includes/Logger
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Class WpStream_Log_Entry
  *
@@ -68,8 +74,11 @@ class WpStream_Logger {
 			$logs = array_slice( $logs, 0, $this->max_logs );
 		}
 
-		// Persist the updated history back to the options table.
-		return update_option( $this->option_name, $logs );
+		// Persist the updated history back to the options table. autoload=false:
+		// this 100-entry blob must not ride in alloptions on every request —
+		// and since each add changes the value, legacy autoloaded rows get
+		// their flag corrected here too.
+		return update_option( $this->option_name, $logs, false );
 	}
 
 	/**
@@ -101,7 +110,7 @@ class WpStream_Logger {
 			return $log['timestamp'] >= $one_month_ago;
 		});
 
-		// Save the pruned history back to the options table.
-		return update_option( $this->option_name, $filtered_logs );
+		// Save the pruned history back to the options table (never autoloaded).
+		return update_option( $this->option_name, $filtered_logs, false );
 	}
 }

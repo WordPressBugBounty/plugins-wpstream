@@ -11,6 +11,12 @@
  * @package wpstream-plugin
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
 	/**
 	 * Return user channel list.
@@ -30,7 +36,7 @@ if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
 
 		// When WooCommerce is active, channels can be either WC products of
 		// type live_stream or plain wpstream_product posts.
-		if ( wpstream_check_woo_active() ) {
+		if ( class_exists( 'WooCommerce' ) ) {
 			$post_type      = array( 'product', 'wpstream_product' );
 			// Match live_stream products OR posts with no product_type term.
 			$taxonomy_array = array(
@@ -69,7 +75,7 @@ if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
 		// Open the select element with a placeholder first option.
 		$return_string .= '<select id="wpstream-user-channel-selection" name="wpstream-user-channel-selection" '
 			. 'class="wpstream-user-channel-selection">'
-			. '<option value="">' . esc_html__( 'select the channel', 'hello-wpstream' ) . '</value>';
+			. '<option value="">' . esc_html__( 'select the channel', 'hello-wpstream' ) . '</option>';
 
 		if ( $query_list->have_posts() ) {
 			// Emit one <option> per channel in the loop.
@@ -110,6 +116,42 @@ if ( ! function_exists( 'wpstream_theme_return_user_channel_list' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wpstream_max_gallery_images' ) ) {
+	/**
+	 * Maximum number of images a channel or video gallery may hold.
+	 *
+	 * Read by the uploader config (client-side warning) and enforced by the
+	 * dashboard save handlers, so the two can never disagree.
+	 *
+	 * @return int Limit in [1, 100].
+	 */
+	function wpstream_max_gallery_images() {
+		/**
+		 * Filter the maximum number of gallery images. Clamped to [1, 100].
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param int $max Limit; default 20.
+		 */
+		return wpstream_tunable( 'wpstream_max_gallery_images', 20, 100 );
+	}
+}
+
+if ( ! function_exists( 'wpstream_limit_gallery_images' ) ) {
+	/**
+	 * Trim a submitted comma list of attachment ids to the gallery limit.
+	 *
+	 * @param string $images Comma-separated attachment ids as submitted.
+	 * @return string The first N ids, N = wpstream_max_gallery_images().
+	 */
+	function wpstream_limit_gallery_images( $images ) {
+		// Keep positive attachment ids only, in submitted order, then the first N.
+		$ids = array_values( array_filter( array_map( 'absint', explode( ',', (string) $images ) ) ) );
+		return implode( ',', array_slice( $ids, 0, wpstream_max_gallery_images() ) );
+	}
+}
+
+if ( ! function_exists( 'wpstream_theme_localize_upload_script_images' ) ) :
 /**
  * Localize the upload script for images.
  *
@@ -125,8 +167,8 @@ function wpstream_theme_localize_upload_script_images( $button_upload ) {
 		esc_url( admin_url( 'admin-ajax.php' ) )
 	);
 
-	// Maximum accepted upload size: 100 MB.
-	$max_file_size = 100 * 1000 * 1000;
+	// Maximum accepted upload size: the same cap the server enforces.
+	$max_file_size = wpstream_max_upload_bytes( $button_upload );
 
 	// Core plupload configuration passed to the browser uploader.
 	$plupload_values = array(
@@ -158,7 +200,7 @@ function wpstream_theme_localize_upload_script_images( $button_upload ) {
 	$plupload_values                 = wp_parse_args( $plupload_values, $tmp_plupload_values );
 	$plupload_values['drop_element'] = 'drag-and-drop';
 	// Upper bound on the number of images allowed in the gallery uploader.
-	$max_images                      = 20;
+	$max_images                      = wpstream_max_gallery_images();
 
 	// Expose all upload settings/nonces/strings to the ajax-upload JS handle.
 	wp_localize_script(
@@ -179,6 +221,7 @@ function wpstream_theme_localize_upload_script_images( $button_upload ) {
 		)
 	);
 }
+endif;
 
 if ( ! function_exists( 'wpstream_theme_return_image_upload_markup' ) ) {
 	/**
@@ -599,5 +642,64 @@ if ( ! function_exists( 'wpstream_theme_build_html_gallery_dashboard' ) ) {
 
 		// Return the concatenated gallery markup.
 		return $return_string;
+	}
+}
+if ( ! function_exists( 'wpstream_return_user_can_create_paid' ) ) {
+	/**
+	 * Whether non-admin users may create paid (WooCommerce) channels.
+	 *
+	 * Canonical default for a capability that used to exist only in the
+	 * companion theme, which silently blocked paid auto-creation on every
+	 * other theme. Overridable by defining the function in a (child) theme.
+	 *
+	 * @return bool True when paid channel creation is allowed for the user.
+	 */
+	function wpstream_return_user_can_create_paid() {
+		// The site is configured to auto-create paid channels on the go-live
+		// surface: paid creation is explicit site policy.
+		if ( 'paid' === get_option( 'wpstream_user_streaming_channel_type' ) ) {
+			return true;
+		}
+
+		// Otherwise the companion theme's customizer toggle decides (its
+		// setting is stored as a theme mod of the active theme).
+		return (bool) get_theme_mod( 'wpstream_user_can_create_paid', false );
+	}
+}
+
+if ( ! function_exists( 'wpstream_return_max_channels_per_user' ) ) {
+	/**
+	 * Maximum number of channels a single non-admin user may own.
+	 *
+	 * Canonical default for the companion theme's customizer setting, so the
+	 * dashboard create-channel CTA works on any theme. An unset/zero setting
+	 * means effectively unlimited (999, the companion theme's convention).
+	 * The one accessor for the cap: the Streaming Content Creation module and
+	 * the dashboard both read it, so the filter below governs both. The plugin
+	 * loads this framework on after_setup_theme before the companion theme's
+	 * copy, which is what keeps this filtered definition the one in effect.
+	 *
+	 * @param int $owner_id User whose cap is asked for; 0 means the current user.
+	 * @return int The per-user channel cap.
+	 */
+	function wpstream_return_max_channels_per_user( $owner_id = 0 ) {
+		$value = intval( get_theme_mod( 'wpstream_return_max_channels_per_user' ) );
+
+		// Zero/unset means effectively unlimited.
+		if ( 0 === $value ) {
+			$value = 999;
+		}
+
+		$owner_id = intval( $owner_id ) > 0 ? intval( $owner_id ) : get_current_user_id();
+
+		/**
+		 * Filters how many live channels one non-admin user may own.
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param int $max      The configured cap (customizer setting, 999 when unset).
+		 * @param int $owner_id User the cap applies to.
+		 */
+		return max( 0, intval( apply_filters( 'wpstream_max_channels_per_user', $value, $owner_id ) ) );
 	}
 }

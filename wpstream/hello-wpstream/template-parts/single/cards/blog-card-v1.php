@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Optional caller args; default to an empty array when not provided.
 $args            = $args ?? array();
 // Author of the current post (available to the markup below).
@@ -19,8 +25,6 @@ $card_grid_class = 'col-sm-12 col-md-6 col-lg-4 col-xl-3';
 // Customizer toggles: whether to show the view count and the metadata line.
 $wpstream_blog_post_card_show_hide_views 	= get_theme_mod( 'wpstream_blog_post_card_show_hide_views', true );
 $wpstream_blog_post_card_show_hide_metadata = get_theme_mod( 'wpstream_blog_post_card_show_hide_metadata', true );
-// Whether to suppress the category list (see the guarded block further down).
-$hide_category = false;
 
 // A caller-provided overwrite variable takes precedence over the default columns.
 if ( isset( $card_grid_class_overwrite ) && '' !== $card_grid_class_overwrite ) {
@@ -76,25 +80,6 @@ if ( isset( $args['class'] ) ) {
 				?>
 			</div>
 			<?php
-			}
-			// Gather the post's categories for the optional category list below.
-			$categories = get_the_category( get_the_ID() );
-
-			// Show the category list only when categories exist, the caller allows it, and it isn't hidden.
-			if ( ! empty( $categories ) && ( $args['show_category'] ?? true ) && ( ! isset( $hide_category ) || $hide_category ) ) {
-				// Build a <ul> of category links.
-				$output = '<div><ul>';
-
-				// One list item linking to each category archive.
-				foreach ( $categories as $category ) {
-					$url     = get_category_link( $category->term_id );
-					$output .= sprintf( '<li><a href="%1$s">%2$s</a></li>', esc_url( $url ), esc_html( $category->name ) );
-				}
-
-				$output .= '</ul></div>';
-
-				// Print the assembled list with post-safe HTML allowed.
-				echo wp_kses_post($output);//phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			}
 			?>
 

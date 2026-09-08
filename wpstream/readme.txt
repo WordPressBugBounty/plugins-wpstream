@@ -4,78 +4,81 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.13.2
-License: GPL
-License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+Stable tag: 4.14.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 WpStream is a Video Streaming Plugin that lets you broadcast live events and helps you sell tickets or recordings via WooCommerce.
 
 == Description ==
 
+Live stream on your WordPress website and make recordings available for replay.
+
+WpStream lets you broadcast from your browser or streaming software such as OBS, with viewers watching on your own site. Add live services, shows, matches, classes, or events to the website you already manage. Offer free viewing or sell access through WooCommerce.
+
+WpStream handles video delivery through its streaming service. Your WordPress site hosts the pages and viewing experience; it does not have to serve the live video traffic from your web hosting account.
+
+<h3>Free plugin, separate streaming service</h3>
+
+The WpStream plugin is free to install. To use WpStream's live streaming and cloud video services, connect a WpStream account. A free trial is available to test the service; paid streaming plans are separate from the plugin.
+
+Plans have allowances for broadcasting, viewing, and recording storage. Free-to-view means your audience does not pay to watch; it does not mean the streaming service is free. See the <a href="https://wpstream.net/pricing/" target="_blank">current plans and resource allowances</a> before choosing a plan.
+
+WooCommerce is optional for free-to-view broadcasts. Pay-per-view requires WooCommerce. The documented recurring-subscription setup also requires the separately purchased WooCommerce Subscriptions extension.
+
 [youtube https://www.youtube.com/watch?v=TopBhvGvwbs]
 
-WpStream is the only video streaming solution on WordPress that is designed to help you create your video streaming website without adding any load to your hosting server.
+<h3>Broadcast from your browser or streaming software</h3>
 
-WpStream makes it possible for you to stream live content directly on your site, bypassing the need for third-party solutions. By taking control of your live stream, you can fully maximize the use of your video content, choosing how to display it, to whom, and whether you want to charge for it.
+<a href="https://wpstream.net/live-streaming/" target="_blank">Go live on your website</a> using your browser and webcam, or connect an external encoder that supports a custom RTMP destination, such as OBS Studio, Wirecast, or Larix.
 
+For a basic webcam broadcast on an existing WordPress site, setup can take three minutes or less. Allow extra time for payment setup, custom page layouts, or configuring an external encoder.
 
-<h3><a href="https://wpstream.net/wpstream-video-streaming-theme/" target="_blank">Hello WpStream Theme</a></h3>
+Create a live channel, choose your broadcast method, and share the channel page with your audience. You can also place the player inside an existing page.
 
-Hello WpStream is a lightweight, flexible WordPress theme designed for seamless integration with WpStream, the ultimate live streaming plugin. Perfect for businesses and creators, this theme offers an intuitive setup, responsive design, and full support for live shopping, video content, and real-time interactions. Whether you're hosting live events, product launches, or virtual classes, Hello WpStream makes it easy to engage your audience and enhance your e-commerce experience.
+<h3>Record live streams and publish replays</h3>
 
-<h3>Live Streaming</h3>
+Record a live broadcast or upload a video file, then publish it as <a href="https://wpstream.net/recordings-video-on-demand/" target="_blank">video on demand</a>. Give viewers a place to catch up on a missed service, watch a previous match, or revisit a class.
 
-<a href="https://wpstream.net/live-streaming/" target="_blank">Live Streaming on your website</a> can be carried out directly from your browser or with the help of Streaming Apps with custom RTMP. With just a webcam, you can go live in less than 3 minutes. As for streaming apps, a few popular client picks are:
+Offer recordings free to watch, sell individual videos, or include them in a subscription with the required WooCommerce setup.
+
+<h3>Sell access with WooCommerce when you need it</h3>
+
+<a href="https://wpstream.net/monetization/" target="_blank">Sell access to live streams and recorded videos</a> through your WordPress site's WooCommerce checkout.
 
 <ul>
-<li>OBS Studio</li>
-<li>StreamYard</li>
-<li>Restream</li>
-<li>Wirecast</li>
-<li>Larix</li>
-<li>Melon App</li>
-<li>Streamlabs</li>
-<li>Zoom</li>
+<li><strong>Pay-per-view:</strong> sell access to an individual live stream or video with WooCommerce.</li>
+<li><strong>Subscriptions:</strong> offer recurring access with WooCommerce and WooCommerce Subscriptions. See the <a href="https://docs.wpstream.net/docs/how-to-create-a-subscription-live-stream/" target="_blank">subscription setup guide</a>.</li>
+<li><strong>Free viewing:</strong> publish broadcasts and videos without asking viewers to purchase access.</li>
 </ul>
 
-Whether you are using your laptop, phone, or GoPro, going LIVE and streaming video on your website has never been easier. Gone are the days where you needed a sophisticated and complex live streaming set up. Free-To-View, Pay-Per-View, and Subscription live streams available.
+<h3>Choose your branding and viewing access</h3>
 
+Add your own logo to the player and choose how live streams and videos appear on your site.
 
-<h3>Recordings / Video On Demand (VODs)</h3>
+For private events, you can use a <a href="https://wpstream.net/password-protected-live-streaming-everything-you-need-to-know/" target="_blank">password-protected viewing page</a>. For paid access, use the WooCommerce options above.
 
-Record your live streams or upload video files to create <a href="https://wpstream.net/recordings-video-on-demand/" target="_blank" >Video-On-Demand content</a>. Video playback or streaming video is compatible on all modern browsers and platforms.
+Read more about WpStream's approach to <a href="https://wpstream.net/free-speech-and-content-rights/" target="_blank">content rights</a>.
 
-Allow your viewers to catch up on your video content by offering it On Demand. Free-To-View, Pay-Per-View, and Subscription VOD available.
+<h3>Add players and video lists to your pages</h3>
 
+Each live channel and on-demand video has its own page. To place a player elsewhere, use the WpStream Player block, Elementor or WPBakery element, or shortcode.
 
-<h3>Monetization with WooCommerce</h3>
+Use channel and video lists to help viewers find current broadcasts and available recordings. See the <a href="https://wpstream.net/wpstream-shortcodes/" target="_blank">player and listing documentation</a>.
 
-Live streaming and <a href="https://wpstream.net/monetization/" target="_blank">VOD monetization is carried out with WooCommerce</a>. Transform your business idea into one that includes video streaming and watch how your profits follow. With just a basic setup, you can create your Pay-Per-View and Subscription Livestreams and VODs on your website.
+<h3>Let approved users broadcast without admin access</h3>
 
-<h3>Content Rights and Free Speech</h3>
+If other people broadcast on your site, configure which non-admin user roles are allowed to stream. Add the front-end broadcasting controls to their pages so they can start a broadcast without access to the WordPress admin dashboard.
 
-WpStream believes in your <a href="https://wpstream.net/free-speech-and-content-rights/" target="_blank">Right to Free Speech</a> and autonomy over what you live stream on your website. Add your own logo, branding, and identity to your live streams and videos.
+See the <a href="https://docs.wpstream.net/docs/elementor-3/" target="_blank">front-end broadcasting documentation</a> for setup.
 
-If you have a private event, you can set up a <a href="https://wpstream.net/password-protected-live-streaming-everything-you-need-to-know/" target="_blank"> password protected live stream</a>. Perfect for company meetings, kids activities, weddings, and other private events.
+<h3>Optional: Hello WpStream theme</h3>
 
+You do not need to switch to Hello WpStream to use the plugin. If you are building a new video website, the <a href="https://wpstream.net/wpstream-video-streaming-theme/" target="_blank">Hello WpStream theme</a> provides a starting point designed for WpStream.
 
+<h3>Getting started and support</h3>
 
-<h3>Widgets, blocks, and shortcodes</h3>
-
-<h4>Live and VOD Player embedding</h4>
-
-Each Live Stream and On Demand video will have its own pre-made video page. Alternatively, customize the location and position of the video player using the <a href="https://wpstream.net/wpstream-shortcodes/" target="_blank">“WpStream Player” block, widget, or regular shortcode</a>. Available with Elementor, WPBakery, and other page builders.
-
-<h4>E-Commerce Marketplace / TWITCH feature</h4>
-
-Allow regular users, streamers, and influencers to go LIVE on your website via the front-end (like TWITCH). Set up profiles and add the <a href="https://docs.wpstream.net/docs/elementor-3/" target="_blank">“Start Streaming” block, widget, or shortcode</a> to their page so they can go live at any time without admin access. Available with Elementor, WPBakery, and other page builders.
-
-<h4>Live Channels and Video Lists</h4>
-
-Show viewers which streamer or channel is currently LIVE on your video streaming website and all the On Demand videos they can catch up with any time, any where, on any device. Use the <a href="https://wpstream.net/wpstream-shortcodes/" target="_blank">WpStream Channel List or WpStream Video on Demand List</a>.  Available with Elementor, WPBakery, and other page builders.
-
-
-Check out our <a href="https://docs.wpstream.net/docs-category/getting-started/" target="_blank">documentation</a>, <a href="https://wpstream.net/blog/" target="_blank">blog</a>, and <a href="https://www.youtube.com/channel/UCIjItiJc4Z7aJApj3W6ArJA" target="_blank">YouTube Channel</a> for latest updates, tips, and instructions on how to create your video streaming website.
+Use the <a href="https://docs.wpstream.net/docs-category/getting-started/" target="_blank">getting-started documentation</a> and <a href="https://www.youtube.com/channel/UCIjItiJc4Z7aJApj3W6ArJA" target="_blank">video tutorials</a> to set up your first broadcast. For questions or troubleshooting, visit the <a href="https://wordpress.org/support/plugin/wpstream/" target="_blank">plugin support forum</a>.
 
 
 == CONNECT WITH US ==
@@ -133,6 +136,27 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.14.0 =
+* Fix - Tooltips on the last icon row of the Live Streaming sidebar box were cut off on WooCommerce product edit pages; the box no longer clips them
+* Fix - The channel ON/OFF button in the sidebar box now sizes to its content instead of a fixed height
+* Fix - Multipart VOD uploads are capped at 1000 parts and the real upload error is shown when a part fails
+* Security - Dashboard file uploads are now validated on the server: the uploaders accept only the allowed image, video and PDF types (profile pictures are limited to images) and reject oversized files, instead of trusting the browser to filter file types. Previously a crafted request could store other file types
+* Security - Deleting an uploaded file now follows a single consistent rule across every dashboard endpoint: only the file's owner (or a user permitted to delete it) can remove it, deletions are limited to genuine media attachments, and a missing or invalid request is handled safely without a PHP error or exposing the owner's account id
+* Security - An uploaded file can no longer be attached to a post the uploader is not allowed to edit
+* Security - Saving WpStream settings and Default Channel Settings now requires administrator permissions; previously these admin actions accepted a valid form token alone. The generic settings saver is also limited to known plugin settings and can no longer be used to overwrite the stored WpStream API credentials
+* Fix - Saving the Default Channel Settings no longer clears the site-wide "Use Sessions with Encryption" option; settings the form does not send are now preserved instead of being overwritten
+* Security - The video player no longer executes callback strings from its configuration (eval removed). The theater-mode buttons now announce mode changes via a wpstream:theater-mode browser event (detail: action "enter"/"leave" and the player element id) that site code can listen for on the player element or document
+* Security - Removed a leaked internal test harness from the player controls script; it called debug endpoints that are not part of the plugin and reflected URL parameters into the page unescaped (potential cross-site scripting)
+* Security - Added CSRF (nonce) verification to admin actions that previously accepted forged requests: saving WpStream credentials, the one-click plugin update, dismissing admin notices, and downloading or deleting cloud recordings
+* Security - Added CSRF (nonce) verification to logged-in front-end actions: the Watch Later toggle (which previously accepted any value as a "nonce"), the legacy dashboard attachment-delete endpoint, and the BuddyBoss channel-select and timeline-player actions
+* Security - Posting a live player to the BuddyBoss timeline now requires owning the channel; previously any logged-in user could post any channel's player
+* Fix - Attachment-delete endpoints compared the owner id with the wrong type and always refused valid requests; the ownership check now works as intended
+* Removed - The built-in beta live chat has been removed entirely: the [wpstream_chat] shortcode, the WpStream Chat Elementor and WPBakery elements, the chat template, and the bundled chat libraries (chat client, SockJS, emojione, linkify, material UI). Live chat is provided by the Better Messages integration in the Hello WpStream theme. Pages still containing the old shortcode render it as plain text and can simply remove it
+* Removed - Dropping the bundled chat libraries also removes their outdated third-party code (old jQuery/jQuery UI builds, SockJS 0.3) from the public site, shrinking the plugin's attack surface and page weight
+* Fix - Deactivating the plugin no longer deletes the stored WpStream API credentials, so a temporary deactivation (conflict testing, auto-deactivation after an error) keeps the account connected
+* Added - Uninstalling the plugin now removes the stored credentials, cached authentication tokens, and scheduled cleanup events
+* Removed - The beta low-latency player has been retired: the [wpstream_player_low_latency] shortcode, its "WpStream Player - Low Latency" Elementor and WPBakery elements, and the bundled OvenPlayer library are gone. Low latency remains a channel setting - use the standard [wpstream_player] / WpStream Player element, which plays low-latency channels. Pages still containing the old shortcode render it as plain text and can simply switch to [wpstream_player]
 
 = 4.13.2 =
 * Security - Enforce channel-ownership checks on live/broadcast actions so a user can only start, stop, or read the credentials of channels they own

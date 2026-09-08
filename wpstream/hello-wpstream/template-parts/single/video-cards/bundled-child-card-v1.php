@@ -11,6 +11,12 @@
  * @var string $post_type Post type of the item being rendered (e.g. wpstream_bundles).
  * @var string $excerpt   Excerpt text, trimmed to 20 words on output.
  */
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Current post ID for this card; used to resolve its featured image.
 $bundleID = get_the_ID();
 

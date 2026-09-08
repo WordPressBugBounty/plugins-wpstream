@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
  // Register the "with top bar" load-more handler for logged-out and logged-in users.
  add_action( 'wp_ajax_nopriv_wpstream_shortcode_with_top_bar_load_more_function', 'wpstream_shortcode_with_top_bar_load_more_function' );
  add_action( 'wp_ajax_wpstream_shortcode_with_top_bar_load_more_function', 'wpstream_shortcode_with_top_bar_load_more_function' );
@@ -24,11 +30,12 @@
 	  * @return void
 	  */
 	 function wpstream_shortcode_with_top_bar_load_more_function() {
-		// Verify nonce.
-		// if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'shortcode_nonce_ajax_action' ) ) {
-		//	 wp_send_json_error( 'Nonce verification failed.', 403 );
-		// }
- 
+		// Deliberately NO nonce here (issue #113): this is a nopriv, read-only
+		// listing renderer served on cacheable public pages — a cached nonce
+		// expires/mismatches and would break pagination for guests, while CSRF
+		// does not apply to a state-less public endpoint. All inputs below are
+		// sanitized instead.
+
 		$attributes                          = array();
 		$attributes['paged']                 = isset( $_POST['paged'] ) ? intval( $_POST['paged'] ) : 0;
 		$attributes['type']                  = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : '';
@@ -140,6 +147,7 @@ if ( ! function_exists( 'wpstream_shortcode_load_more_function' ) ) {
 	 }
  }
 
+if ( ! function_exists( 'wpstream_populate_from_get' ) ) :
 /**
  * Populates attributes from $_GET array if 'from_ajax' is set to 'yes'.
  *
@@ -166,6 +174,7 @@ function wpstream_populate_from_get( $attributes ) {
 
 	return $attributes;
 }
+endif;
 
 
 if ( ! function_exists( 'wpstream_return_item_list_elementor' ) ) {

@@ -9,6 +9,12 @@
  * @subpackage Wpstream/includes/Helpers
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Class WpStream_Log_Entry
  *

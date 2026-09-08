@@ -11,6 +11,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 ?>
 <!-- Site masthead / dashboard header wrapper. -->
 <header id="masthead" class="site-header header-1">

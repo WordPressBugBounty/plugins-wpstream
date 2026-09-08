@@ -12,6 +12,12 @@
  * @subpackage Wpstream/integrations
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Check and load integrations for plugins like BuddyPress or BuddyBoss.
  *
@@ -37,19 +43,18 @@ function wpstream_check_integrations() {
  * This function retrieves the live event associated with the current logged-in user.
  * It first checks if the event data is cached in a transient to avoid redundant processing.
  * If no cached data is found, it retrieves the live event data using the wpstream plugin
- * and stores it in a transient for 10 minutes. Optionally, it can exit after fetching the data.
+ * and stores it in a transient for 10 minutes.
  *
- * @param string $with_exit Optional. Whether to exit after retrieving live events. Defaults to 'yes'.
  * @return mixed The live event data for the logged-in user.
  */
-function wpestream_integrations_get_current_user_live_events($with_exit = 'yes') {
+function wpestream_integrations_get_current_user_live_events() {
     // Check if the live event data is cached in a transient.
     $live_event_for_user = get_transient('wpstream_bb_get_live_event_for_user');
     global $wpstream_plugin;
 
     // If no cached data is found, fetch the live event data.
     if ($live_event_for_user === false) {
-        $live_event_for_user = $wpstream_plugin->main->wpstream_live_connection->wpstream_get_live_event_for_user($with_exit);
+        $live_event_for_user = $wpstream_plugin->main->wpstream_live_connection->wpstream_get_live_event_for_user();
 
         // Cache the live event data in a transient for 10 minutes.
         set_transient('wpstream_bb_get_live_event_for_user', $live_event_for_user, 600);
@@ -70,11 +75,11 @@ if ( ! function_exists('wpstream_get_live_tag_html' ) ) {
 	{
 		// Only WooCommerce live-stream products or native wpstream_product posts can be "live".
 		if ((get_post_type($post_id) === 'product' && has_term('live_stream', 'product_type', $post_id)) || get_post_type($post_id) === 'wpstream_product') {
-			// Pull the current user's live events (no exit) so we can test membership.
-			$live_events = wpestream_integrations_get_current_user_live_events('no');
+			// Pull the current user's live events so we can test membership.
+			$live_events = wpestream_integrations_get_current_user_live_events();
 			// If this post is among the live events, emit the "LIVE" badge markup.
 			if (is_array($live_events) && array_key_exists($post_id, $live_events)) {
-				return '<div class="wpstream_featured_image_live_tag">' . esc_html_x('LIVE', 'Card tag', 'hello-wpstream') . '</div>';
+				return '<div class="wpstream_featured_image_live_tag">' . esc_html_x('LIVE', 'Card tag', 'wpstream') . '</div>';
 			}
 		}
 		// Not a live post (or no live event matched): render nothing.

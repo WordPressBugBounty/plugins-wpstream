@@ -12,6 +12,12 @@
  * @subpackage Wpstream/includes
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Handles rendering of the "hello-wpstream theme update available" admin notice.
  */
@@ -100,6 +106,6 @@ class WPStream_Theme_Notice {
 	 */
 	public function render_notice( $data ) {
 		// $data is in scope for the template to print current/new versions.
-		include plugin_dir_path( __FILE__ ) . 'templates/wpstream-theme-update-notice.php';
+		include plugin_dir_path( dirname( __FILE__ ) ) . 'templates/admin/wpstream-theme-update-notice.php';
 	}
 }

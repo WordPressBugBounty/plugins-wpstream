@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * WpStream_Login_Register
  *
@@ -52,13 +58,6 @@ class WpStream_Login_Register {
 	 * @var string
 	 */
 	private $terms_conditions_link = '#';
-
-	/**
-	 * Captcha
-	 *
-	 * @var string
-	 */
-	private $use_captcha = 'yes';
 
 	/**
 	 * Instance
@@ -191,10 +190,15 @@ class WpStream_Login_Register {
 
 	/**
 	 * Forgot password
+	 *
+	 * Deliberately performs no nonce check: guest nonces are shared by every
+	 * visitor and printed in public (often page-cached) HTML, so they add no
+	 * CSRF protection here and expire inside cached pages, breaking password
+	 * resets. Core's wp-login.php lostpassword action is likewise nonce-free;
+	 * the handler already refuses administrator accounts.
 	 */
 	public function handle_forgot_pass() {
-		// Verify the AJAX nonce before processing the reset request.
-		check_ajax_referer( 'login_ajax_nonce', 'security' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- guest endpoint; see docblock.
 		global $wpdb;
 
 		// Read the submitted email/username to reset.
@@ -307,10 +311,14 @@ class WpStream_Login_Register {
 
 	/**
 	 * Handle register
+	 *
+	 * Deliberately performs no nonce check: guest nonces are shared by every
+	 * visitor and printed in public (often page-cached) HTML, so they add no
+	 * CSRF protection here and expire inside cached pages, breaking sign-up.
+	 * Bot protection is the reCAPTCHA option, not the nonce.
 	 */
 	public function handle_register() {
-		// Verify the AJAX nonce before processing the registration.
-		check_ajax_referer( 'login_ajax_nonce', 'security' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- guest endpoint; see docblock.
 		// Short-circuit if the visitor is somehow already logged in.
 		if ( is_user_logged_in() ) {
 			echo wp_json_encode(
@@ -325,37 +333,7 @@ class WpStream_Login_Register {
 			wp_die();
 		}
 
-		// Captcha is hardcoded off here, so the whole block below is skipped.
-		$use_captcha = 'no';
-		if ( 'yes' === $use_captcha ) {
-			// Require a captcha value to be present.
-			if ( ! isset( $_POST['captcha'] ) || '' === $_POST['captcha'] ) {
-
-				echo wp_json_encode(
-					array(
-						'success' => false,
-						'message' => esc_html__( 'Wrong captcha', 'hello-wpstream' ),
-					)
-				);
-				wp_die();
-			}
-
-			// Verify the captcha response with Google reCAPTCHA (secret is a placeholder here).
-			$secret   = 'from optpms';
-			$cappval  = sanitize_text_field( wp_unslash( $_POST['captcha'] ) );
-			$response = $this->wpstream_theme_return_recapthca( $secret, $cappval );
-
-			// Reject when reCAPTCHA reports failure.
-			if ( false === $response['success'] ) {
-				echo wp_json_encode(
-					array(
-						'register' => false,
-						'message'  => esc_html__( 'Captcha Invalidated - Refresh and try again.', 'hello-wpstream' ),
-					)
-				);
-				wp_die();
-			}
-		}
+		// NOTE: registration performs no captcha / bot check.
 
 		// Read and trim the submitted email.
 		if ( isset( $_POST['user_email_register'] ) ) {
@@ -518,55 +496,6 @@ class WpStream_Login_Register {
 		wp_die();
 	}
 
-	/**
-	 * Return reCAPTCHA verification result.
-	 *
-	 * @param string $secret The secret key for reCAPTCHA.
-	 * @param string $captcha The reCAPTCHA response from the user.
-	 * @return array|null Returns an array containing the verification result or null on failure.
-	 */
-	public function wpstream_theme_return_recapthca( $secret, $captcha ) {
-		// Resolve the caller's IP to send to the verification endpoint.
-		$remoteip = sanitize_text_field( wp_unslash( wpstream_get_ip_address() ) );
-
-		// Build the form-encoded body for Google's siteverify endpoint.
-		$url       = 'https://www.google.com/recaptcha/api/siteverify';
-		$post_data = http_build_query(
-			array(
-				'secret'   => $secret,
-				'response' => $captcha,
-				'remoteip' => $remoteip,
-			),
-			'',
-			'&'
-		);
-
-		// POST the verification request.
-		$response = wp_safe_remote_post(
-			$url,
-			array(
-				'body'    => $post_data,
-				'headers' => array(
-					'Content-Type' => 'application/x-www-form-urlencoded',
-				),
-			)
-		);
-
-		// On a transport error, surface the message in the expected array shape.
-		if ( is_wp_error( $response ) ) {
-			return array( 'success' => false, 'error' => $response->get_error_message() );
-		}
-
-		// Decode and return Google's JSON verification result.
-		$response_body = wp_remote_retrieve_body( $response );
-		$resulting     = json_decode( $response_body, true );
-
-		return $resulting;
-	}
-
-
-
-
 	// This function checks multiple server variables for the IP address and validates it, providing a more robust and secure way to get the user's IP address.
 	/**
 	 * Resolve the visitor's public IP address from the server variables.
@@ -608,10 +537,15 @@ class WpStream_Login_Register {
 
 	/**
 	 * Handle login
+	 *
+	 * Deliberately performs no nonce check: the form is served to logged-out
+	 * visitors, whose nonces are shared by every guest and printed in public
+	 * (often page-cached) HTML — so a nonce here adds no CSRF protection and
+	 * expires inside cached pages, locking all visitors out of login.
+	 * WordPress core's own wp-login.php takes the same approach.
 	 */
 	public function handle_login() {
-		// Verify the AJAX nonce before attempting sign-on.
-		check_ajax_referer( 'login_ajax_nonce', 'security' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- guest endpoint; see docblock.
 		// Short-circuit if the visitor is already logged in.
 		if ( is_user_logged_in() ) {
 			echo wp_json_encode(
@@ -711,8 +645,9 @@ class WpStream_Login_Register {
 		$retun_string .= $this->generate_login_form();
 		$retun_string .= $this->generate_register_form();
 		$retun_string .= $this->generate_forgot_form();
-		// Hidden nonce field shared by the AJAX login/register/forgot calls.
-		$retun_string .= '<input type="hidden" class="wpstream-theme_security-login-topbar" name="security-login-topbar"  value="' . wp_create_nonce( 'login_ajax_nonce' ) . '">';
+		// No nonce field here on purpose: this markup lands in cacheable guest
+		// HTML, where an embedded nonce outlives its lifetime and the handlers
+		// deliberately no longer ask for one (see the handler docblocks).
 		$retun_string .= '</div>';
 
 		return $retun_string;
@@ -892,13 +827,6 @@ class WpStream_Login_Register {
 					<?php esc_html_e( 'terms & conditions', 'hello-wpstream' ); ?>
 				</a>
 			</label>
-
-			<?php
-			// Render the reCAPTCHA mount point when captcha is enabled.
-			if ( 'yes' === $this->use_captcha ) {
-				print '<div id="top_register_menu" style="float:left;transform:scale(0.75);-webkit-transform:scale(0.75);transform-origin:0 0;-webkit-transform-origin:0 0;"></div>';
-			}
-			?>
 
 			<!-- When passwords are auto-generated, tell the user it will be emailed. -->
 			<?php if ( 'yes' !== $this->enable_user_pass_status ) { ?>

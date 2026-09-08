@@ -5,6 +5,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Resolve the currently logged-in user whose account this screen edits.
 $user = wp_get_current_user();
 // Delegate the actual markup to the shared edit-account template ($user is in scope for it).

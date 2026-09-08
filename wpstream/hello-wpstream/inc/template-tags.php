@@ -7,6 +7,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Category Badge.
 if ( ! function_exists( 'wpstream_theme_category_badge' ) ) {
 	/**

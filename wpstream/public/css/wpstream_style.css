@@ -6,7 +6,6 @@
  *  - the video.js player chrome (big play button, channel logo, live counter);
  *  - live/VOD "not live" overlays and the pre-load spinner;
  *  - the VOD "Play Video" title-overlay button and action wrappers;
- *  - the SockJS-based live chat widget;
  *  - the front-end "go live" event units and the external-software broadcast modal;
  *  - responsive breakpoints and the external VOD iframe wrapper.
  *
@@ -134,7 +133,7 @@
     100% { transform: rotate(360deg); }
 }
 
-/* === "Not live" message text (default + .wpestate_header_video header variant) === */
+/* === "Not live" message text (default + .wpstream_header_video header variant) === */
 .wpstream_not_live_mess_mess{
     color: #fff;
     font-size: 17px;
@@ -143,6 +142,10 @@
     padding: 10px;
 }
 
+/* .wpestate_header_video is the pre-rename spelling. Nothing in the plugin emits
+   either class - site owners add it by hand to a header section - so the legacy
+   selector stays as an alias to avoid breaking existing installs. */
+.wpstream_header_video  .wpstream_not_live_mess_mess,
 .wpestate_header_video  .wpstream_not_live_mess_mess {
     position: absolute;
     left: 0;
@@ -568,196 +571,7 @@ body:not(.wp-theme-hello-wpstream) .wpstream_video_on_demand_actions_wrapper {
 }
 
 
-/* === Live chat widget — SockJS chat panel, message list, input and user dialog === */
-/*wpstream chat wrapper*/
-
-.wpstream_plugin_chat_wrapper{
-    width: 100%;
-    height: 100%;
-    background: #222;
-    min-height: 406px;
-    max-height: 505px;
-    position: relative;
-    margin-bottom: 15px;
-    float: left;
-}
-.wpstream_chat_input .col-lg-12 {
-    -webkit-box-flex: 0;
-    -ms-flex: 0 0 100%;
-    flex: 0 0 100%;
-    max-width: 100%;
-        padding-right: 15px;
-    padding-left: 15px;
-}
-
-.wpstream_plugin_chat_wrapper .chat_wrapper{
-    width: 100%;
-}
-#help-dialog,
-#admin-help-dialog{
-    display:none;
-}
-
-.wpstream_plugin_chat_wrapper .wpestream_chat_meat {
-    padding-top: 15px;
-    background: #222;
-    border: none;
-    opacity:1;
-}
-
-.wpstream_plugin_chat_wrapper #panel {
-    height: 100%;
-    font-size: 13px;
-    padding: 0px 15px 110px 15px;
-}
-
-.wpstream_plugin_chat_wrapper .wpstream_chat_input{
-    bottom:10px;
-}
-
-
-.chat_wrapper{
-    width: 300px;
-    position: absolute;
-    z-index: 100;
-    top: 0px;
-    right: 0px;
-    height: 100%;
-}
-
-.wpstream_chat_container{
-    height: 100%;
-}
-
-.wpestream_chat_meat{
-    background: black;
-    height: 100%;
-    opacity: 0.9;
-    border-left: 1px solid #151520;
-    padding-top: 50px;
-}
-
-.chat_nav_bar{
-    position: absolute;
-    background: red;
-    bottom: 0px;
-    left: -143px;
-    
-}
-
-.chat_nav_bar_list{
-    list-style-type: none;
-}
-
-.chat_nav_bar_list{
-    color:#fff;
-}
-
-#panel {
-    height: 100%;
-    font-size: 13px;
-    padding: 50px 15px 100px 15px;
-    display: flex;
-    justify-content: flex-end;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-#message{
-    width: 100%;
-    height: 60px;
-    border: 1px solid #686890!important;
-    background-color: transparent;
-    color: #efefef;
-    font-size: 13px;
-    padding: 4px 8px;
-    line-height: 1.3em;
-
-}
-
-.wpstream_chat_input{
-    width: 100%;
-    position: absolute;
-    bottom: 0px;
-    right: 0px;
-
-}
-
-#send{
-    background-color: #72729d;
-    color: #fff;
-    font-size: 13px;
-    text-transform: capitalize;
-    padding: 3px 11px;
-    border-radius: 0px;
-    margin-top: 10px;
-    float: right;
-}
-
-.msg{
-    color:#ededed;
-}
-
-.timestamp {
-    color: #eee;
-    display:none;
-}
-
-.message {
-    color: #FFEB3B;
-    margin-top: 6px;
-}
-
-.wpestream_chat_meat hr {
-    background-color: #151520;
-}
-
-.wpstream_chat_actions{
-    width:100%;
-}
-
-#user{
-    float: left;
-    cursor: pointer;
-    margin: 10px 3px;
-}
-
-#user:hover{
-    color:#72729d;
-}
-
-#users-dialog{
-    display:none;
-    position: absolute;
-    background: #242939;
-    bottom: 149px;
-    padding: 15px;
-    color: #efefef;
-    opacity: 0.8;
-
-}
-
-#users-dialog li{
-   color: #efefef;
-}
-
-#users-dialog h4{
-    font-size: 15px;
-    margin-bottom: 15px;
-}
-
-#users-dialog ul{
-    list-style-type: none;
-}
-#users-content{
-     list-style-type: none;
-}
-#close-users-dialog{
-    position: absolute;
-    top:5px;
-    right: 5px;
-    cursor: pointer;
-}
+/* (The SockJS live-chat widget styles were removed with the built-in chat — issue #110.) */
 
 .event_list_unit.hidden {
     display: none;

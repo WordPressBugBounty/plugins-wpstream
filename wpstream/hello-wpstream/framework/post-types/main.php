@@ -13,6 +13,13 @@
 
 
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+if ( ! function_exists( 'wpstream_bundle_custom_metabox_callback' ) ) :
 /**
  * Callback function for rendering custom metabox content for bundles.
  *
@@ -88,7 +95,9 @@ function wpstream_bundle_custom_metabox_callback( $post ) {
 	// Emit a nonce so the save handler can verify the request originated here.
 	wp_nonce_field( 'wpstream_custom_metabox_nonce', 'wpstream_custom_metabox_nonce' );
 }
+endif;
 
+if ( ! function_exists( 'wpstream_show_sortable_list_content' ) ) :
 /**
  * Generates HTML content for a sortable list based on the provided options.
  *
@@ -124,10 +133,10 @@ function wpstream_show_sortable_list_content( $options ) {
 			// A WooCommerce product is a paid item.
 			$meta_free = esc_html__( 'paid', 'hello-wpstream' );
 
-			// Map the WooCommerce product_type term to an event/vod badge.
-			if ( isset( $term_list[0]->name ) && 'live_stream' === $term_list[0]->name ) {
+			// Map the stable WooCommerce product_type slug to an event/vod badge.
+			if ( isset( $term_list[0]->slug ) && 'live_stream' === $term_list[0]->slug ) {
 				$meta_type = esc_html__( 'event', 'hello-wpstream' );
-			} elseif ( isset( $term_list[0]->name ) && 'video_on_demand' === $term_list[0]->name ) {
+			} elseif ( isset( $term_list[0]->slug ) && 'video_on_demand' === $term_list[0]->slug ) {
 				$meta_type = esc_html__( 'vod', 'hello-wpstream' );
 			}
 		}
@@ -142,10 +151,12 @@ function wpstream_show_sortable_list_content( $options ) {
 	// Hand back the assembled list markup.
 	return $return_string;
 }
+endif;
 
 // Persist the bundle selection whenever any post is saved.
 add_action( 'save_post', 'wpstream_custom_metabox_save' );
 
+if ( ! function_exists( 'wpstream_custom_metabox_save' ) ) :
 /**
  * Save custom metabox data when a post is saved.
  *
@@ -196,7 +207,9 @@ function wpstream_custom_metabox_save( $post_id ) {
 		update_post_meta( $post_id, 'wpstream_bundle_selection', $custom_field_value );
 	}
 }
+endif;
 
+if ( ! function_exists( 'wpstream_custom_metabox_enqueue_scripts' ) ) :
 /**
  * Metabox enqueue scripts
  *
@@ -205,7 +218,7 @@ function wpstream_custom_metabox_save( $post_id ) {
  *
  * @return void
  */
-function custom_metabox_enqueue_scripts() {
+function wpstream_custom_metabox_enqueue_scripts() {
 	// Metabox stylesheet (cache-busted with a random query arg).
 	wp_enqueue_style( 'wpstream_custom_metabox_style', WPSTREAM_PLUGIN_DIR_URL . '/hello-wpstream/css/wpstream_custom_metabox_style.css?v=' . wp_rand(), '', '1.0' );
 
@@ -224,26 +237,30 @@ function custom_metabox_enqueue_scripts() {
 		)
 	);
 }
+endif;
 // Enqueue the metabox assets on admin screens.
-add_action( 'admin_enqueue_scripts', 'custom_metabox_enqueue_scripts' );
+add_action( 'admin_enqueue_scripts', 'wpstream_custom_metabox_enqueue_scripts' );
 
+if ( ! function_exists( 'wpstream_enqueue_custom_scripts' ) ) :
 /**
  * Enqueue the jQuery UI slider and gradient-picker script used by the Customizer button controls.
  *
  * @return void
  */
-function enqueue_custom_scripts() {
+function wpstream_enqueue_custom_scripts() {
 	// jQuery UI slider powers the range controls.
 	wp_enqueue_script( 'jquery-ui-slider' );
 	// Gradient picker script; depends on jQuery, the color picker and the slider.
 	wp_enqueue_script('wpstream_gradient_picker', WPSTREAM_PLUGIN_DIR_URL . '/hello-wpstream/js/wpstream_gradient_picker_script.js', array('jquery', 'wp-color-picker', 'jquery-ui-slider'), false, true);
 }
+endif;
 // Enqueue the gradient-picker assets on admin screens.
-add_action('admin_enqueue_scripts', 'enqueue_custom_scripts');
+add_action('admin_enqueue_scripts', 'wpstream_enqueue_custom_scripts');
 
 // Register the AJAX handler that backs the metabox item search box.
 add_action( 'wp_ajax_wpstream_product_autocomplete', 'wpstream_product_autocomplete_callback' );
 
+if ( ! function_exists( 'wpstream_product_autocomplete_callback' ) ) :
 /**
  * Product autocomplete callback
  *
@@ -296,31 +313,34 @@ function wpstream_product_autocomplete_callback() {
 	// Build one result row per matched post.
 	foreach ( $posts as $post ) {
 		$title = $post->post_title;
-		$type  = 'wpstream_product'; // Set the default post type
-		// Retrieve the custom meta information.
 		// The actual post type of this result, used for badge classification.
 		$wpstream_post_type = $post->post_type;
+		// Badge defaults, so unclassified results still return defined keys.
+		$meta_free = '';
+		$meta_type = '';
 
 		// Assign free/paid and event/vod badges based on the post type.
 		// Free VOD item.
 		if ( 'wpstream_product_vod' === $wpstream_post_type ) {
 			$meta_free = esc_html__( 'free', 'hello-wpstream' );
 			$meta_type = esc_html__( 'vod', 'hello-wpstream' );
-		} elseif ( 'wpstream_product' === $type ) {
-			// Free live event item. (Note: compares against $type, which is hard-coded above.)
+		} elseif ( 'wpstream_product' === $wpstream_post_type ) {
+			// Free live event item.
 			$meta_free = esc_html__( 'free', 'hello-wpstream' );
 			$meta_type = esc_html__( 'event', 'hello-wpstream' );
-		} elseif ( 'product' === $type ) {
+		} elseif ( 'product' === $wpstream_post_type ) {
 			// WooCommerce paid product: classify via its product_type term.
 			$term_list = wp_get_post_terms( $post->ID, 'product_type' );
 
 			$meta_free = esc_html__( 'paid', 'hello-wpstream' );
 
-			// Map the product_type term name to an event/vod badge.
-			if ( 'live_stream' === $term_list[0]->name ) {
-				$meta_type = esc_html__( 'event', 'hello-wpstream' );
-			} elseif ( 'video_on_demand' === $term_list[0]->name ) {
-				$meta_type = esc_html__( 'vod', 'hello-wpstream' );
+			// Map the product_type term slug to an event/vod badge, when a term exists.
+			if ( ! is_wp_error( $term_list ) && ! empty( $term_list ) ) {
+				if ( 'live_stream' === $term_list[0]->slug ) {
+					$meta_type = esc_html__( 'event', 'hello-wpstream' );
+				} elseif ( 'video_on_demand' === $term_list[0]->slug ) {
+					$meta_type = esc_html__( 'vod', 'hello-wpstream' );
+				}
 			}
 		}
 
@@ -340,3 +360,4 @@ function wpstream_product_autocomplete_callback() {
 	// Safety net (wp_send_json already exits).
 	wp_die();
 }
+endif;

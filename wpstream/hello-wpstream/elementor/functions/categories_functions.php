@@ -14,6 +14,12 @@
 
 
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /*
 * Generate and cache an array with all terms for $taxonomies array
 *

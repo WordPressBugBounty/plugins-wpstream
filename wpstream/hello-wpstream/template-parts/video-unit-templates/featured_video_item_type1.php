@@ -11,6 +11,12 @@
  * @var int $postId Post ID.
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Gather the post's display fields for the hero.
 $title      = get_the_title( $postId );
 $excerpt    = get_the_excerpt( $postId );

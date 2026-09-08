@@ -11,6 +11,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Redux must be available; if the framework is not loaded, skip this file entirely.
 if ( ! class_exists( 'Redux' ) ) {
 	return;

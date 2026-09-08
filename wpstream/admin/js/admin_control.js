@@ -12,11 +12,11 @@
  *    sources, VTT captions, and the player logo.
  * Server strings and endpoints come from the localized `wpstream_admin_control_vars`.
  */
-// Per-page counter store (used by helper code).
-var counters={};
-
-// Multipart chunk size: 128MB per part.
+// Multipart chunk size: 128MB per part (grows for very large files, see MAX_PARTS).
 const CHUNK_SIZE = 128 * 1024 * 1024; // 128MB in bytes
+// The storage backend assembles at most this many parts per upload, so the
+// chunk size scales up once a file would need more parts than this.
+const MAX_PARTS = 1000;
 // Files larger than this (5GB) must use the multipart upload path.
 const MAX_STANDARD_UPLOAD_SIZE = 5 * 1000000000; // 5GB in bytes
 // Maximum number of retry attempts for a failed chunk.
@@ -139,7 +139,8 @@ jQuery(document).ready(function ($) {
 
     // The direct-upload form and multipart upload state shared across handlers.
     var form = $('.direct-upload');
-    // Holds multipart part URLs once a multipart upload is initiated (null = standard upload).
+    // Holds multipart part URLs and the chunk size once a multipart upload is
+    // initiated (null = standard upload).
     var multipartUploadData = null;
     // Server-side handle identifying the in-progress multipart upload.
     var handle = null;
@@ -271,8 +272,10 @@ jQuery(document).ready(function ($) {
         var fileName = file.name;
         var fileSize = file.size;
 
-        // Calculate number of parts needed
-        var numParts = Math.ceil(fileSize / CHUNK_SIZE);
+        // Calculate the chunk size and number of parts. The chunk grows beyond
+        // CHUNK_SIZE when the file would otherwise exceed MAX_PARTS parts.
+        var chunkSize = Math.max(CHUNK_SIZE, Math.ceil(fileSize / MAX_PARTS));
+        var numParts = Math.ceil(fileSize / chunkSize);
 
         // Inform the user we are preparing the multipart upload.
         jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.preparing_multipart);
@@ -299,14 +302,14 @@ jQuery(document).ready(function ($) {
                         !response.data.handle
                     ) {
                         // Missing fields: abort with an invalid-response message.
-                        jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.invalid_response);
-                        handleUploadFailure();
+                        handleUploadFailure(wpstream_admin_control_vars.invalid_response);
                         return;
                     }
 
-                    // Store the part URLs and reset per-upload state.
+                    // Store the part URLs and chunk size, and reset per-upload state.
                     multipartUploadData = {
-                        parts: response.data.parts
+                        parts: response.data.parts,
+                        chunkSize: chunkSize
                     };
                     currentUploadedParts = [];
                     handle = response.data.handle;
@@ -314,14 +317,13 @@ jQuery(document).ready(function ($) {
                     // Start uploading chunks
                     uploadNextChunk(file, 0, numParts);
                 } else {
-                    // Server reported failure: show error and clean up.
-                    jQuery('#wpstream_uploaded_mes').html(response.error || wpstream_admin_control_vars.upload_failed);
-                    handleUploadFailure();
+                    // Server refused the upload: show its reason
+                    // (wp_send_json_error puts the string under `data`).
+                    handleUploadFailure(typeof response.data === 'string' ? response.data : '');
                 }
             },
             error: function() {
                 // Transport error initiating the multipart upload.
-                jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.upload_failed);
                 handleUploadFailure();
             }
         });
@@ -354,9 +356,11 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        // Compute this chunk's byte range and slice it out of the file.
-        var start = partIndex * CHUNK_SIZE;
-        var end = Math.min((partIndex + 1) * CHUNK_SIZE, file.size);
+        // Compute this chunk's byte range (using the chunk size fixed at
+        // initiation) and slice it out of the file.
+        var chunkSize = multipartUploadData.chunkSize;
+        var start = partIndex * chunkSize;
+        var end = Math.min((partIndex + 1) * chunkSize, file.size);
         var chunk = file.slice(start, end);
         // Part numbers are 1-based for the storage API.
         var partNumber = partIndex + 1;
@@ -490,14 +494,13 @@ jQuery(document).ready(function ($) {
                     // Handle success
                     handleUploadSuccess(file);
                 } else {
-                    // Server could not complete the upload.
-                    jQuery('#wpstream_uploaded_mes').html(response.error || wpstream_admin_control_vars.upload_failed);
-                    handleUploadFailure();
+                    // Server could not complete the upload: show its reason
+                    // (wp_send_json_error puts the string under `data`).
+                    handleUploadFailure(typeof response.data === 'string' ? response.data : '');
                 }
             },
             error: function(e) {
                 // Transport error during completion.
-                jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.upload_failed);
                 handleUploadFailure();
             }
         });
@@ -506,15 +509,23 @@ jQuery(document).ready(function ($) {
     /**
      * Reset the UI and upload state after any upload failure.
      *
+     * @param {string} [message] - Server-supplied reason; shown as plain text
+     *                             in place of the generic failure message.
      * @return {void}
      */
     // Handle upload failure
-    function handleUploadFailure() {
+    function handleUploadFailure(message) {
         // Remove the unsaved-changes guard and the progress bar.
         window.onbeforeunload = null;
         jQuery('.bar').remove();
-        // Show the failure messages.
-        jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_failed);
+        // Show the failure messages. A server reason is inserted as text so
+        // nothing from the response is ever interpreted as HTML.
+        var messageBox = jQuery('#wpstream_uploaded_mes').empty();
+        if (message) {
+            messageBox.text(message);
+        } else {
+            messageBox.html(wpstream_admin_control_vars.upload_failed);
+        }
         jQuery('#wpstream_label_action').empty().html(wpstream_admin_control_vars.upload_failed2);
         // Re-enable the upload button and restore its default styling.
         jQuery('#wpstream_upload').prop('disabled', false);
@@ -607,9 +618,6 @@ jQuery(document).ready(function ($) {
     } else  if ( product_type === 'wpstream_bundle' ) {
         // Bundle-only fields, plus force the General tab open.
         jQuery( '.show_if_wpstream_bundle' ).show();
-        console.log ('we do click');
-        var element= jQuery('.general_tab');
-        console.log(element);
         // Trigger clicks to activate the General product data tab.
         jQuery('.general_tab').trigger('click');
           $('a[href="#general_product_data"]').click();
@@ -691,44 +699,6 @@ jQuery(document).ready(function ($) {
 
 
 
-    // Close (end) a live event via AJAX and remove its list row on success.
-    $('.close_event').click(function(event){
-        // Prevent the default link/button action.
-        event.preventDefault();
-        // Endpoint, clicked element, parent row, and notification target.
-        var ajaxurl             =   wpstream_admin_control_vars.admin_url + 'admin-ajax.php';
-        var acesta              =   $(this);
-        var parent              =   $(this).parent().parent();
-        var notification_area   =   $(this).parent().find('.event_list_unit_notificationx');
-        // Event/show id and the security nonce.
-        var show_id             =   parseFloat( $(this).attr('data-show-id') );
-        var nonce               =   $('#wpstream_start_event_nonce').val();
-        //$(this).unbind();
-        // Show progress text while the request runs.
-        notification_area.text('Closing Event');
-
-
-        // Request the server to close the event.
-        jQuery.ajax({
-            type: 'POST',
-            url: ajaxurl,
-            dataType: 'json',
-            data: {
-                'action'            :   'wpstream_close_event',
-                'security'          :   nonce,
-                'show_id'           :   show_id
-            },
-            success: function (data) {
-                // Remove the event's row from the list.
-                parent.remove();
-            },
-            error: function (errorThrown) {
-                // Errors are silently ignored.
-
-            }
-        });
-
-    });
 });
 
 
@@ -746,7 +716,6 @@ jQuery(document).ready(function ($) {
  * @return {void}
  */
 function wpstream_upload_images_in_wpadmin(){
-    console.log('wpstream_upload_images_in_wpadmin');
     // List of upload button ids to wire up.
     var idList          = ["category_featured_image_button"];
 
@@ -758,8 +727,8 @@ function wpstream_upload_images_in_wpadmin(){
             var parent=jQuery(this).parent();
             // Open the media picker, then store the selected image's url and id.
             wpstream_admin_return_uploaded_image().then(function(image) {
-                parent.find('.wpestate_landing_upload').val(image.url);
-                parent.find('.wpestate_landing_upload_id').val(image.id);
+                parent.find('.wpstream_landing_upload').val(image.url);
+                parent.find('.wpstream_landing_upload_id').val(image.id);
 
             });
 
@@ -775,8 +744,6 @@ function wpstream_upload_images_in_wpadmin(){
 */
 /**
  * Open the WordPress media library and resolve with the inserted image.
- *
- * Note: this function is defined twice in this file (duplicate declaration).
  *
  * @return {Promise<Object>} Resolves with the selected attachment's JSON.
  */
@@ -899,41 +866,6 @@ function wpstream_handle_caption_selection(){
 		// Remove this "remove" button.
 		jQuery(this).remove();
 	});
-}
-
-/*
-* return uploaded image
-*
-*/
-/**
- * Open the WordPress media library and resolve with the inserted image.
- *
- * Note: duplicate definition of the same-named function earlier in this file;
- * this later declaration is the one that takes effect at runtime.
- *
- * @return {Promise<Object>} Resolves with the selected attachment's JSON.
- */
-function wpstream_admin_return_uploaded_image(){
-
-
-    // Wrap the media picker in a promise resolved on image insert.
-    return new Promise(function(resolve, reject) {
-        // Create a media frame for inserting a single image.
-        var mediaUploader = wp.media({
-        frame: "post",
-        state: "insert",
-        multiple: false
-        });
-
-        // On insert, resolve with the chosen attachment's data.
-        mediaUploader.on("insert", function(){
-        var image = mediaUploader.state().get("selection").first().toJSON();
-        resolve(image);
-        });
-
-        // Open the media frame.
-        mediaUploader.open();
-    });
 }
 
 /**

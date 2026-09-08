@@ -20,19 +20,9 @@ var upload_by;
 var upload_type;
 
 /**
- * Placeholder hook for setting a thumbnail. Currently a no-op.
- *
- * @return {void}
- */
-function thumb_setter() {
-    "use strict";
-    return;
-
-}
-
-/**
  * (Re)bind the trash-icon click handler for uploaded gallery images.
- * Removes the clicked image from the DOM and rebuilds the hidden attach-id list.
+ * Removes the clicked image from the DOM and rebuilds the hidden attach-id
+ * list; the attachment itself stays on the server (deletion is DOM-only).
  *
  * @return {void}
  */
@@ -42,12 +32,7 @@ function delete_binder() {
     jQuery('#wpstream_imagelist i').unbind('click');
     jQuery('#wpstream_imagelist i.fa-trash-alt').on('click',function () {
         var curent = '';
-        var remove='';
 
-
-        // Attachment id of the image being removed, plus the upload nonce.
-        var img_remove= jQuery(this).parent().attr('data-imageid');
-        var nonce = jQuery('#wpstream_theme_image_upload').val();
         // Decrement the running upload counter.
         current_no_up=current_no_up-1;
 
@@ -59,26 +44,6 @@ function delete_binder() {
             curent = curent + ',' + jQuery(this).attr('data-imageid');
         });
         jQuery('#attachid').val(curent);
-
-        // Early return: the server-side delete below is intentionally disabled.
-        return;
-        var ajaxurl     =   ajax_vars.ajaxurl;
-        jQuery.ajax({
-            type: 'POST',
-            url: ajaxurl,
-            data: {
-                'action'            :   'wpstream_theme_delete_file',
-                'attach_id'         :   img_remove,
-                'security'          :   nonce
-
-            },
-            success: function (data) {
-
-
-            },
-            error: function (errorThrown) {}
-        });//end ajax
-
     });
 }
 
@@ -137,7 +102,7 @@ function wpstream_plp_uploader(){
     if (typeof (plupload) !== 'undefined' && ajax_vars.plupload!=='undefined') {
         // Profile-image context forces single selection.
         if( jQuery('#profile-image') .length>0){
-            console.log(  ajax_vars.plupload.multi_selection=false);
+            ajax_vars.plupload.multi_selection=false;
         }
 
         // Default target container ids for the gallery uploader.
@@ -188,9 +153,6 @@ function wpstream_plp_uploader(){
 
                     // Trim the queue down to the allowed count.
                     if (array_cut > 0) {
-                        up.files.slice(0, array_cut);
-                        files.slice(0, array_cut);
-                        var i = array_cut;
                         // Pop the overflow files and flag the warning.
                         while (files.length > array_cut) {
                             up.files.pop();
@@ -229,14 +191,12 @@ function wpstream_plp_uploader(){
 
         // UploadProgress: update the per-file percentage label.
         uploader.bind('UploadProgress', function (up, file) {
-            console.log ('UploadProgress .....');
             jQuery('#' + file.id + " b").html(file.percent + "%");
         });
 
         // On erro occur
         // Error: surface a server message when available, else a generic one.
         uploader.bind('Error', function (up, err) {
-            console.log ('Error .....');
 	        // Default message shown if we cannot extract a specific one.
 	        let errorMessage = "An error occurred during upload.";
 			// Try to parse a JSON error body and pull out its message.
@@ -258,7 +218,6 @@ function wpstream_plp_uploader(){
 
         // FileUploaded: process the server response for one finished file.
         uploader.bind('FileUploaded', function (up, file, response) {
-            console.log ('FileUploaded .....');
             // Current count of rendered image thumbnails.
             var current_no_up2=  parseInt( jQuery('.wpstream_uploaded_images ').length,10);
 
@@ -355,7 +314,6 @@ function wpstream_plp_uploader(){
 
                     // Re-bind delete handlers for the updated image set.
                     delete_binder();
-                    // thumb_setter();
                 }
             }else{
 

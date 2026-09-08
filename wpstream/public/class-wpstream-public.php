@@ -10,15 +10,21 @@
  * @subpackage Wpstream/public
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * The public-facing functionality of the plugin.
  *
  * This class wires up everything WpStream needs on the front end:
- *  - Registering/enqueuing the player, chat and streaming CSS/JS (and their
+ *  - Registering/enqueuing the player and streaming CSS/JS (and their
  *    localized i18n + config data).
  *  - WooCommerce "My Account" endpoints (event-list, video-list, start-streaming)
  *    and menu items.
- *  - Shortcodes ([wpstream_player], [wpstream_chat], [wpstream_go_live], list
+ *  - Shortcodes ([wpstream_player], [wpstream_go_live], list
  *    shortcodes) and the matching Visual Composer / WPBakery `vc_map` definitions.
  *  - Search/archive/sidebar filter callbacks that teach the theme about the
  *    plugin's custom post types (wpstream_product, wpstream_product_vod, wpstream_bundles).
@@ -80,31 +86,35 @@ class Wpstream_Public {
     }
 
     /**
-     * Register the stylesheets for the public-facing side of the site.
+     * Register/enqueue the stylesheets for the public-facing side of the site.
      *
-     * Loads the plugin's own front-end CSS, the Video.js player CSS, and the
-     * integrations stylesheet. The player-skin file is cache-busted with its
-     * own filemtime so skin tweaks show up immediately.
+     * Only the core plugin CSS is enqueued site-wide; the player CSS is
+     * registered here and enqueued at player render time (see
+     * wpstream_enqueue_player_assets()), and the integrations CSS only loads
+     * when BuddyPress is present. The player-skin file is cache-busted with
+     * its own filemtime so skin tweaks show up immediately.
      *
      * @since    3.0.1
      * @return   void
      */
     public function enqueue_styles() {
 
-            // Core plugin front-end styles.
+            // Core plugin front-end styles (cards, lists, notices — can appear on any page).
             wp_enqueue_style('wpstream-style',          plugin_dir_url( __FILE__ ) .'/css/wpstream_style.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
-            // Base Video.js player CSS.
-            wp_enqueue_style('video-js.min',            plugin_dir_url( __FILE__ ).'css/video-js.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
-            // WpStream player skin on top of Video.js; version suffixed with filemtime for cache-busting.
-            wp_enqueue_style(
+            // Base Video.js player CSS — registered only; player render sites enqueue it.
+            wp_register_style('video-js.min',           plugin_dir_url( __FILE__ ).'css/video-js.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
+            // WpStream player skin on top of Video.js; registered only, filemtime cache-buster.
+            wp_register_style(
 				'videojs-wpstream-player',
 				plugin_dir_url( __FILE__ ).'css/videojs-wpstream.css',
 				array(),
 				WPSTREAM_PLUGIN_VERSION . '.' . filemtime( plugin_dir_path(__FILE__) . 'css/videojs-wpstream.css' ),
 				'all'
 			);
-            // Third-party integrations (e.g. BuddyBoss) styling.
-            wp_enqueue_style('wpstream-integrations',   plugin_dir_url( __DIR__ ) .'integrations/css/integrations.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
+            // BuddyBoss/BuddyPress integration styling — only useful when BuddyPress runs.
+            if ( class_exists( 'BuddyPress' ) ) {
+                wp_enqueue_style('wpstream-integrations',   plugin_dir_url( __DIR__ ) .'integrations/css/integrations.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
+            }
 
     }
 
@@ -112,7 +122,7 @@ class Wpstream_Public {
      * Register the JavaScript for the public-facing side of the site.
      *
      * Registers/enqueues Video.js and its quality-selector + logo plugins, the
-     * WpStream player bootstrap/controls, the chat client libraries, and the
+     * WpStream player bootstrap/controls, and the
      * start-streaming and integrations scripts. Each script is paired with a
      * `wp_localize_script` payload that ships translated UI strings, feature
      * flags and a per-page player status nonce down to the browser.
@@ -124,14 +134,14 @@ class Wpstream_Public {
 
 		// Register the VideoJS script
         // Enqueuing is happing directly wherever is used
-        // Register (not enqueue) the core Video.js library from the CDN; templates enqueue it on demand.
-        wp_register_script('video.min',              'https://vjs.zencdn.net/8.20.0/video.min.js', WPSTREAM_PLUGIN_VERSION, true);
+        // Register (not enqueue) the bundled core Video.js library; templates enqueue it on demand.
+        wp_register_script('video.min',              plugin_dir_url( __FILE__ ) . 'js/vendor/video.min.js', array(), '8.20.0', true);
 
         // Quality selector dependency (Video.js plugin)
-        // Video.js contrib "quality levels" plugin, required by the WpStream quality selector below.
+        // Bundled Video.js contrib "quality levels" plugin, required by the WpStream quality selector below.
         wp_register_script(
             'videojs-contrib-quality-levels',
-            'https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.0.0/dist/videojs-contrib-quality-levels.min.js',
+            plugin_dir_url( __FILE__ ) . 'js/vendor/videojs-contrib-quality-levels.min.js',
             array('video.min'),
             '4.0.0',
             true
@@ -147,20 +157,17 @@ class Wpstream_Public {
             true
         );
 
-		// Enqueue the VideoJS Logo plugin script
-        // Video.js "logo" plugin used to overlay the configurable player watermark.
-	    wp_enqueue_script(
+		// Register the VideoJS Logo plugin script
+        // Bundled Video.js "logo" plugin used to overlay the configurable player watermark.
+        // Registered only — it is a dependency of wpstream-player, so it loads exactly
+        // where the player loads.
+	    wp_register_script(
 			'videojs-logo',
-		    'https://cdn.jsdelivr.net/npm/videojs-logo@latest/dist/videojs-logo.min.js',
+		    plugin_dir_url( __FILE__ ) . 'js/vendor/videojs-logo.min.js',
 			array('video.min'),
 			'3.0.0',
 			true
 	    );
-
-        // Ensure quality selector scripts are available wherever wpstream-player runs
-        // Force-enqueue the quality-level plugin and selector so every player page has them.
-        wp_enqueue_script('videojs-contrib-quality-levels');
-        wp_enqueue_script('wpstream-quality-selector');
 
                 // YouTube tech for Video.js, used when a channel restreams from YouTube.
                 wp_register_script('youtube.min',
@@ -178,10 +185,12 @@ class Wpstream_Public {
                 );
               
                 // Main WpStream player script (live status polling, state messages, chat glue).
+                // videojs-logo is a hard dependency: the player calls player.logo() for the
+                // configurable watermark, so it must load wherever the player loads.
                 wp_register_script(
 					'wpstream-player',
 					plugin_dir_url( __FILE__ ).'js/wpstream-player.js',
-                    array('video.min','wpstream-quality-selector','wpstream-player-bootstrap'),
+                    array('video.min','wpstream-quality-selector','wpstream-player-bootstrap','videojs-logo'),
                     WPSTREAM_PLUGIN_VERSION . '.' . filemtime(plugin_dir_path(__FILE__) . 'js/wpstream-player.js'),
 	                true
                 );
@@ -201,73 +210,31 @@ class Wpstream_Public {
 				    $this->wpstream_get_player_i18n_config()
 			    );
 
-				// Determine whether adaptive bitrate is enabled for the current post from its event options meta.
+				// Resolve adaptive bitrate through the Channel Settings Module.
 				$abr_enabled = false;
-				$post_meta = get_post_meta( get_the_ID(), 'local_event_options', true );
-				if ( !empty($post_meta) && isset($post_meta['adaptive_bitrate']) && $post_meta['adaptive_bitrate'] == 1 ) {
+				$post_id = get_the_ID();
+				$post_meta = $post_id ? $this->main->channel_settings->read( $post_id )['options'] : array();
+				if ( ! empty( $post_meta ) && isset( $post_meta['adaptive_bitrate'] ) && 1 === (int) $post_meta['adaptive_bitrate'] ) {
 					$abr_enabled = true;
 				}
 				// Localize the main player script with UI strings, player theme/logo, streamify flag, status nonce and ABR flag.
-				wp_localize_script('wpstream-player', 'wpstream_player_vars',
-					array(
-						'admin_url'                         =>  get_admin_url(),
-						'chat_not_connected'                =>  esc_html__('Inactive Channel - Chat is disabled.','wpstream'),
-						'server_up'                         =>  esc_html__('The live stream is paused and may resume shortly.','wpstream'),
-						'wpstream_player_state_stopped_msg' =>  esc_html__(get_option('wpstream_you_are_not_live','We are not live at this moment'),'wpstream'),
-						'wpstream_player_state_init_msg'    =>  esc_html__('The live stream has not yet started','wpstream'),
-						'wpstream_player_state_startup_msg' =>  esc_html__('The live stream is starting...','wpstream'),
-						'wpstream_player_state_paused_msg'  =>  esc_html__('The live stream is paused','wpstream'),
-						'wpstream_player_state_ended_msg'   =>  esc_html__('The live stream has ended','wpstream'),
-						'wpstream_player_state_error_msg'   =>  esc_html__('Something went wrong','wpstream'),
-						'wpstream_player_theme'             => get_option('wpstream_video_player_theme'),
-						'playerLogoSettings'                => array(
-							'imageUrl' => $this->main->wpstream_player->wpstream_get_video_player_logo( get_the_ID() ),
-							'position' => get_option( 'wpstream_player_logo_position', 'top-left' ),
-							'opacity'  => get_option('wpstream_player_logo_opacity', '100'),
-						),
-						'wpstream_is_streamify_user'        => $this->main->wpstream_player->wpstream_is_streamify_user( get_the_ID() ),
-						// Nonce the player uses when AJAX-polling live status; verified server-side on each status check.
-						'player_check_status_nonce' => wp_create_nonce( 'wpstream_player_check_status_nonce'),
-						'is_abr_enabled'                   => $abr_enabled,
-					)
-				);
+				wp_localize_script( 'wpstream-player', 'wpstream_player_vars', $this->wpstream_get_player_vars_config( $abr_enabled ) );
                 
-                // WordPress-bundled jQuery UI pieces used by the front end.
-                wp_enqueue_script( 'jquery-ui-autocomplete' );
-                wp_enqueue_script( "jquery-effects-core");
+                // The built-in SockJS/WebSocket chat client was removed (issue #110):
+                // live chat is provided by the Better Messages integration in the
+                // hello-wpstream theme, so no chat_lib assets are registered anymore.
 
-                // Chat client libraries (SockJS transport, emoji, linkify, material UI, and the chat client itself).
-                wp_register_script( 'sockjs-0.3.min', plugin_dir_url( __FILE__ ) . '/chat_lib/sockjs-0.3.min.js', array('jquery'), true );
-                wp_register_script( 'emojione.min.js',plugin_dir_url( __FILE__ ). '/chat_lib/emojione.min.js', array('jquery'), true );
-            
-                wp_register_script( 'jquery.linkify.min.js', plugin_dir_url( __FILE__ ). '/chat_lib/jquery.linkify.min.js', array('jquery'), true );
-                wp_register_script( 'ripples.min.js',plugin_dir_url( __FILE__ ). '/chat_lib/ripples.min.js', array('jquery'), true );
-                wp_register_script( 'material.min.js"', plugin_dir_url( __FILE__ ). '/chat_lib/material.min.js', array('jquery'), true );
-                wp_register_script( 'chat.js', plugin_dir_url( __FILE__ ). '/chat_lib/chat.js', array('jquery'), true );
-              
-                // Pass the chat client the "we are not live" message. The object
-                // name must be a valid JS identifier (was 'chat-js-vars', which
-                // parsed as a subtraction and threw at runtime).
-                wp_localize_script('chat.js', 'wpstream_chat_vars',
-                array(
-                    'we_are_not_live'             =>    esc_html( get_option('wpstream_you_are_not_live','We are not live at this moment')),
-                ));
-
-                // Chat-related stylesheets (registered here, enqueued where the chat widget renders).
-                wp_register_style( 'chat.css',plugin_dir_url( __FILE__ ).'/chat_lib/css/chat.css', array(), '1.0', 'all');
-                wp_register_style( 'ripples.css',plugin_dir_url( __FILE__ ).'/chat_lib/css/ripples.css', array(), '1.0', 'all');
-                wp_register_style( 'emojione.min.css',plugin_dir_url( __FILE__ ).'/chat_lib/css/emojione.min.css', array(), '1.0', 'all');
-
-                
                 // Bundled QR generator (SEC-05): the Larix QR is built locally so the
                 // RTMP URL + secret stream key never reach a third-party image service.
                 wp_register_script('wpstream-qrcode-generator', plugin_dir_url( __FILE__ ) . 'js/vendor/qrcode-generator.js', array(), '1.4.4', true);
                 wp_register_script('wpstream-qr',               plugin_dir_url( __FILE__ ) . 'js/wpstream-qr.js', array('wpstream-qrcode-generator'), WPSTREAM_PLUGIN_VERSION, true);
 
-                // Enqueue the start-streaming (channel on/off) script, cache-busted by its file mtime.
+                // Register the start-streaming (channel on/off) script, cache-busted by its file mtime.
                 // Depends on wpstream-qr so wpstreamRenderQr() is defined before this runs.
+                // Registered only — wpstream_live_stream_unit_wrapper() enqueues it when the
+                // go-live unit actually renders on a page.
                 $modified_start_streaming_file_time = gmdate( 'YmdHi', filemtime( WPSTREAM_PLUGIN_PATH . 'public/js/start_streaming.js' ) );
-                wp_enqueue_script('wpstream-start-streaming',   plugin_dir_url( __FILE__ ) .'js/start_streaming.js',array('wpstream-qr'), $modified_start_streaming_file_time, true);
+                wp_register_script('wpstream-start-streaming',   plugin_dir_url( __FILE__ ) .'js/start_streaming.js',array('wpstream-qr'), $modified_start_streaming_file_time, true);
 				// Cached-only streaming feature flags (see wpstream_get_start_streaming_localization_flags).
 				$streaming_localization_flags = $this->wpstream_get_start_streaming_localization_flags();
                 // Localize the start-streaming script with all the translated button labels, tooltips and warnings.
@@ -282,8 +249,8 @@ class Wpstream_Public {
                         'upload_complete'       =>  esc_html__('Upload Complete!','wpstream'),
                         'upload_failed'         =>  esc_html__('Upload Failed!','wpstream'),
                         'upload_failed2'        =>  esc_html__('Upload Failed! Please Try again!','wpstream'),
-                        'no_band'               =>  esc_html__('Not enough streaming data.','wpsteam'),
-                        'no_band_no_store'      =>  esc_html__('Not enough streaming data or storage.','wpsteam'),
+                        'no_band'               =>  esc_html__('Not enough streaming data.','wpstream'),
+                        'no_band_no_store'      =>  esc_html__('Not enough streaming data or storage.','wpstream'),
                         
                         'start_streaming_action'=>  esc_html__('TURNING ON','wpstream'),
                         'stop_streaming_action' =>  esc_html__('TURNING OFF','wpstream'),
@@ -323,24 +290,37 @@ class Wpstream_Public {
                     ));
                 
 
-                    // Build the integrations payload; flag BuddyBoss/BuddyPress presence so the JS can adapt.
-                    $integrations_array=array(
-                        'admin_url'             =>  get_admin_url(),
-                    );
-                    if (class_exists('BuddyPress')) {
-                        $integrations_array['is_buddyboss']='yes';
+                    // The integrations script only carries BuddyBoss/BuddyPress glue
+                    // (profile channel picker, timeline player) — skip it entirely when
+                    // BuddyPress is not running. start_streaming.js guards its call with
+                    // typeof, so the missing global is safe.
+                    if ( class_exists( 'BuddyPress' ) ) {
+                        // Build the integrations payload for the BuddyBoss JS.
+                        $integrations_array=array(
+                            'admin_url'             =>  get_admin_url(),
+                            // CSRF nonce for the BuddyBoss AJAX handlers (select channel / timeline player).
+                            'buddy_nonce'           =>  wp_create_nonce( 'wpstream_buddyboss' ),
+                            'is_buddyboss'          =>  'yes',
+                        );
+
+                        // Enqueue and localize the integrations script (stable plugin-version cache-buster).
+                        wp_enqueue_script('wpstream-integrations',   plugin_dir_url( __DIR__  ) .'integrations/js/integrations.js',array(),  WPSTREAM_PLUGIN_VERSION, true);
+                        wp_localize_script('wpstream-integrations', 'wpstream_integrations_vars', $integrations_array );
                     }
 
-                    // Enqueue and localize the integrations script (cache-busted per request via time()).
-                    wp_enqueue_script('wpstream-integrations',   plugin_dir_url( __DIR__  ) .'integrations/js/integrations.js?v='.time(),array(),  WPSTREAM_PLUGIN_VERSION, true);
-                    wp_localize_script('wpstream-integrations', 'wpstream_integrations_vars', $integrations_array );
 
+                // Admin stylesheet reused on the front end by the go-live unit (channel card,
+                // broadcast modal). Registered only — the unit wrapper enqueues it at render time.
+                wp_register_style( 'wpstream_front_style', plugin_dir_url( __DIR__ ) . 'admin/css/wpstream-admin.css', array(), WPSTREAM_PLUGIN_VERSION, 'all' );
 
-                // Reuse the admin stylesheet on the front end for shared components.
-                wp_enqueue_style( 'wpstream_front_style', plugin_dir_url( __DIR__ ) . 'admin/css/wpstream-admin.css', array(), WPSTREAM_PLUGIN_VERSION, 'all' );
-
-	    // Theme-side helper script (comment form / messaging) shared with the hello-wpstream theme.
-	    wp_enqueue_script( 'wpstream-plugin-scripts', WPSTREAM_PLUGIN_DIR_URL . '/hello-wpstream/js/wpstream-plugin-script.js', array( 'jquery' ), '1.0', true );
+	    // Theme-side helper script (comment form validation, watch-later, messaging).
+	    // Registered for on-demand use; enqueued site-wide only under the hello-wpstream
+	    // theme (parent or child), whose templates rely on it everywhere. Other themes get
+	    // it at render time from the markup that needs it (watch-later icons, contact form).
+	    wp_register_script( 'wpstream-plugin-scripts', WPSTREAM_PLUGIN_DIR_URL . '/hello-wpstream/js/wpstream-plugin-script.js', array( 'jquery' ), '1.0', true );
+	    if ( 'hello-wpstream' === get_template() || 'hello-wpstream' === get_stylesheet() ) {
+		    wp_enqueue_script( 'wpstream-plugin-scripts' );
+	    }
 
 	    // Localize that helper with the AJAX URL, login state and translated form-validation messages.
 	    wp_localize_script(
@@ -348,34 +328,135 @@ class Wpstream_Public {
 		    'wpstreamPluginScriptsVars',
 		    array(
 			    'ajaxurl' 				=> 	admin_url( 'admin-ajax.php' ), // WordPress AJAX URL.
-			    'processing'			=>	esc_html('sending...','hello-wpstream'),
-			    'send_mess' 			=>  esc_html__('Send Message','hello-wpstream'),
+			    'watch_later_nonce'		=>	wp_create_nonce( 'wpstream_watch_later' ), // CSRF nonce for the watch-later toggle.
+			    'processing'			=>	esc_html__('sending...','wpstream'),
+			    'send_mess' 			=>  esc_html__('Send Message','wpstream'),
 			    'is_user_logged_in' 	=> 	is_user_logged_in() ? '1' : '0',
-			    'comment_text_empty' 	=>  esc_html__('Please type your comment.','hello-wpstream'),
-			    'comment_author_empty' 	=> 	esc_html__('Please enter your name.', 'hello-wpstream'),
-			    'comment_email_empty' 	=> 	esc_html__('Please enter your email.', 'hello-wpstream'),
-			    'comment_email_invalid' => esc_html__('Please enter a valid email address.', 'hello-wpstream'),
-			    'gdpr_agree' 			=> esc_html__('You need to agree with GDPR terms.', 'hello-wpstream'),
+			    'comment_text_empty' 	=>  esc_html__('Please type your comment.','wpstream'),
+			    'comment_author_empty' 	=> 	esc_html__('Please enter your name.', 'wpstream'),
+			    'comment_email_empty' 	=> 	esc_html__('Please enter your email.', 'wpstream'),
+			    'comment_email_invalid' => esc_html__('Please enter a valid email address.', 'wpstream'),
+			    'gdpr_agree' 			=> esc_html__('You need to agree with GDPR terms.', 'wpstream'),
 		    )
 	    );
     }
 
 
 	/**
-	 * Build the translated live-UI status strings passed to the player controls script.
+	 * Build the `wpstream_player_vars` object for the main player script.
 	 *
-	 * @return array Map of player state keys to their (escaped) display messages, plus
-	 *               an isThemeActive flag telling the JS whether the hello-wpstream theme is in use.
+	 * @param bool $abr_enabled Whether adaptive bitrate is on for the current page's channel.
+	 * @return array Filtered config with canonical nonces.
+	 */
+	public function wpstream_get_player_vars_config( $abr_enabled = false ) {
+		// Everything the main player script reads from `wpstream_player_vars`.
+		$config = array(
+			'admin_url'                         => get_admin_url(),
+			'chat_not_connected'                =>  esc_html__('Inactive Channel - Chat is disabled.','wpstream'),
+
+			'server_up'                         =>  esc_html__('The live stream is paused and may resume shortly.','wpstream'),
+
+			// Translate the literal default only; a user-saved custom message is escaped as-is (variable strings can't go through gettext).
+
+			'wpstream_player_state_stopped_msg' =>  esc_html( wpstream_not_live_message() ),
+
+			'wpstream_player_state_init_msg'    =>  esc_html__('The live stream has not yet started','wpstream'),
+
+			'wpstream_player_state_startup_msg' =>  esc_html__('The live stream is starting...','wpstream'),
+
+			'wpstream_player_state_paused_msg'  =>  esc_html__('The live stream is paused','wpstream'),
+
+			'wpstream_player_state_ended_msg'   =>  esc_html__('The live stream has ended','wpstream'),
+
+			'wpstream_player_state_error_msg'   =>  esc_html__('Something went wrong','wpstream'),
+
+			'wpstream_player_theme'             => get_option('wpstream_video_player_theme'),
+
+			'playerLogoSettings'                => array(
+
+				'imageUrl' => $this->main->wpstream_player->wpstream_get_video_player_logo( get_the_ID() ),
+
+				'position' => get_option( 'wpstream_player_logo_position', 'top-left' ),
+
+				'opacity'  => get_option('wpstream_player_logo_opacity', '100'),
+
+			),
+
+			'wpstream_is_streamify_user'        => $this->main->wpstream_player->wpstream_is_streamify_user( get_the_ID() ),
+
+			// Nonce the player uses when AJAX-polling live status; verified server-side on each status check.
+
+			'player_check_status_nonce' => wp_create_nonce( 'wpstream_player_check_status_nonce'),
+
+			'is_abr_enabled'                   => $abr_enabled,
+			/**
+			 * Filter how often the player polls the channel status when no
+			 * WebSocket is available, in seconds. Clamped to [1, 300].
+			 *
+			 * @since 4.14.0
+			 *
+			 * @param int $seconds Poll interval; default 30.
+			 */
+			'status_poll_interval'             => wpstream_tunable( 'wpstream_player_status_poll_interval', 30, 5 * MINUTE_IN_SECONDS ),
+
+			// Gates the player's diagnostic console logging: silent in production,
+
+			// verbose only when the site opts into SCRIPT_DEBUG.
+
+			'debug'                            => defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG,
+
+		);
+		return $this->filter_player_js_config( $config, 'wpstream_player_vars' );
+	}
+
+	/**
+	 * Run a localized player object through `wpstream_player_js_config` with
+	 * every nonce withheld.
+	 *
+	 * Keys whose name contains `nonce` are removed before the filter and the
+	 * canonical values re-applied afterwards, so a callback can neither read
+	 * nor replace them.
+	 *
+	 * @param array  $config      Localized object.
+	 * @param string $object_name JS object name (`wpstream_player_vars`, `wpstreamLiveUiConfig`).
+	 * @return array Filtered object with canonical nonces.
+	 */
+	private function filter_player_js_config( array $config, $object_name ) {
+		$is_nonce = static function ( $key ) {
+			return false !== stripos( (string) $key, 'nonce' );
+		};
+		$nonces = array_filter( $config, $is_nonce, ARRAY_FILTER_USE_KEY );
+
+		/**
+		 * Filter a localized player config object.
+		 *
+		 * Nonce keys are not in `$config` and cannot be set: the canonical
+		 * values are re-applied after the filter.
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param array  $config      Object without its nonce keys.
+		 * @param string $object_name JS object name (`wpstream_player_vars` or `wpstreamLiveUiConfig`).
+		 */
+		$filtered = (array) apply_filters( 'wpstream_player_js_config', array_diff_key( $config, $nonces ), $object_name );
+
+		// Drop any nonce key the callback set and restore the canonical ones.
+		$filtered = array_filter( $filtered, static function ( $key ) use ( $is_nonce ) {
+			return ! $is_nonce( $key );
+		}, ARRAY_FILTER_USE_KEY );
+		return array_merge( $filtered, $nonces );
+	}
+
+	/**
+	 * Build the `wpstreamLiveUiConfig` object for the player controls script:
+	 * the translated live-UI status strings plus an isThemeActive flag.
+	 *
+	 * @return array Filtered config.
 	 */
 	public function wpstream_get_player_i18n_config() {
 		// Each entry maps a player state to the localized, escaped message shown to viewers.
-		return array(
-			'wpstream_player_state_stopped_msg'      => esc_html(
-				get_option(
-					'wpstream_you_are_not_live',
-					__( 'We are not live at this moment', 'wpstream' )
-				)
-			),
+		$config = array(
+			'wpstream_player_state_stopped_msg'      => esc_html( wpstream_not_live_message() ),
 			'wpstream_player_state_init_msg'         => esc_html__( 'The live stream has not yet started', 'wpstream' ),
 			'wpstream_player_state_startup_msg'      => esc_html__( 'The live stream is starting...', 'wpstream' ),
 			'wpstream_player_state_paused_msg'       => esc_html__( 'The live stream is paused', 'wpstream' ),
@@ -387,6 +468,7 @@ class Wpstream_Public {
 			'wpstream_player_invalid_session_msg'    => esc_html__( 'Invalid session. Please refresh and start playback again.', 'wpstream' ),
 			'isThemeActive'                          => get_template() === 'hello-wpstream',
 		);
+		return $this->filter_player_js_config( $config, 'wpstreamLiveUiConfig' );
 	}
 
 	/**
@@ -505,8 +587,8 @@ class Wpstream_Public {
 	    $custom_items['video-list'] = __( 'My Videos', 'wpstream' );
 	    if ( $has_theme_endpoints ) {
 		    // Theme-provided endpoints only appear when the theme registered them.
-		    $custom_items['start-streaming'] = esc_html__( 'Start Streaming', 'wpstream-theme' );
-            $custom_items['watch-later'] = esc_html__( 'Watch Later', 'wpstream-theme' );
+		    $custom_items['start-streaming'] = esc_html__( 'Start Streaming', 'wpstream' );
+            $custom_items['watch-later'] = esc_html__( 'Watch Later', 'wpstream' );
         }
 
 	    // Nothing to add: hand the menu back untouched.
@@ -585,9 +667,9 @@ class Wpstream_Public {
 	public function wpstream_header_search_values( $search_list_values ) {
 		// Add labelled entries for the plugin post types to the header search dropdown.
 		return array_merge($search_list_values, [
-			'wpstream_product'     => esc_html__( 'Live Events', 'hello-wpstream' ),
-			'wpstream_product_vod' => esc_html__( 'Video on Demand', 'hello-wpstream' ),
-			'wpstream_bundles'     => esc_html__( 'Video Bundles', 'hello-wpstream' ),
+			'wpstream_product'     => esc_html__( 'Live Events', 'wpstream' ),
+			'wpstream_product_vod' => esc_html__( 'Video on Demand', 'wpstream' ),
+			'wpstream_bundles'     => esc_html__( 'Video Bundles', 'wpstream' ),
 		]);
 	}
 
@@ -610,10 +692,10 @@ class Wpstream_Public {
 	 */
 	public function wpstream_archives_lists_taxonomy_labels_callback( $taxonomy_labels ) {
 		// Provide human-readable labels for each plugin post type in the archives list.
-		$taxonomy_labels['product'] = esc_html__( 'Video Products', 'hello-wpstream' );
-		$taxonomy_labels['wpstream_bundles'] = esc_html__( 'Bundles', 'hello-wpstream' );
-		$taxonomy_labels['wpstream_product'] = esc_html__( 'Free Events', 'hello-wpstream' );
-		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'hello-wpstream' );
+		$taxonomy_labels['product'] = esc_html__( 'Video Products', 'wpstream' );
+		$taxonomy_labels['wpstream_bundles'] = esc_html__( 'Bundles', 'wpstream' );
+		$taxonomy_labels['wpstream_product'] = esc_html__( 'Free Events', 'wpstream' );
+		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'wpstream' );
 		return $taxonomy_labels;
 	}
 
@@ -625,10 +707,10 @@ class Wpstream_Public {
 	 */
 	public function wpstream_author_archive_list_taxonomy_labels_callback( $taxonomy_labels ) {
 		// Same labels as the archives list, applied to the author archive.
-		$taxonomy_labels['product'] = esc_html__( 'Video Products', 'hello-wpstream' );
-		$taxonomy_labels['wpstream_bundles'] = esc_html__( 'Bundles', 'hello-wpstream' );
-		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'hello-wpstream' );
-		$taxonomy_labels['wpstream_product'] = esc_html__( 'Free Events', 'hello-wpstream' );
+		$taxonomy_labels['product'] = esc_html__( 'Video Products', 'wpstream' );
+		$taxonomy_labels['wpstream_bundles'] = esc_html__( 'Bundles', 'wpstream' );
+		$taxonomy_labels['wpstream_product_vod'] = esc_html__( 'Free Vod', 'wpstream' );
+		$taxonomy_labels['wpstream_product'] = esc_html__( 'Free Events', 'wpstream' );
 		return $taxonomy_labels;
 	}
 
@@ -665,15 +747,6 @@ class Wpstream_Public {
 		return array_merge( $post_type_list, array( 'wpstream_product_vod', 'wpstream_product', 'wpstream_bundles' ) );
 	}
 
-		/**
-	 * Add new endpoint
-	 *
-	 * @since     3.0.1
-	*/
-		public function wpstream_custom_endpoint_start_streaming() {
-			include plugin_dir_path( __DIR__ ).'woocommerce/myaccount/start_streaming.php'; // Render the "Start Streaming" My Account tab from its template.
-	}
-
 	/**
 	 * Verb shown before the date on an author's simple content listing, per post type.
 	 *
@@ -686,15 +759,15 @@ class Wpstream_Public {
 		switch ( $post_type ) {
 			case 'wpstream_product_vod':
 				// VOD items were "Published".
-				$message = esc_html__( 'Published ', 'hello-wpstream' );
+				$message = esc_html__( 'Published ', 'wpstream' );
 				break;
 			case 'wpstream_product':
 				// Live channels "Started streaming".
-				$message = esc_html__( 'Started streaming ', 'hello-wpstream' );
+				$message = esc_html__( 'Started streaming ', 'wpstream' );
 				break;
 			case 'wpstream_bundles':
 				// Bundles were "Added".
-				$message = esc_html__( 'Added ', 'hello-wpstream' );
+				$message = esc_html__( 'Added ', 'wpstream' );
 				break;
 		}
 		return $message;
@@ -712,15 +785,15 @@ class Wpstream_Public {
 		switch ( $post_type ) {
 			case 'wpstream_product_vod':
 				// VOD items were "Published".
-				$message = esc_html__( 'Published ', 'hello-wpstream' );
+				$message = esc_html__( 'Published ', 'wpstream' );
 				break;
 			case 'wpstream_product':
 				// Live channels "Started streaming".
-				$message = esc_html__( 'Started streaming ', 'hello-wpstream' );
+				$message = esc_html__( 'Started streaming ', 'wpstream' );
 				break;
 			case 'wpstream_bundles':
 				// Bundles were "Added".
-				$message = esc_html__( 'Added ', 'hello-wpstream' );
+				$message = esc_html__( 'Added ', 'wpstream' );
 				break;
 		}
 		return $message;
@@ -787,10 +860,10 @@ class Wpstream_Public {
 			return $label;
 		} elseif ( 'wpstream_product' === $post_type ) {
 			// Live channels count concurrent viewers ("watching").
-			return __( 'watching', 'hello-wpstream' );
+			return __( 'watching', 'wpstream' );
 		} else {
 			// Everything else counts total "views".
-			return __( 'views', 'hello-wpstream' );
+			return __( 'views', 'wpstream' );
 		}
 	}
 
@@ -801,7 +874,7 @@ class Wpstream_Public {
     */
         public function wpstream_custom_endpoint_content_event_list() {
             // Render the "My Live Streams" account tab from its template.
-            include plugin_dir_path( __DIR__ ).'woocommerce/myaccount/event_list.php';
+            include plugin_dir_path( __DIR__ ).'templates/myaccount/event_list.php';
         }
 
 
@@ -812,7 +885,7 @@ class Wpstream_Public {
     */
         public function wpstream_custom_endpoint_video_list() {
             // Render the "My Videos" account tab from its template.
-            include plugin_dir_path( __DIR__ ).'woocommerce/myaccount/video_list.php';
+            include plugin_dir_path( __DIR__ ).'templates/myaccount/video_list.php';
         }
 
         
@@ -829,11 +902,7 @@ class Wpstream_Public {
         public function wpstream_shortcodes(){
             // [wpstream_player] renders the in-page player for a given product/user id.
             add_shortcode('wpstream_player',        array($this,'wpstream_insert_player_inpage_local') );
-           // add_shortcode('wpstream_list_products', array($this,'wpstream_list_products_function') );
-            // [wpstream_chat] renders the chat widget for a live stream.
-            add_shortcode('wpstream_chat',          array($this,'wpstream_chat_function') );
-            // [wpstream_player_low_latency] renders the low-latency player variant.
-            add_shortcode('wpstream_player_low_latency', array($this,'wpstream_insert_player_inpage_low_latency') );
+            // [wpstream_chat] was removed with the built-in chat (issue #110).
             // [wpstream_go_live] renders the start-streaming (channel on/off) unit.
             add_shortcode('wpstream_go_live',                array($this,'wpstream_start_streaming_shortocde') );
 
@@ -864,7 +933,7 @@ class Wpstream_Public {
                 // Map: Start Streaming button element.
                 vc_map(
                     array(
-                       "name" => esc_html__( "WpStream Start Streaming Button","wpestate"),
+                       "name" => esc_html__( "WpStream Start Streaming Button","wpstream"),
                        "base" => "wpstream_go_live",
                        "class" => "",
                        "category" => esc_html__( 'WpStream','wpstream'),
@@ -878,10 +947,10 @@ class Wpstream_Public {
                                 "type" => "textfield",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "Product/Free Product Id","wpestate"),
+                                "heading" => esc_html__( "Product/Free Product Id","wpstream"),
                                 "param_name" => "id",
                                 "value" => "",
-                                "description" => esc_html__( "If you leave this option blank we will stream on the first free/paid channel for this user","wpestate")
+                                "description" => esc_html__( "If you leave this option blank we will stream on the first free/paid channel for this user","wpstream")
                             ),
                           
 
@@ -891,39 +960,10 @@ class Wpstream_Public {
             
             
             
-                // Map: Chat element.
-                vc_map(
-                    array(
-                       "name" => esc_html__( "WpStream Chat - Beta Version","wpestate"),
-                       "base" => "wpstream_chat",
-                       "class" => "",
-                       "category" => esc_html__( 'WpStream','wpstream'),
-                       'admin_enqueue_js' => array(get_template_directory_uri().'/vc_extend/bartag.js'),
-                       'admin_enqueue_css' => array(get_template_directory_uri().'/vc_extend/bartag.css'),
-                       'weight'=>100,
-                       'icon'   =>'',
-                       'description'=>esc_html__( 'Insert WpStream Chat','wpstream'),
-                       "params" => array(
-                            array(
-                                "type" => "textfield",
-                                "holder" => "div",
-                                "class" => "",
-                                "heading" => esc_html__( "Live Stream Id","wpestate"),
-                                "param_name" => "id",
-                                "value" => "0",
-                                "description" => esc_html__( "Add here the live stream id","wpestate")
-                            ),
-
-                       )
-                    )
-                );
-            
-            
-       
                 // Map: standard Player element.
                 vc_map(
                     array(
-                       "name" => esc_html__( "WpStream Player","wpestate"),
+                       "name" => esc_html__( "WpStream Player","wpstream"),
                        "base" => "wpstream_player",
                        "class" => "",
                        "category" => esc_html__( 'WpStream','wpstream'),
@@ -937,56 +977,19 @@ class Wpstream_Public {
                                 "type" => "textfield",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "Product/Free Product Id","wpestate"),
+                                "heading" => esc_html__( "Product/Free Product Id","wpstream"),
                                 "param_name" => "id",
                                 "value" => "0",
-                                "description" => esc_html__( "Add here the live stream id or the video id","wpestate")
+                                "description" => esc_html__( "Add here the live stream id or the video id","wpstream")
                             ),  
                            array(
                                 "type" => "textfield",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "User Id","wpestate"),
+                                "heading" => esc_html__( "User Id","wpstream"),
                                 "param_name" => "user_id",
                                 "value" => "",
-                                "description" => esc_html__( "We will use the first channel of this user id(product id will be ignored.).","wpestate")
-                            ),
-
-                       )
-                    )
-                );
-
-                
-                // Map: low-latency Player element (private beta).
-                vc_map(
-                    array(
-                       "name" => esc_html__( "WpStream Player - Low Latency - Private Beta / Requires Approval","wpestate"),
-                       "base" => "wpstream_player_low_latency",
-                       "class" => "",
-                       "category" => esc_html__( 'WpStream','wpstream'),
-                       'admin_enqueue_js' => array(get_template_directory_uri().'/vc_extend/bartag.js'),
-                       'admin_enqueue_css' => array(get_template_directory_uri().'/vc_extend/bartag.css'),
-                       'weight'=>100,
-                       'icon'   =>'',
-                       'description'=>esc_html__( 'Insert WpStream Player','wpstream'),
-                       "params" => array(
-                            array(
-                                "type" => "textfield",
-                                "holder" => "div",
-                                "class" => "",
-                                "heading" => esc_html__( "Product/Free Product Id","wpestate"),
-                                "param_name" => "id",
-                                "value" => "0",
-                                "description" => esc_html__( "Add here the live stream id or the video id","wpestate")
-                            ),
-                             array(
-                                "type" => "textfield",
-                                "holder" => "div",
-                                "class" => "",
-                                "heading" => esc_html__( "User Id","wpestate"),
-                                "param_name" => "user_id",
-                                "value" => "",
-                                "description" => esc_html__( "We will use the first channel of this user id(product id will be ignored.).","wpestate")
+                                "description" => esc_html__( "We will use the first channel of this user id(product id will be ignored.).","wpstream")
                             ),
 
                        )
@@ -994,82 +997,33 @@ class Wpstream_Public {
                 );
 
 
-                // Dropdown options for the products-list media type control.
-                $product_type=array(
-                    '0' =>  __('Both','wpstream'),
-                    '1' =>  __('Live Event','wpstream'),
-                    '2' =>  __('Video on demand','wpstream')
-                );
-
-                // Map: legacy Products List element.
-                vc_map(
-                    array(
-                       "name" => esc_html__( "WpStream Products List","wpestate"),
-                       "base" => "wpstream_list_products",
-                       "class" => "",
-                       "category" => esc_html__( 'WpStream','wpstream'),
-                       'admin_enqueue_js' => array(get_template_directory_uri().'/vc_extend/bartag.js'),
-                       'admin_enqueue_css' => array(get_template_directory_uri().'/vc_extend/bartag.css'),
-                       'weight'=>100,
-                       'icon'   =>'',
-                       'description'=>esc_html__( ' List wpstream products','wpstream'),
-                       "params" => array(
-
-                            array(
-                                "type" => "dropdown",
-                                "holder" => "div",
-                                "class" => "",
-                                "heading" => esc_html__( "Media type","wpestate"),
-                                "param_name" => "product_type",
-                                "value" => $product_type,
-                                "description" => esc_html__( "What type of media(free/paid) ","wpestate")
-                            ),
-
-                            array(
-                                 "type" => "textfield",
-                                 "holder" => "div",
-                                 "class" => "",
-                                 "heading" => esc_html__( "Media number","wpestate"),
-                                 "param_name" => "media_number",
-                                 "value" => "",
-                                 "description" => esc_html__( "No of media ","wpestate")
-                             ),
-
-
-
-                       )
-                    )
-                );
-                
-                
                 // Shared dropdown options reused by the channel/VOD list maps below.
                 // Free vs paid filter.
+                $media_catalog = $this->main->media_list->catalog( 'live_channel' );
                 $free_paid_type=array(
-
-                   0 =>  esc_html__('Free','wpstream'),
-                   1 =>  esc_html__('Paid','wpstream')
+                   0 => $media_catalog['choices']['access']['free'],
+                   1 => $media_catalog['choices']['access']['paid']
                 );
 
                 // "Only show live channels" yes/no.
                 $live_settings=array(
 
-                    'no'=>esc_html__('no','wpstream'),
-                    'yes'=>esc_html__('yes','wpstream'),
+                    'no'  => $media_catalog['choices']['active_only'][false],
+                    'yes' => $media_catalog['choices']['active_only'][true],
                 );
 
                 // Ordering options.
                 $order_by_id=array(
-
-                    0=>esc_html('By date - ASC','wpstream'),
-                    1=>esc_html('By date - DESC','wpstream'),
-                    2=>esc_html('By title - ASC','wpstream'),
-                    3=>esc_html('By title - DESC','wpstream'),
+                    0 => $media_catalog['choices']['order']['date_asc'],
+                    1 => $media_catalog['choices']['order']['date_desc'],
+                    2 => $media_catalog['choices']['order']['title_asc'],
+                    3 => $media_catalog['choices']['order']['title_desc'],
                 );
 
                 // Map: Channel List element.
                 vc_map(
                     array(
-                       "name" => esc_html__( "WpStream Channel List","wpestate"),
+                       "name" => esc_html__( "WpStream Channel List","wpstream"),
                        "base" => "wpstream_list_media_channels",
                        "class" => "",
                        "category" => esc_html__( 'WpStream','wpstream'),
@@ -1086,49 +1040,49 @@ class Wpstream_Public {
                                 "type" => "dropdown",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "Show Free or Paid Media ?","wpestate"),
+                                "heading" => esc_html__( "Show Free or Paid Media ?","wpstream"),
                                 "param_name" => "product_type_free_paid",
                                 "value" => $free_paid_type,
-                                "description" => esc_html__( "What type of media(free/paid) ","wpestate")
+                                "description" => esc_html__( "What type of media(free/paid) ","wpstream")
                             ),
 
                             array(
                                 "type" => "dropdown",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "Only show active channels","wpestate"),
+                                "heading" => esc_html__( "Only show active channels","wpstream"),
                                 "param_name" => "product_show_live",
                                 "value" => $live_settings,
-                                "description" => esc_html__( "Only show channels that are live streaming right now.","wpestate")
+                                "description" => esc_html__( "Only show channels that are live streaming right now.","wpstream")
                             ),
                             array(
                                  "type" => "textfield",
                                  "holder" => "div",
                                  "class" => "",
-                                 "heading" => esc_html__( "Number of Items per Page","wpestate"),
+                                 "heading" => esc_html__( "Number of Items per Page","wpstream"),
                                  "param_name" => "media_number",
-                                 "value" => "3",
-                                 "description" => esc_html__( "How many items will be displayed per page","wpestate")
+                                 "value" => (string) $media_catalog['defaults']['items_per_page'],
+                                 "description" => esc_html__( "How many items will be displayed per page","wpstream")
                              ),
 
                             array(
                                  "type" => "textfield",
                                  "holder" => "div",
                                  "class" => "",
-                                 "heading" => esc_html__( "Link Label for free items","wpestate"),
+                                 "heading" => esc_html__( "Link Label for free items","wpstream"),
                                  "param_name" => "free_label",
-                                 "value" => esc_html__('Watch now!','wpstream'),
-                                 "description" => esc_html__( "Link Label for free items'","wpestate")
+                                 "value" => $media_catalog['builder_defaults']['free_label'],
+                                 "description" => esc_html__( "Link Label for free items'","wpstream")
                              ),
 
                             array(
                                 "type" => "dropdown",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "Order by","wpestate"),
+                                "heading" => esc_html__( "Order by","wpstream"),
                                 "param_name" => "order_by",
                                 "value" => $order_by_id,
-                                "description" => esc_html__( "Order type","wpestate")
+                                "description" => esc_html__( "Order type","wpstream")
                             ),
 
 
@@ -1140,7 +1094,7 @@ class Wpstream_Public {
                    // Map: VOD List element.
                    vc_map(
                     array(
-                       "name" => esc_html__( "WpStream VOD List","wpestate"),
+                       "name" => esc_html__( "WpStream VOD List","wpstream"),
                        "base" => "wpstream_list_media_vod",
                        "class" => "",
                        "category" => esc_html__( 'WpStream','wpstream'),
@@ -1157,10 +1111,10 @@ class Wpstream_Public {
                                 "type" => "dropdown",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "Show Free or Paid Media ?","wpestate"),
+                                "heading" => esc_html__( "Show Free or Paid Media ?","wpstream"),
                                 "param_name" => "product_type_free_paid",
                                 "value" => $free_paid_type,
-                                "description" => esc_html__( "What type of media(free/paid) ","wpestate")
+                                "description" => esc_html__( "What type of media(free/paid) ","wpstream")
                             ),
 
                           
@@ -1168,30 +1122,30 @@ class Wpstream_Public {
                                  "type" => "textfield",
                                  "holder" => "div",
                                  "class" => "",
-                                 "heading" => esc_html__( "Number of Items per Page","wpestate"),
+                                 "heading" => esc_html__( "Number of Items per Page","wpstream"),
                                  "param_name" => "media_number",
-                                 "value" => "3",
-                                 "description" => esc_html__( "How many items will be displayed per page","wpestate")
+                                 "value" => (string) $media_catalog['defaults']['items_per_page'],
+                                 "description" => esc_html__( "How many items will be displayed per page","wpstream")
                              ),
 
                             array(
                                  "type" => "textfield",
                                  "holder" => "div",
                                  "class" => "",
-                                 "heading" => esc_html__( "Link Label for free items","wpestate"),
+                                 "heading" => esc_html__( "Link Label for free items","wpstream"),
                                  "param_name" => "free_label",
-                                 "value" => esc_html__('Watch now!','wpstream'),
-                                 "description" => esc_html__( "Link Label for free items'","wpestate")
+                                 "value" => $media_catalog['builder_defaults']['free_label'],
+                                 "description" => esc_html__( "Link Label for free items'","wpstream")
                              ),
 
                             array(
                                 "type" => "dropdown",
                                 "holder" => "div",
                                 "class" => "",
-                                "heading" => esc_html__( "Order by","wpestate"),
+                                "heading" => esc_html__( "Order by","wpstream"),
                                 "param_name" => "order_by",
                                 "value" => $order_by_id,
-                                "description" => esc_html__( "Order type","wpestate")
+                                "description" => esc_html__( "Order type","wpstream")
                             ),
 
 
@@ -1228,44 +1182,17 @@ class Wpstream_Public {
     */
 
         public function wpstream_media_list_bakery_bypass($attributes){
-
-            // Normalize shortcode attributes against defaults.
-             $attributes =   shortcode_atts(
-                array(
-                    'media_number'                       => 3,
+			$attributes = shortcode_atts(
+				array(
+					'media_number'                       => 3,
                     'product_type_free_paid'             => '0',
                     'product_show_live'                  => 'no',
                     'free_label'                         =>  '',
                     'order_by'                           =>  '0'
-                ), $attributes) ;
-
-            // Force channel/live product type (1) for this list.
-            $attributes['product_type']=1;
-
-            // Translate the human "Paid"/"Free" values into the numeric flags the list function expects.
-            if( $attributes['product_type_free_paid']=='Paid'){
-                $attributes['product_type_free_paid']=1;
-            }
-            if( $attributes['product_type_free_paid']=='Free'){
-                $attributes['product_type_free_paid']=0;
-            }
-
-            // When order_by is the default 0, resolve it against the label map (kept for backward compatibility).
-            if($attributes['order_by']==0){
-                $order_by_id=array(
-
-                    0=>esc_html('By date - ASC','wpstream'),
-                    1=>esc_html('By date - DESC','wpstream'),
-                    2=>esc_html('By title - ASC','wpstream'),
-                    3=>esc_html('By title - DESC','wpstream'),
-                );
-
-                $attributes['order_by']= array_search($attributes['order_by'], $order_by_id);
-            }
-            // Delegate rendering to the shared Elementor list function on the main plugin object.
-            global $wpstream_plugin;
-            return  $wpstream_plugin->wpstream_media_list_elementor_function(   $attributes );
-
+				),
+				is_array( $attributes ) ? $attributes : array()
+			);
+			return $this->main->media_list->render( 'live_channel', $this->filter_media_list_shortcode_atts( $attributes, 'live_channel' ) );
         }
         
         /**
@@ -1280,89 +1207,39 @@ class Wpstream_Public {
     */
 
         public function wpstream_media_list_bakery_vod_bypass($attributes){
-
-            // Normalize shortcode attributes against defaults.
-             $attributes =   shortcode_atts(
-                array(
+			$attributes = shortcode_atts(
+				array(
                     'media_number'                       => 3,
                     'product_type_free_paid'             => '0',
                     'product_show_live'                  => 'no',
                     'free_label'                         =>  '',
                     'order_by'                           =>  '0'
-                ), $attributes) ;
-
-            // Force VOD product type (2) for this list.
-            $attributes['product_type']=2;
-
-            // Translate the human "Paid"/"Free" values into the numeric flags the list function expects.
-            if( $attributes['product_type_free_paid']=='Paid'){
-                $attributes['product_type_free_paid']=1;
-            }
-            if( $attributes['product_type_free_paid']=='Free'){
-                $attributes['product_type_free_paid']=0;
-            }
-
-            // When order_by is the default 0, resolve it against the label map (kept for backward compatibility).
-            if($attributes['order_by']==0){
-                $order_by_id=array(
-
-                    0=>esc_html('By date - ASC','wpstream'),
-                    1=>esc_html('By date - DESC','wpstream'),
-                    2=>esc_html('By title - ASC','wpstream'),
-                    3=>esc_html('By title - DESC','wpstream'),
-                );
-
-                $attributes['order_by']= array_search($attributes['order_by'], $order_by_id);
-            }
-            // Delegate rendering to the shared Elementor list function on the main plugin object.
-            global $wpstream_plugin;
-            return  $wpstream_plugin->wpstream_media_list_elementor_function(   $attributes );
-
+				),
+				is_array( $attributes ) ? $attributes : array()
+			);
+			return $this->main->media_list->render( 'vod', $this->filter_media_list_shortcode_atts( $attributes, 'vod' ) );
         }
+
+	/**
+	 * Run the normalised attributes of a Media List shortcode through its filter.
+	 *
+	 * @param array  $attributes Attributes after shortcode_atts() defaults.
+	 * @param string $kind       `live_channel` or `vod`.
+	 * @return array
+	 */
+	private function filter_media_list_shortcode_atts( array $attributes, $kind ) {
+		/**
+		 * Filter the attributes of the [wpstream_list_media_channels] and
+		 * [wpstream_list_media_vod] shortcodes before the list renders.
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param array  $attributes Shortcode attributes with defaults applied.
+		 * @param string $kind       `live_channel` or `vod`.
+		 */
+		return (array) apply_filters( 'wpstream_media_list_shortcode_atts', $attributes, $kind );
+	}
     
-        /**
-     * [wpstream_chat] shortcode - render the chat widget for a live stream.
-     *
-     * @since     3.0.1
-     * @param     array       $attributes Shortcode attributes ('id' = live stream/product id).
-     * @param     string|null $content    Enclosed content (unused).
-     * @return    string HTML for the chat wrapper.
-    */
-        public function wpstream_chat_function($attributes, $content = null){
-            // Initialise the target product id and the buffer we return.
-            $product_id     =   '';
-            $return_string  =   '';
-            // Merge shortcode attributes with defaults.
-            $attributes =   shortcode_atts(
-                array(
-                    'id'                       => 0,
-                ), $attributes) ;
-
-
-            // Resolve the stream/product id from the shortcode.
-            if ( isset($attributes['id']) ){
-                $product_id=$attributes['id'];
-            }
-
-
-            // Open the chat wrapper element.
-            $return_string.= '<div class="wpstream_plugin_chat_wrapper">';
-            // Capture the chat wrapper markup printed by the player object into the return string.
-            ob_start();
-                $this->main->wpstream_player->wpstream_chat_wrapper($product_id);
-                $return_string.= ob_get_contents();
-            ob_end_clean();
-            // Close the wrapper.
-            $return_string.='</div>';
-            // Emit the JS/config that connects the browser to the chat server for this stream.
-            $this->main->wpstream_player->wpstream_connect_to_chat($product_id);
-
-            return $return_string;
-        }
-           
-        
-        
-        
         /**
      * [wpstream_player] shortcode - render the in-page player.
      *
@@ -1397,7 +1274,7 @@ class Wpstream_Public {
 
                 // If no product id was given but a user id was, use that user's first channel.
                 if(intval($product_id)==0 && $user_id!=0 ){
-                    $product_id= $this->main->wpstream_player_retrive_first_id($user_id);
+                    $product_id= $this->main->wpstream_player_retrieve_first_id($user_id);
                 }
 
                 // Capture the player markup into the return string.
@@ -1448,150 +1325,8 @@ class Wpstream_Public {
                 return $return_string;
         }
 
-        
-        
-        /**
-     * [wpstream_player_low_latency] shortcode - render the low-latency player.
-     *
-     * @since     3.0.1
-     * @param     array       $attributes Shortcode attributes ('id' = product id, 'user_id' = fallback owner).
-     * @param     string|null $content    Enclosed content (unused).
-     * @return    string Buffered low-latency player HTML.
-    */
 
 
-        public function wpstream_insert_player_inpage_low_latency($attributes, $content = null){
-                // Initialise the target product id and output buffer.
-                $product_id     =   '';
-                $return_string  =   '';
-                // Merge shortcode attributes with defaults.
-                $attributes =   shortcode_atts(
-                    array(
-                        'id'                       => 0,
-                         'user_id'                  => 0,
-                    ), $attributes) ;
-
-
-                // Read the explicit product id.
-                if ( isset($attributes['id']) ){
-                    $product_id=$attributes['id'];
-                }
-
-
-                // Sanitize the optional user id.
-                if ( isset($attributes['user_id']) ){
-                    $user_id = intval( $attributes['user_id'] );
-                }
-
-
-                // If no product id was given but a user id was, use that user's first channel.
-                if(intval($product_id)==0 && $user_id!=0){
-                    $product_id= $this->main->wpstream_player_retrive_first_id($user_id);
-                }
-
-                // Capture the low-latency player markup into the return string.
-                ob_start();
-                $this->main->wpstream_player->wpstream_video_player_shortcode_low_latency($product_id);
-                $return_string= ob_get_contents();
-                ob_end_clean();
-
-                return $return_string;
-        }
-
-        
-        
-        /**
-     * list products - shortcode function (legacy [wpstream_list_products]).
-     *
-     * @since     3.0.1
-     * @param     array       $atts    Shortcode attributes ('media_number', 'product_type').
-     * @param     string|null $content Enclosed content (unused).
-     * @return    string HTML list of matching products.
-    */
-
-        public function wpstream_list_products_function($atts, $content=null){
-
-                // Initialise locals.
-                $media_number     = "";
-                $product_type     = "";
-                // Merge shortcode attributes with defaults.
-                $attributes = shortcode_atts(
-                        array(
-                                'media_number' =>   '4',
-                                'product_type' =>   __('Free Live Channel','wpstream'),
-
-                        ), $atts);
-
-                // Read how many items to show.
-                if ( isset($attributes['media_number']) ){
-                    $media_number=$attributes['media_number'];
-                }
-
-                // Read the requested product type label.
-                if ( isset($attributes['product_type']) ){
-                    $product_type=$attributes['product_type'];
-                }
-
-                // Map the label to the internal type flag: 1 = free live channel, 2 = free video.
-                if($product_type== __('Free Live Channel','wpstream') ){
-                    $product_type=1;
-                }else{
-                    $product_type=2;
-                }
-
-                // Accumulator for the generated list markup.
-                $return_string="";
-
-
-
-                // Query published wpstream_product items of the requested product type.
-                $args = array(
-                    'post_type'      => 'wpstream_product',
-                    'post_status'    => 'publish',
-                    'meta_query'     =>array(
-                                        array(
-                                        'key'      => 'wpstream_product_type',
-                                        'value'    => $product_type,
-                                        'compare'  => '=',
-                                        ),
-                        ),
-                    'posts_per_page' =>$media_number,
-                    'page'          => 1
-                );
-
-
-                $media_list= new WP_Query($args);
-
-                // Pick the "see" link label based on the product type.
-                if($product_type==1){
-                    $see_product= __('See Free Live Chanel','wpstream');
-                }else{
-                    $see_product =__('See Free Video','wpstream');
-                }
-
-
-
-                // Build one product unit (thumbnail, title link, "see" link) per matched post.
-                while($media_list->have_posts()):$media_list->the_post();
-                    $return_string.='<div class="wpstream_product_unit">'
-                    .'<div class="product_image" style="background-image:url('.wp_get_attachment_thumb_url(get_post_thumbnail_id()).')"></div>'
-                    .'<a href="'.get_permalink().'" class="product_title" >'.get_the_title().'</a>'
-                    .'<a href="'.get_permalink().'"class="see_product">'.$see_product.'</a>'
-                    .'</div>';
-                endwhile;
-
-                // Restore the main query/post globals after the custom loop.
-                wp_reset_postdata();
-                wp_reset_query();
-
-
-                // Wrap and return the accumulated markup.
-                return   '<div class="shortcode_list_wrapper">'.$return_string.'</div>';
-
-        }
-
-        
-        
         /**
      * register shortcodes - add buttons in js (mce_external_plugins filter).
      *
@@ -1601,10 +1336,7 @@ class Wpstream_Public {
     */
 
         public function wpstream_add_plugin($plugin_array) {
-            // Point each of the plugin's TinyMCE buttons at the shortcodes.js editor plugin.
-            $plugin_array['wpstream_player']                = plugin_dir_url( __FILE__ ). '/js/shortcodes.js';
-            $plugin_array['wpstream_list_products']         = plugin_dir_url( __FILE__ ). '/js/shortcodes.js';
-            $plugin_array['wpstream_list_products_channels']= plugin_dir_url( __FILE__ ). '/js/shortcodes.js';
+            $plugin_array['wpstream_player'] = plugin_dir_url( __FILE__ ). '/js/shortcodes.js';
             return $plugin_array;
         }
          
@@ -1616,10 +1348,7 @@ class Wpstream_Public {
      * @return    array Buttons with the WpStream shortcode buttons appended.
     */
         public function wpstream_register_button($buttons) {
-            // Append a separator + each WpStream shortcode button to the second toolbar row.
             array_push($buttons, "|", "wpstream_player");
-            array_push($buttons, "|", "wpstream_list_products");
-            array_push($buttons, "|", "wpstream_list_products_channels");
             return $buttons;
         }
 
@@ -1664,24 +1393,34 @@ class Wpstream_Public {
             $local_event_options =   get_option('wpstream_user_streaming_global_channel_options') ;
 
             // Only proceed when session-based encryption is switched on.
-            if(isset($local_event_options['ses_encrypt']) && intval($local_event_options['ses_encrypt'])==1 )    {
-
-
-                // Start a PHP session if one is not already active.
-                if (session_status() == PHP_SESSION_NONE) {
-                   session_start();
-                }
-
-                // Skip on key-delivery requests; only mint the id on ordinary page loads.
-                if( !isset( $_REQUEST[ 'wpstream_livedrm' ]) && !isset( $_REQUEST[ 'wpstream_voddrm' ])  && !isset( $_REQUEST[ 'keys2' ]) ) {
-
-                    // Assign a unique session id the first time it is missing.
-                    if( !isset($_SESSION['wpstream_id']) ){
-
-                        $_SESSION['wpstream_id']= uniqid();
-                    }
-                }
+            if( !isset($local_event_options['ses_encrypt']) || intval($local_event_options['ses_encrypt'])!=1 )    {
+                return;
             }
+
+            // Cron and REST requests never render a player nor request a key: no session at all.
+            if ( wp_doing_cron() || ( defined('REST_REQUEST') && REST_REQUEST ) ) {
+                return;
+            }
+
+            // Key-delivery requests only READ the previously minted id: load the
+            // session data and release the file lock in one step, never minting.
+            if( isset( $_GET[ 'wpstream_livedrm' ]) || isset( $_GET[ 'wpstream_voddrm' ])  || isset( $_REQUEST[ 'keys2' ]) ) {
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start( array( 'read_and_close' => true ) );
+                }
+                return;
+            }
+
+            // Ordinary page view: mint the id once, then close the session
+            // immediately — holding the lock open would serialize every
+            // concurrent request from this visitor for the whole page load.
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
+            }
+            if( !isset($_SESSION['wpstream_id']) ){
+                $_SESSION['wpstream_id']= uniqid();
+            }
+            session_write_close();
         }
         
         /**
@@ -1693,8 +1432,8 @@ class Wpstream_Public {
      * then either serves the key for a free event, or - for paid events - only
      * after verifying the logged-in user bought the product or holds an active
      * subscription. Free-event and paid-event post lookups are cached in
-     * transients; the remote key itself is fetched/cached in
-     * wpstream_get_encryption_key_remonting(). Prints the key and dies.
+     * transients; the remote key itself is fetched and cached by the DRM Key
+     * Delivery Module. The compatibility Adapter emits the returned result.
      *
      * Note: when session encryption is on, a missing session id aborts the request.
      *
@@ -1703,249 +1442,11 @@ class Wpstream_Public {
     */
 
 
-        public function wpstream_live_streaming_key(){
+	public function wpstream_live_streaming_key() {
+		$this->wpstream_emit_drm_key_request( 'live', 'wpstream_livedrm' );
+	}
 
-            // Read the global streaming channel options (holds the session-encryption flag).
-            $local_event_options =   get_option('wpstream_user_streaming_global_channel_options') ;
-
-            // Only act when a live DRM key request is present and non-empty.
-            if( isset( $_REQUEST[ 'wpstream_livedrm' ]) && $_REQUEST[ 'wpstream_livedrm' ]!=''  ) {
-
-                // When session encryption is enabled, require an established session id.
-                if(isset($local_event_options['ses_encrypt']) && intval($local_event_options['ses_encrypt'])==1 )    {
-
-                    // No session id -> refuse the key.
-                    if( !isset( $_SESSION['wpstream_id'] ) ){
-                        session_write_close ();die('no session');
-
-                    }
-                }
-
-
-                // Sanitize the requested stream key and split off the stream name (before the first '-').
-                $streamname_received    =   esc_html($_REQUEST[ 'wpstream_livedrm' ]);
-                $stream_key_array       =   explode('-', $streamname_received);
-
-                $streamname             =   $stream_key_array[0];
-                // Current viewer (used for the paid-event entitlement check below).
-                $current_user           =   wp_get_current_user();
-
-                // Try the cached list of free events matching this stream name.
-                $event_list_free_posts =    get_transient(  'free_event_streamName_'.$streamname ) ;
-
-                // Reset any query state left over before running our own lookups.
-                wp_reset_postdata();
-                wp_reset_query();
-            
-              
-                // On a cache miss, query free (wpstream_product) events by stream_name and cache the ids for 60s.
-                if ( false === $event_list_free_posts ) {
-
-                    $args_free = array(
-                        'posts_per_page'    => -1,
-                        'cache_results'             =>  false,
-                        'update_post_meta_cache'    =>  false,
-                        'update_post_term_cache'    =>  false,
-                        'post_type'         => 'wpstream_product',
-                        'post_status'       => 'publish',
-                        'meta_query'        =>      array(
-                                                        array(
-                                                        'key'     => 'stream_name',
-                                                        'value'   => $streamname,
-                                                        'compare' => '=',
-                                                        )
-                                                    ),
-                        'fields'=>'ids',
-                    );
-
-                    $event_list_free        =   new WP_Query($args_free);
-                    $event_list_free_posts  =   $event_list_free->posts;
-                    set_transient(  'free_event_streamName_'.$streamname, $event_list_free->posts ,60);
-                }
-
-                if ( !empty($event_list_free_posts )  ){
-                    ////////////////////////////////////////////////////////////
-                    // when we have a free event
-                    ////////////////////////////////////////////////////////////
-                    // Free event: no purchase check needed. Fetch the (remote, cached) key for the first match.
-                    $the_id                     =   $event_list_free_posts[0];
-                    $show_id                    =   $the_id;
-                    $get_key                    =   $this->wpstream_get_encryption_key_remonting($show_id,$streamname_received);
-
-                    // Allow the client to cache the key briefly.
-                    $seconds_to_cache = 301;
-                    $ts = gmdate("D, d M Y H:i:s", time() + $seconds_to_cache) . " GMT";
-                    header("Expires: $ts");
-                    header("Pragma: cache");
-                    header("Cache-Control: max-age=$seconds_to_cache");
-
-
-                    // Emit the key and stop.
-                    print $get_key;
-                    die();
-
-
-                }else{
-                    ////////////////////////////////////////////////////////////
-                    //  this is for paid products
-                    ////////////////////////////////////////////////////////////
-
-                    // Paid path: viewer must be logged in with a real user id.
-                    if ( is_user_logged_in() && intval($current_user->ID)!=0 ) {
-
-                            // Try the cached list of paid products (live_stream/subscription) for this stream name.
-                            $event_list_paid_posts  =    get_transient(  'paid_event_streamName_'.$streamname ) ;
-
-
-
-                            // On a cache miss, query matching WooCommerce products and cache the ids for 60s.
-                            if ( false === $event_list_paid_posts ) {
-                                $args = array(
-                                    'posts_per_page'    => -1,
-                                    'post_type'         => 'product',
-                                    'post_status'       => 'publish',
-                                    'meta_query' => array(
-                                        array(
-                                                'key'     => 'stream_name',
-                                                'value'   => $streamname,
-                                                'compare' => '=',
-                                        ),
-                                    ),
-                                    'tax_query'         => array(
-                                                'relation'  => 'AND',
-                                                array(
-                                                    'taxonomy'  =>  'product_type',
-                                                    'field'     =>  'slug',
-                                                    'terms'     =>  array('live_stream','subscription')
-                                                )
-                                            ),
-                                     'fields'=>'ids',
-                                );
-
-
-                                $event_list             = new WP_Query($args);
-                                $event_list_paid_posts  = $event_list->posts;
-
-                                set_transient(  'paid_event_streamName_'.$streamname, $event_list->posts ,60);
-                            }
-
-                            // Only continue if a paid product matched.
-                            if ( !empty($event_list_paid_posts )  ){
-
-                                $the_id     =    $event_list_paid_posts[0];
-                                $show_id    =   $the_id;
-
-
-                                // Determine subscription entitlement (defaults to none).
-                                $is_valid_subscription=0;
-                                // Active WooCommerce subscription for this product?
-                                if(class_exists ('WC_Subscription')){
-                                    $is_valid_subscription = wcs_user_has_subscription( $current_user->ID, $show_id ,'active');
-                                }
-
-
-                                // Site-wide "global subscription" model overrides per-product checks.
-                                if(function_exists('wpstream_check_global_subscription_model')){
-                                    if( wpstream_check_global_subscription_model() ){
-                                        $is_valid_subscription=1;// this is global subscription
-                                    }
-                                }
-
-
-                                // Plugin-level global subscription check for this specific product.
-                                if( $this->main->wpstream_player->wpstream_in_plugin_check_global_subscription_model($show_id) ){
-                                    $is_valid_subscription=1;// this is global subscription
-                                }
-
-
-                                // Entitlement gate: viewer must have bought the product or hold a valid subscription.
-                                if( wc_customer_bought_product( $current_user->email, $current_user->ID, $show_id) || $is_valid_subscription==1 ){
-                                    // Entitled: fetch the (remote, cached) key.
-                                    $get_key = $this->wpstream_get_encryption_key_remonting($show_id,$streamname_received);
-
-                                    // Allow the client to cache the key briefly.
-                                    $seconds_to_cache = 302;
-                                    $ts = gmdate("D, d M Y H:i:s", time() + $seconds_to_cache) . " GMT";
-                                    header("Expires: $ts");
-                                    header("Pragma: cache");
-                                    header("Cache-Control: max-age=$seconds_to_cache");
-
-                                    // Emit the key and stop.
-                                    print $get_key;
-                                    die();
-
-                                }else{
-                                    // Logged in but no purchase/subscription: deny.
-                                    exit('live - no ticket ');
-                                }
-
-                            } else{
-                                // No paid product matched this stream name.
-                                exit('live - no event');
-                            }
-
-                        }else{
-                            // Paid content requested by a logged-out viewer: deny.
-                            exit('live - user not log or anwser');
-                        }
-
-                }
-                // Fell through: neither a free nor an entitled paid event.
-                exit('no free or paid event');
-
-            }else{
-
-                // No live DRM request on this page load.
-                return;
-            }
-
-        }
-         
-         
-         
-             
-         /**
-     * Fetch (and cache) the remote HLS encryption key for a live stream.
-     *
-     * The key is retrieved from the per-post 'hls_key_retrieval_url' remote
-     * endpoint and cached in a 30s transient keyed by show id, so repeated
-     * requests do not hit the remote service on every segment.
-     *
-     * @since     3.0.1
-     * @param     int    $show_id             Post id whose key retrieval URL/meta to use.
-     * @param     string $streamname_received Full requested stream key appended to the URL.
-     * @return    string The encryption key body (empty string on a failed remote call).
-    */
-
-        public function wpstream_get_encryption_key_remonting ($show_id,$streamname_received){
-            // Serve the cached key when present.
-            $get_key = get_transient( $show_id.'_api20_streamName' );
-
-
-            // Cache miss: fetch the key from the post's remote retrieval URL.
-            if ( false ===  $get_key  ) {
-
-              // Build the remote URL from post meta plus the requested stream key.
-              $url = get_post_meta($show_id,'hls_key_retrieval_url',true).'/'.$streamname_received;
-
-                    $get= wp_remote_get( $url );
-
-                    // Use the response body on success; otherwise store an empty key.
-                    if(is_array($get)){
-                        $get_key = $get['body'];
-                    }else{
-                       $get_key='';
-                    }
-
-                    // Cache the fetched key for 30 seconds.
-                    set_transient(  $show_id.'_api20_streamName', $get_key, 30 );
-            }
-            return $get_key;
-        }
-
-         
-         
-         /**
+	/**
      * Return restream (YouTube/Twitch) RTMP URLs for a third-party publisher.
      *
      * Fired on the thirdkeys request. Looks up the post whose live_event_carnat2
@@ -2030,247 +1531,52 @@ class Wpstream_Public {
      * @since     3.0.1
      * @return    void Emits the key and exits, or returns when no voddrm request.
     */
-    public function wpstream_live_streaming_key_vod(){
-        // Read global options (session-encryption flag) and the current viewer.
-        $local_event_options =   get_option('wpstream_user_streaming_global_channel_options') ;
-        $current_user        =   wp_get_current_user();
+	public function wpstream_live_streaming_key_vod() {
+		$this->wpstream_emit_drm_key_request( 'vod', 'wpstream_voddrm' );
+	}
 
+	/**
+	 * Translate one legacy WordPress request into the DRM Key Delivery Interface.
+	 *
+	 * @param string $kind      `live` or `vod`.
+	 * @param string $parameter Legacy GET parameter name.
+	 * @return void
+	 */
+	private function wpstream_emit_drm_key_request( $kind, $parameter ) {
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( (string) $_SERVER['REQUEST_METHOD'] ) : 'GET';
+		if ( 'GET' !== $method || ! isset( $_GET[ $parameter ] ) || ! is_scalar( $_GET[ $parameter ] ) ) {
+			return;
+		}
 
+		$identifier = sanitize_text_field( wp_unslash( (string) $_GET[ $parameter ] ) );
+		if ( '' === $identifier ) {
+			return;
+		}
 
-        // Only act when a non-empty VOD DRM key request is present.
-        if( isset( $_REQUEST[ 'wpstream_voddrm' ]) && $_REQUEST[ 'wpstream_voddrm' ]!=''  ) {
+		$result = $this->main->drm_key_delivery->deliver(
+			array(
+				'kind'        => $kind,
+				'identifier'  => $identifier,
+				'has_session' => isset( $_SESSION['wpstream_id'] ),
+			)
+		);
+		if ( ! is_array( $result ) || empty( $result['handled'] ) ) {
+			return;
+		}
 
-            // When session encryption is enabled, require an established session id.
-            if(isset($local_event_options['ses_encrypt']) && intval($local_event_options['ses_encrypt'])==1 )    {
-
-                // No session id -> clear state and refuse the key.
-                if( !isset( $_SESSION['wpstream_id'] ) ){
-                    unset($_SESSION['wpstream_id']);
-                    session_write_close ();session_register_shutdown();
-                    die('no session');
-                }
-            }
-
-            // Sanitize the requested decryption key index and try the cached free-VOD lookup.
-            $hlsDecryptionKeyIndex  = esc_html($_REQUEST[ 'wpstream_voddrm' ]);
-            $vod_list_free_posts    = get_transient(  'vod_decryption_key_index_'.$hlsDecryptionKeyIndex ) ;
-
-            // On a cache miss, query free VOD posts by key index and cache the ids for 60s.
-            if ( false === $vod_list_free_posts ) {
-                $args_free = array(
-                    'posts_per_page'    => -1,
-                    'cache_results'             =>  false,
-                    'update_post_meta_cache'    =>  false,
-                    'update_post_term_cache'    =>  false,
-                    'post_type'         => 'wpstream_product_vod',
-                    'post_status'       => 'publish',
-                    'meta_query'        =>      array(
-                                                    array(
-                                                    'key'     => 'hlsDecryptionKeyIndex',
-                                                    'value'   => $hlsDecryptionKeyIndex,
-                                                    'compare' => '=',
-                                                    )
-                                                ),
-                    'fields'=>'ids',
-                );
-            
-                $event_list_free = new WP_Query($args_free);
-
-                $vod_list_free_posts= $event_list_free->posts;
-                set_transient(  'vod_decryption_key_index_'.$hlsDecryptionKeyIndex, $event_list_free->posts ,60);
-            }// end check transient
-
-
-
-            if ( !empty($vod_list_free_posts )  ){
-                ////////////////////////////////////////////////////////////
-                // when we have a free event
-                ////////////////////////////////////////////////////////////
-                // Free VOD: read the key straight from post meta (stored base64).
-                $the_id                     =   $vod_list_free_posts[0];
-                $get_key                    =   get_post_meta($the_id,'hlsDecryptionKey',true);
-
-                // Allow the client to cache the key briefly.
-                $seconds_to_cache = 301;
-                $ts = gmdate("D, d M Y H:i:s", time() + $seconds_to_cache) . " GMT";
-                header("Expires: $ts");
-                header("Pragma: cache");
-                header("Cache-Control: max-age=$seconds_to_cache");
-
-
-                // Emit the decoded key and stop.
-                print base64_decode( $get_key );
-                die();
-
-
-            }else{
-                ////////////////////////////////////////////////////////////
-                //  this is for paid products
-                ////////////////////////////////////////////////////////////
-                // Paid path: viewer must be logged in with a real user id.
-                if ( is_user_logged_in() && intval($current_user->ID)!=0 ) {
-                    // Sanitize the key index again and try the cached paid-VOD lookup.
-                    $hlsDecryptionKeyIndex  = esc_html($_REQUEST[ 'wpstream_voddrm' ]);
-                    $event_list_paid_posts  =    get_transient(  'paid_vod_key_index_'.$hlsDecryptionKeyIndex ) ;
-
-
-                    // On a cache miss, query matching paid VOD products and cache the ids for 60s.
-                    if ( false === $event_list_paid_posts ) {
-                        $args = array(
-                            'posts_per_page'    => -1,
-                            'post_type'         => 'product',
-                            'post_status'       => 'publish',
-                            'meta_query' => array(
-                                array(
-                                        'key'     => 'hlsDecryptionKeyIndex',
-                                        'value'   => $hlsDecryptionKeyIndex,
-                                        'compare' => '=',
-                                ),
-                            ),
-                            'tax_query'         => array(
-                                        'relation'  => 'AND',
-                                        array(
-                                            'taxonomy'  =>  'product_type',
-                                            'field'     =>  'slug',
-                                            'terms'     =>  array('video_on_demand','subscription')
-                                        )
-                                    ),
-                             'fields'=>'ids',
-                        );
-
-
-                        $event_list = new WP_Query($args);
-                        $vod_list_paid_posts = $event_list->posts;
-
-                        set_transient(  'paid_vod_key_index_'.$hlsDecryptionKeyIndex, $event_list->posts ,60);
-                    }
-
-
-                    // Only continue if a paid VOD product matched.
-                    if ( !empty($vod_list_paid_posts )  ){
-
-                        $the_id     =    $vod_list_paid_posts[0];
-                        $show_id    =   $the_id;
-
-
-                        // Determine subscription entitlement (defaults to none).
-                        $is_valid_subscription=0;
-                        // Active WooCommerce subscription for this product?
-                        if(class_exists ('WC_Subscription')){
-                            $is_valid_subscription = wcs_user_has_subscription( $current_user->ID, $show_id ,'active');
-                        }
-
-
-                        // Site-wide "global subscription" model overrides per-product checks.
-                        if(function_exists('wpstream_check_global_subscription_model')){
-                            if( wpstream_check_global_subscription_model() ){
-                                $is_valid_subscription=1;// this is global subscription
-                            }
-                        }
-
-
-                        // Plugin-level global subscription check for this specific product.
-                        if( $this->main->wpstream_player->wpstream_in_plugin_check_global_subscription_model($show_id) ){
-                            $is_valid_subscription=1;// this is global subscription
-                        }
-
-
-                        // Entitlement gate: viewer must have bought the product or hold a valid subscription.
-                        if( wc_customer_bought_product( $current_user->email, $current_user->ID, $show_id) || $is_valid_subscription==1 ){
-
-                            // Entitled: read the base64 key from post meta.
-                            $get_key                    =   get_post_meta($show_id,'hlsDecryptionKey',true);
-
-                            // Allow the client to cache the key briefly.
-                            $seconds_to_cache = 302;
-                            $ts = gmdate("D, d M Y H:i:s", time() + $seconds_to_cache) . " GMT";
-                            header("Expires: $ts");
-                            header("Pragma: cache");
-                            header("Cache-Control: max-age=$seconds_to_cache");
-
-                            // Emit the decoded key and stop.
-                            print base64_decode( $get_key );
-                            die();
-
-                        }else{
-                            // Logged in but no purchase/subscription: deny.
-                            exit('vod - no ticket ');
-                        }
-
-                    } else{
-                        // No paid VOD matched this key index.
-                        exit('vod - no item');
-                    }
-
-                }else{
-                    // Paid VOD requested by a logged-out viewer: deny.
-                    exit('vod - user not log or no answer');
-                }
-
-
-            }
-
-
-
-        }
-
-
-    }
+		status_header( isset( $result['status'] ) ? intval( $result['status'] ) : 200 );
+		foreach ( (array) ( $result['headers'] ?? array() ) as $name => $value ) {
+			header( $name . ': ' . $value, true );
+		}
+		print isset( $result['body'] ) ? $result['body'] : '';
+		die();
+	}
      
        
     
 
 
          
-    /**
-     * Legacy VOD key retrieval by filename (currently disabled).
-     *
-     * The remote-fetch implementation below is commented out and the method
-     * returns immediately; kept as a placeholder/reference.
-     *
-     * @param  string $filename VOD filename the key would be fetched for.
-     * @return void
-     */
-    public function wpstream_get_vod_key($filename){
-            // Early return: remote key retrieval is disabled (see commented-out body below).
-            return;
-//           global $wpstream_plugin;
-//            $vod_key = get_transient("vod_key".$filename);
-//            if(false===$vod_key){
-//                $token  = $wpstream_plugin->wpstream_live_connection->wpstream_get_token();
-//                $domain = parse_url ( get_site_url() );
-//
-//                $values_array=array(
-//                    "filename"           =>  $filename,
-//                );
-//                $url            =   WPSTREAM_CLUBLINKSSL."://www.".WPSTREAM_CLUBLINK."/wp-json/rcapi/v1/uservodkey/get/?access_token=".$token;
-//
-//
-//                $arguments = array(
-//                    'method'        => 'GET',
-//                    'timeout'       => 45,
-//                    'redirection'   => 5,
-//                    'httpversion'   => '1.0',
-//                    'blocking'      => true,
-//                    'headers'       => array(),
-//                    'body'          => $values_array,
-//                    'cookies'       => array()
-//                );
-//                $response       = wp_remote_post($url,$arguments);
-//                $received_data  = json_decode( wp_remote_retrieve_body($response) ,true);
-//
-//
-//                if( isset($response['response']['code']) && $response['response']['code']=='200'){
-//                    set_transient("vod_key".$filename,$received_data,120);
-//                    return ($received_data);
-//                }else{     
-//                    return 'failed connection';
-//                }
-//            }else{
-//                return $vod_key;
-//            }
-
-    }
         
         
         

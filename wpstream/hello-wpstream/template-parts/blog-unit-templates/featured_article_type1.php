@@ -7,6 +7,12 @@
  * @var int $postId Post ID.
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Gather the display fields for this featured article from its post ID.
 $title      = get_the_title( $postId );          // Post title.
 $excerpt    = get_the_excerpt( $postId );        // Raw post excerpt.

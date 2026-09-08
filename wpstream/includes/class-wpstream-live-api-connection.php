@@ -6,9 +6,13 @@
  * streaming API. It:
  *  - authenticates against the API (`access_token` grant) and caches the bearer
  *    token in a transient so every call does not re-login (see wpstream_get_token()).
- *  - wraps raw cURL POSTs to the API in a shared helper (wpstream_baker_do_curl_base())
+ *  - funnels every backend call through a single WP-HTTP transport (request())
  *    that centralises timeout, error handling, HTTP-status handling, JSON decoding
- *    and failure logging.
+ *    and failure logging, returning a decoded array or WP_Error (never output).
+ *  - owns authentication end to end: authorized_request() fetches the token and
+ *    injects it into the body itself, and is_connected() answers "is this site
+ *    linked to a WpStream account?" — production code outside this class never
+ *    handles the token.
  *  - drives the channel lifecycle: start (channel/start), stop (channel/stop),
  *    update settings (channel/update), poll status (channel/info) and list
  *    active channels (channel/list).
@@ -17,8 +21,8 @@
  *  - exposes a large surface of `wp_ajax_*` handlers that the admin JS calls to
  *    turn channels on/off, save per-event and global settings, check DNS/quota/whip,
  *    and enumerate pending recordings.
- *  - delegates quota and channel-create concerns to Wpstream_User_Quota_Service
- *    and Wpstream_Channel_Service (composed in the constructor).
+ *  - composes Wpstream_User_Quota_Service (consumed directly by the quota
+ *    manager) and Wpstream_Channel_Service in the constructor.
  *
  * NOTE: several AJAX handlers below intentionally left as-is have weak or missing
  * nonce/ownership checks; this is a comments-only pass, so nothing here is changed.
@@ -27,9 +31,11 @@
  * @subpackage Wpstream/includes
  */
 
-// Pull in the two collaborator services this connection composes.
-require_once dirname( __FILE__ ) . '/api/class-wpstream-user-quota-service.php';
-require_once dirname( __FILE__ ) . '/api/class-wpstream-channel-service.php';
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * Remote streaming-API client plus the admin AJAX surface that drives it.
@@ -41,6 +47,12 @@ class Wpstream_Live_Api_Connection  {
 
     /** @var Wpstream_Channel_Service Handles remote channel creation. */
     private $channel_service;
+
+	/** @var Wpstream_Channel_Settings Deep owner used by compatibility handlers. */
+	private $channel_settings;
+
+	/** @var Wpstream_Streaming_Content_Creation|null Local-first creation lifecycle owner. */
+	private $streaming_content_creation;
 
 
     /**
@@ -54,6 +66,11 @@ class Wpstream_Live_Api_Connection  {
         // Collaborators receive $this so they can reuse the token + cURL helpers.
 		$this->user_quota_service = new Wpstream_User_Quota_Service( $this );
 		$this->channel_service    = new Wpstream_Channel_Service( $this );
+		if ( class_exists( 'Wpstream_Channel_Settings' ) ) {
+			$this->channel_settings = new Wpstream_Channel_Settings(
+				new Wpstream_WordPress_Channel_Settings_Storage()
+			);
+		}
 
         // Channel on/off: request a live URI (start) and stop a running channel.
         add_action( 'wp_ajax_wpstream_give_me_live_uri', array($this,'wpstream_give_me_live_uri') );
@@ -65,13 +82,11 @@ class Wpstream_Live_Api_Connection  {
 		add_action( 'wp_ajax_wpstream_update_settings', array( $this, 'wpstream_update_settings' ) );
 
         // Status/connectivity polling endpoints used while a broadcast is starting.
-        add_action( 'wp_ajax_wpstream_check_dns_sync', array($this,'wpstream_check_dns_sync') );
         add_action( 'wp_ajax_wpstream_check_event_status', array($this,'wpstream_check_event_status') );
 		add_action( 'wp_ajax_wpstream_check_whipurl', array($this, 'wpstream_check_whipurl') );
 		add_action( 'wp_ajax_wpstream_check_user_quota', array($this, 'wpstream_check_user_quota') );
 
-        // Event teardown and recorded-file management (download link, delete).
-        add_action( 'wp_ajax_wpstream_close_event', array($this,'wpstream_close_event') );
+        // Recorded-file management (download link, delete).
         add_action( 'wp_ajax_wpstream_get_download_link', array($this,'wpstream_get_download_link') );
         add_action( 'wp_ajax_wpstream_get_delete_file', array($this,'wpstream_get_delete_file') );
 
@@ -83,6 +98,16 @@ class Wpstream_Live_Api_Connection  {
 
 
     }
+
+	/** Inject the Channel Settings Module after the connection Adapter is composed. */
+	public function set_channel_settings( Wpstream_Channel_Settings $channel_settings ) {
+		$this->channel_settings = $channel_settings;
+	}
+
+	/** Inject the Streaming Content Creation Module after all Adapters are composed. */
+	public function set_streaming_content_creation( Wpstream_Streaming_Content_Creation $streaming_content_creation ) {
+		$this->streaming_content_creation = $streaming_content_creation;
+	}
 
 
     /*
@@ -114,9 +139,10 @@ class Wpstream_Live_Api_Connection  {
 
         // Whitelist of WPStream admin screens allowed to show the notice.
         $permited_pages=array('wpstream_plugin_options','wpstream_live_channels','wpstream_recordings','wpstream_settings');
-        if (!empty($_GET['page'])) {
-            // Sanitize the requested page and bail if it is not one of ours.
-            $page =  esc_html($_GET['page']) ;
+        // '' when no ?page= is present, so the variable is always defined below.
+        $page = !empty($_GET['page']) ? esc_html($_GET['page']) : '';
+        if ($page !== '') {
+            // Bail if the requested page is not one of ours.
             if( !in_array($page, $permited_pages)){
                return;
             }
@@ -129,18 +155,18 @@ class Wpstream_Live_Api_Connection  {
             print '<div class="api_not_conected wpstream_notice_top">We could not connect to WpStream.net. Make sure you have the php Curl library enabled and your hosting allows  outgoing HTTP Connection. </div>';
         }
 
-        // Attempt to fetch (cached) auth token; empty means not connected.
-        $token          =   $this->wpstream_get_token();
-        if($token=='' and $page!='wpstream_plugin_options'){
+        // Connectivity probe: no obtainable token means not connected.
+        if( !$this->is_connected() and $page!='wpstream_plugin_options'){
             // echo 'wpstream_curl_failed: ' . get_option('wpstream_curl_failed');
             // wpstream_curl_failed === "0" => credentials wrong (no cURL error);
             // otherwise a transport/HTTP error occurred and was surfaced above.
+            // Translate the literals at definition — gettext cannot extract variable strings.
             $text = get_option('wpstream_curl_failed') === "0" ?
-                'Not connected to WpStream. Please check your credentials <a href="/wp-admin/admin.php?page=wpstream_credentials">here</a>.' :
-                'Not connected to WpStream. Please note the errors above and contact support.';
+                __( 'Not connected to WpStream. Please check your credentials <a href="/wp-admin/admin.php?page=wpstream_credentials">here</a>.', 'wpstream' ) :
+                __( 'Not connected to WpStream. Please note the errors above and contact support.', 'wpstream' );
 
-            // Render the appropriate "not connected" message.
-            echo '<div class="api_not_conected wpstream_notice_top">'.__($text,'wpstream').'</div>';
+            // Render the appropriate "not connected" message (contains a link, so kses instead of esc_html).
+            echo '<div class="api_not_conected wpstream_notice_top">'.wp_kses_post($text).'</div>';
         }
 
 	}
@@ -154,151 +180,252 @@ class Wpstream_Live_Api_Connection  {
      * */
 
     /**
-     * Shared low-level POST to the WPStream backend API.
+     * POST to the WPStream backend API over the WP HTTP layer.
      *
-     * Every remote call in this class funnels through here. Handles transport
-     * errors, non-200 HTTP codes and (optionally) malformed JSON, records the
-     * failure code in the `wpstream_curl_failed` option, logs errors, and always
-     * returns a JSON string (either the raw API body or a synthesized error).
+     * The single transport every backend call funnels through. Never produces
+     * output; user-facing error rendering belongs to callers/admin notices.
      *
-     * @param string $url              API path appended to WPSTREAM_API (e.g. 'channel/start').
-     * @param array  $curl_post_fields POST body fields (http_build_query'd).
-     * @param bool   $expect_json      When true, validate the response is well-formed JSON.
-     * @param bool   $quiet            When true, suppress echoed HTML error notices (for AJAX/JSON callers).
-     * @param int    $timeout          cURL timeout in seconds.
-     * @return string JSON string: raw API response, or a synthesized {success:false,error:...} payload.
+     * @param string $endpoint API path appended to WPSTREAM_API (e.g. 'channel/start').
+     * @param array  $body     POST body fields.
+     * @param int    $timeout  Request timeout in seconds.
+     * @return array|WP_Error Decoded response array, or WP_Error on transport/HTTP/JSON failure.
      */
-    function wpstream_baker_do_curl_base($url,$curl_post_fields, $expect_json = false, $quiet = false, $timeout = 10){
-		// Initialise the handle and resolve the base API host (test vs production).
-		$curl         = curl_init();
-		$base_api_url = defined('WPSTREAM_TEST_API' ) ? WPSTREAM_TEST_API : WPSTREAM_API;
-		$api_url      = $base_api_url . '/' . $url;
+    public function request( $endpoint, $body, $timeout = 10 ) {
+        // Test host wins over production when defined (same rule as before).
+        $base_api_url = defined( 'WPSTREAM_TEST_API' ) ? WPSTREAM_TEST_API : WPSTREAM_API;
 
-        // Configure the request as a POST with form-encoded body and no-cache headers.
-        curl_setopt_array($curl, array(
-          CURLOPT_URL =>$api_url,
-          CURLOPT_RETURNTRANSFER => true,
-          CURLOPT_ENCODING => "",
-          CURLOPT_MAXREDIRS => 10,
-          CURLOPT_TIMEOUT => $timeout,
-          CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-          CURLOPT_CUSTOMREQUEST => "POST",
-          CURLOPT_POSTFIELDS => http_build_query($curl_post_fields),
-          CURLOPT_HTTPHEADER => array(
-            "cache-control: no-cache",
-            "content-type: application/x-www-form-urlencoded"
-          ),
-        ));
+        $args = array(
+            'timeout' => $timeout,
+            'body'    => $body,
+        );
 
-        // Execute the request and capture body, transport error and HTTP status.
-        $response   = curl_exec($curl);
-        $err        = curl_error($curl);
-        $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
+        /**
+         * Filters the WP HTTP args of an outgoing WpStream API request.
+         *
+         * Lets trusted code adjust `timeout`, `headers` or `body` before the
+         * call. The destination URL/host is not modifiable here; `$endpoint`
+         * is read-only context. `$args['body']` may carry credentials — the
+         * account access token on most endpoints, and the WpStream username
+         * and plaintext password on the `access_token` endpoint — so this
+         * filter is for trusted site code only: never log, forward or expose
+         * `$args` wholesale.
+         *
+         * @since 4.14.0
+         *
+         * @param array  $args     Args passed to wp_remote_post()/wp_remote_get().
+         * @param string $endpoint API path (request()) or full URL (get()).
+         */
+        $args = apply_filters( 'wpstream_api_request_args', $args, $endpoint );
 
-        // 0 = success; overwritten below with the error/HTTP code on failure.
-        $curl_failed = 0;
+        $response = wp_remote_post( $base_api_url . '/' . $endpoint, $args );
 
-		// Logger used to persist any failure to the plugin's log store.
-		$logger = new WpStream_Logger();
+        return $this->handle_response( $response, $endpoint );
+    }
 
-        // Branch 1: transport-level cURL failure (DNS, connection refused, etc.).
-        if ($err) {
-            // do not echo every time, some operations must return JSON
-            if (!$quiet){
-                echo '<div class="api_not_conected wpstream_error_curl">Critical: Could Not Connect to WpStream - '.$err.'</div>';
-            }
+    /**
+     * GET a full URL over the WP HTTP layer with the same response contract
+     * as request(). Used for the legacy REST host and other WpStream GET
+     * endpoints that do not live under the WPSTREAM_API base path.
+     *
+     * @param string $url     Full URL to fetch.
+     * @param int    $timeout Request timeout in seconds.
+     * @return array|WP_Error Decoded response array, or WP_Error on transport/HTTP/JSON failure.
+     */
+    public function get( $url, $timeout = 10 ) {
+        /** This filter is documented in request() above. */
+        $args = apply_filters( 'wpstream_api_request_args', array( 'timeout' => $timeout ), $url );
 
-            // Record the cURL error string as the failure marker.
-            $curl_failed = $err;
+        $response = wp_remote_get( $url, $args );
 
-			// Log the transport error against the endpoint that was called.
-			$log_entry = new WpStream_Log_Entry([
-				'type'        => 'error',
-				'description' => 'CURL error: ' . $err . ' on endpoint ' . $url,
-			]);
-			$logger->add( $log_entry );
+        return $this->handle_response( $response, $url );
+    }
 
-            // Replace the (empty) body with a synthesized error payload.
-            $response = json_encode(   array(
-                'success'      =>  false,
-                'error'        =>  $err,
-            ));
-        }
-        // Branch 2: request reached the server but returned a non-200 status.
-        else if ($http_code != 200) {
-			// Log the HTTP error together with the failing endpoint.
-			$log_entry = new WpStream_Log_Entry([
-				'type'        => 'error',
-				'description' => 'HTTP error: ' . $http_code . ' on endpoint ' . $url,
-			]);
-			$logger->add( $log_entry );
-
-            if (!$quiet){
-                // Map common HTTP codes to a human-readable admin message.
-                switch ($http_code) {
-                    case 0:
-                        $message = "CURL failed with code 0. Please address CURL connectivity with your hosting provider.";
-                        break;
-                    case 429:
-                        $message = "API: Too many Requests";
-                        break;
-					case 403:
-						$message = "API: Access Forbidden with response: " . $response . ' and HTTP code: ' . $http_code;
-						break;
-                    default:
-                        $message = "API - Unexpected response: " . $http_code;
-                        break;
-                }
-                echo '<div class="api_not_conected wpstream_error_curl">'.$message.'</div>';
-            }
-            // Record the HTTP status as the failure marker.
-            $curl_failed = $http_code;
-
-            // Replace the body with a synthesized error payload.
-            $response = json_encode(   array(
-                'success'      =>  false,
-                'error'        =>  $http_code,
-            ));
-        }
-        // Branch 3: 200 OK and the caller expects JSON — validate it parses.
-        else if ($expect_json){
-            $curl_response_decoded  =   json_decode($response,JSON_OBJECT_AS_ARRAY);
-            if (JSON_ERROR_NONE !== json_last_error()) {
-	            // Malformed JSON from the API; log the parse error and endpoint.
-	            $log_entry = new WpStream_Log_Entry([
-		            'type'        => 'error',
-		            'description' => 'Malformed JSON response: ' . json_last_error_msg() . ' on endpoint ' . $url,
-	            ]);
-	            $logger->add( $log_entry );
-
-	            if (!$quiet) {
-		            echo '<div class="api_not_conected wpstream_error_curl">Critical: Malformed API response #: ' . json_last_error() . '</div>';
-	            }
-
-	            // Record the JSON error code as the failure marker.
-	            $curl_failed = json_last_error();
-
-	            // Replace the unparseable body with a synthesized error payload.
-	            $response = json_encode(array(
-		            'success' => false,
-		            'error' => json_last_error(),
-	            ));
-            }
+    /**
+     * Shared response handling for request()/get(): validate, decode, record.
+     *
+     * @param array|WP_Error $response Raw wp_remote_* return value.
+     * @param string         $endpoint Endpoint/URL used for logging context.
+     * @return array|WP_Error Decoded response array, or WP_Error on failure.
+     */
+    private function handle_response( $response, $endpoint ) {
+        // Transport-level failure (DNS, refused connection...): hand the
+        // WP_Error straight to the caller.
+        if ( is_wp_error( $response ) ) {
+            return $this->record_failure( $response->get_error_message(), $endpoint, $response );
         }
 
-		// Persist the last call's outcome (0 = ok) for the admin-notice logic.
-		update_option( "wpstream_curl_failed", $curl_failed );
+        // Non-200 status: error out with the HTTP code as error data so
+        // callers can react to specific statuses without string parsing.
+        $http_code = wp_remote_retrieve_response_code( $response );
+        if ( 200 !== $http_code ) {
+            return $this->record_failure( $http_code, $endpoint, new WP_Error(
+                'wpstream_http_error',
+                'API returned HTTP ' . $http_code . ' on endpoint ' . $endpoint,
+                $http_code
+            ) );
+        }
 
-        // Always a JSON string: raw success body or a synthesized error payload.
+        // Decode the JSON body into an associative array for callers; a body
+        // that does not parse (proxy/maintenance HTML, truncation) is an error.
+        $decoded = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( JSON_ERROR_NONE !== json_last_error() ) {
+            return $this->record_failure( json_last_error(), $endpoint, new WP_Error(
+                'wpstream_bad_json',
+                'Malformed API response: ' . json_last_error_msg() . ' on endpoint ' . $endpoint,
+                json_last_error()
+            ) );
+        }
+
+        // Healthy call: mark the connection as OK for the admin notice.
+        $this->record_call_outcome( 0 );
+
+        return $decoded;
+    }
+
+    /**
+     * Log an API failure, record its marker, and pass the WP_Error through.
+     *
+     * @param string|int $marker   Value stored in wpstream_curl_failed (non-zero = failing).
+     * @param string     $endpoint Endpoint the failing call targeted (for the log).
+     * @param WP_Error   $error    The error to return to the caller.
+     * @return WP_Error The $error given, unchanged.
+     */
+    private function record_failure( $marker, $endpoint, $error ) {
+        $logger = new WpStream_Logger();
+        $logger->add( new WpStream_Log_Entry( array(
+            'type'        => 'error',
+            'description' => $error->get_error_message() . ' on endpoint ' . $endpoint,
+        ) ) );
+
+        $this->record_call_outcome( $marker );
+
+        /**
+         * Fires when a call to the WpStream API failed (transport, HTTP status
+         * or malformed body).
+         *
+         * The error carries no credentials: the request body is not attached.
+         *
+         * @since 4.14.0
+         *
+         * @param WP_Error $error    The failure (`wpstream_http_error`, `wpstream_bad_json`, transport codes).
+         * @param string   $endpoint API path the call targeted.
+         */
+        do_action( 'wpstream_api_request_failed', $error, (string) $endpoint );
+
+        return $error;
+    }
+
+    /**
+     * Persist the last API-call outcome (0 = ok) for the admin-notice logic,
+     * writing the option only when the value actually changed.
+     *
+     * @param string|int $marker 0 on success, error/HTTP/JSON code otherwise.
+     * @return void
+     */
+    private function record_call_outcome( $marker ) {
+        // String-compare so a missing option (false) still differs from 0,
+        // while "0" (DB round-trip) and 0 count as unchanged.
+        $previous = get_option( 'wpstream_curl_failed' );
+        if ( (string) $previous !== (string) $marker ) {
+            update_option( 'wpstream_curl_failed', $marker, false );
+
+            /**
+             * Fires when the API connection outcome changes (healthy ↔ failing).
+             *
+             * Fires once per transition, not per call, so it suits alerting.
+             *
+             * @since 4.14.0
+             *
+             * @param string|int $marker   New outcome: 0 healthy, otherwise the HTTP/JSON/transport code.
+             * @param string|int $previous The outcome it replaced (false when never recorded).
+             */
+            do_action( 'wpstream_api_connection_state_changed', $marker, $previous );
+        }
+    }
+
+    /**
+     * POST an authenticated call to the backend API.
+     *
+     * The connection fetches the account token itself and injects it as the
+     * `access_token` body field, so callers never handle credentials. When no
+     * token is available no request is made and a `wpstream_not_connected`
+     * WP_Error is returned (its message is caller-safe UI text). An HTTP 401
+     * invalidates the cached token and is retried once with fresh credentials;
+     * a second 401 is returned and its rejected replacement is not cached.
+     *
+     * @param string $endpoint API path appended to WPSTREAM_API (e.g. 'channel/list').
+     * @param array  $fields   POST body fields, without access_token.
+     * @param int    $timeout  Request timeout in seconds.
+     * @return array|WP_Error Decoded response array, or WP_Error on failure —
+     *                        code `wpstream_not_connected` when the site holds no token.
+     */
+    public function authorized_request( $endpoint, $fields = array(), $timeout = 10 ) {
+        $access_token = $this->wpstream_get_token();
+
+        // No token: the site is not linked to a WpStream account. No call is
+        // made, and the connection-outcome option is left untouched (nothing
+        // about the transport failed).
+        if ( empty( $access_token ) ) {
+            return new WP_Error( 'wpstream_not_connected', 'Not connected to WPStream service' );
+        }
+
+        $fields['access_token'] = $access_token;
+        $response               = $this->request( $endpoint, $fields, $timeout );
+
+        // Baker can invalidate a cached token before its local transient expires.
+        // Refresh and replay once so the authenticated operation self-heals in
+        // the same public call; the direct second request prevents retry loops.
+        if ( is_wp_error( $response ) && 401 === (int) $response->get_error_data() ) {
+            delete_transient( 'wpstream_token_api' );
+            $access_token = $this->wpstream_get_token();
+            if ( empty( $access_token ) ) {
+                return new WP_Error( 'wpstream_not_connected', 'Not connected to WPStream service' );
+            }
+
+            $fields['access_token'] = $access_token;
+            $response               = $this->request( $endpoint, $fields, $timeout );
+            if ( is_wp_error( $response ) && 401 === (int) $response->get_error_data() ) {
+                delete_transient( 'wpstream_token_api' );
+            }
+
+            return $response;
+        }
+
         return $response;
     }
 
+    /**
+     * Whether this site is Connected: a WpStream API token exists (cached or
+     * freshly obtained). Says nothing about any channel being live — use it
+     * only for "is the account linked?" checks.
+     *
+     * @return bool
+     */
+    public function is_connected() {
+        $token = $this->wpstream_get_token();
+        return ! empty( $token );
+    }
 
-
- 
-
-
+    /**
+     * Return the API token, or send the standard "not connected" JSON and die.
+     *
+     * Shared gate for the AJAX handlers that cannot proceed without a linked
+     * WpStream account; keeps the legacy response keys the dashboard JS reads.
+     *
+     * @return string The access token (never returns on failure).
+     */
+    private function require_token_or_die() {
+        $access_token = $this->wpstream_get_token();
+        if ( empty( $access_token ) ) {
+            wp_send_json( array(
+                'is_record'  => '',
+                'connected'  => false,
+                'event_data' => '',
+                'error'      => esc_html__( 'You are not connected to wpstream.net! Please check your WpStream credentials!', 'wpstream' ),
+            ) );
+        }
+        return $access_token;
+    }
 
     /**
      * Resolve which streaming server hosts a given show, cached in a transient.
@@ -310,63 +437,55 @@ class Wpstream_Live_Api_Connection  {
      * @since 3.0.1
     */
 
-    function retrive_server_id_based_on_show_id($show_id){
+    function wpstream_retrieve_server_id_based_on_show_id($show_id){
 
             // Per-show cache key so repeat lookups avoid a network round-trip.
-            $transient_name = 'server_id_to_return_'.$show_id;
+            $transient_name      = 'server_id_to_return_' . $show_id;
             $server_id_to_return = get_transient( $transient_name );
 
-            // Cache miss: query the remote API for the server id.
-            if ( false ===  $server_id_to_return  ) {
-                $token  = $this->wpstream_get_token();
-                // NOTE: this first $values_array is immediately overwritten below.
-                $values_array=array(
-                    "show_id"           =>  intval($show_id),
-                );
-                $values_array=array();
-                $show_id=intval($show_id);
-
-                // Build the GET URL (show id + access token passed as query args).
-                $url="https://rest-baker.wpstream.net/?&apiFunctionName=server_id_by_show_id&show_id=".$show_id."&access_token=".$token;
-                $arguments = array(
-                    'method'        => 'GET',
-                    'timeout'       => 45,
-                    'redirection'   => 5,
-                    'httpversion'   => '1.0',
-                    'blocking'      => true,
-                    'headers'       => array(),
-                    'body'          => $values_array,
-                    'cookies'       => array()
-                );
-
-                // Perform the request via the WP HTTP API.
-                $response       = wp_remote_post($url,$arguments);
-
-                // Extract and JSON-decode the response body.
-                $received_data  =  wp_remote_retrieve_body($response);
-
-                $received_data_decoded=json_decode($received_data);
-
-
-                // Accept only a 200 with a truthy success flag and a non-empty result.
-                if( isset($response['response']['code']) && $response['response']['code']=='200' && $received_data_decoded->success===true && $received_data_decoded->result!=''){
-                    $server_id_to_return = $received_data_decoded->result;
-                    // Cache the result briefly (60s) and return it.
-                    set_transient( $transient_name, json_decode($server_id_to_return), 60 );
-                    return $server_id_to_return;
-
-                }else{
-                    // Any failure yields an empty string (not cached).
-                    return '';
-
-                }
-            }else{
-                // Cache hit: return the stored server id.
+            // Cache hit: return the stored server id.
+            if ( false !== $server_id_to_return ) {
                 return $server_id_to_return;
             }
 
-            // Unreachable (both branches return above).
-            die();
+            // Cache miss: query the legacy REST endpoint (it only accepts its
+            // parameters, token included, as GET query args).
+            $token = $this->wpstream_get_token();
+            $url   = WPSTREAM_REST_API . '/?apiFunctionName=server_id_by_show_id&show_id=' . intval( $show_id ) . '&access_token=' . $token;
+
+            $response = $this->get( $url, 45 );
+
+            // Accept only a success flag with a non-empty result.
+            if ( ! is_wp_error( $response ) && isset( $response['success'], $response['result'] ) && $response['success'] === true && $response['result'] != '' ) {
+                $server_id_to_return = $response['result'];
+                /**
+                 * Filter how long a show's server id is cached, in seconds.
+                 *
+                 * Clamped to [1, 3600]. The transient name and value are frozen.
+                 *
+                 * @since 4.14.0
+                 *
+                 * @param int $seconds Lifetime; default 60.
+                 */
+                $ttl = wpstream_tunable( 'wpstream_server_id_cache_ttl', 60, HOUR_IN_SECONDS );
+                // Cache the result briefly and return it.
+                set_transient( $transient_name, $server_id_to_return, $ttl );
+                return $server_id_to_return;
+            }
+
+            // Any failure yields an empty string (not cached).
+            return '';
+    }
+
+    /**
+    * Deprecated misspelled alias of wpstream_retrieve_server_id_based_on_show_id().
+    *
+    * Kept because the method is public and may be called by external code.
+    *
+    * @deprecated 4.13.4 Use wpstream_retrieve_server_id_based_on_show_id() instead.
+    */
+    function retrive_server_id_based_on_show_id($show_id){
+            return $this->wpstream_retrieve_server_id_based_on_show_id( $show_id );
     }
     
     
@@ -422,13 +541,37 @@ class Wpstream_Live_Api_Connection  {
 		            && $previous_status !== 'active'
 	            ) {
 		            /**
-		             * Fires when a channel becomes active and is ready to stream.
+		             * Fires when the Channel status transitions to `active`
+		             * (the broadcaster has connected). This is NOT "Live": a
+		             * channel is Live only when it is active AND a playback URL
+		             * exists, and the playback URL may not exist yet at this
+		             * moment — do not embed a player from this hook. Fires once
+		             * per live session (guarded by the previously stored status).
 		             *
 		             * @param int   $channel_id Channel post ID.
 		             * @param array $response   API response data.
 		             * @param string $notes     Caller context from JS (e.g. wpstream_check_live_connections_on_start).
 		             */
 		            do_action( 'wpstream_channel_became_active', $channel_id, $response, $notes );
+	            }
+
+	            if (
+		            isset( $response['status'] )
+		            && in_array( $response['status'], array( 'stopped', 'stopping', 'ended' ), true )
+		            && $previous_status === 'active'
+	            ) {
+		            /**
+		             * Fires when a live channel stops streaming (counterpart of
+		             * wpstream_channel_became_active). Guarded by the previously
+		             * stored status, so it fires once per live session — repeat
+		             * polls after the stop see a non-active previous status and
+		             * do not re-fire it.
+		             *
+		             * @param int   $channel_id Channel post ID.
+		             * @param array $response   API response data.
+		             * @param string $notes     Caller context from JS.
+		             */
+		            do_action( 'wpstream_channel_became_inactive', $channel_id, $response, $notes );
 	            }
 
                 // When active with a broadcast URL, expose ingest details to the client.
@@ -541,17 +684,12 @@ class Wpstream_Live_Api_Connection  {
 
     public  function wpstream_check_event_status_api_call($channel_id,$notes){
 
-        // Resolve auth token + this site's host for the request.
-        $access_token   =   $this->wpstream_get_token();
+        // This site's host scopes the request; the token is injected by the transport.
         $domain         =   parse_url ( get_site_url() );
         $url            =   'channel/info';
 
-        // do not make the call if no token is available
-        if (!$access_token) return false;
-
         // Build the POST body; 'embed' asks the API to include embed data.
         $curl_post_fields=array(
-            'access_token'  =>  $access_token,
             'channel_id'    =>  $channel_id,
             'domain'        =>  $domain['host'],
 			'embed'         => true,
@@ -561,14 +699,19 @@ class Wpstream_Live_Api_Connection  {
 
 
 
-        // POST to channel/info (expect JSON, not quiet, plugin timeout constant).
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true, false,WPSTREAM_TIMEOUT_CONST);
+        // POST to channel/info; callers (and the JS poller) expect an array
+        // with success/error keys, so map a WP_Error onto that shape — except
+        // not-connected, which keeps the legacy `false` so Channel_State never
+        // caches a payload for an unlinked site.
+        $response = $this->authorized_request( $url, $curl_post_fields, WPSTREAM_TIMEOUT_CONST );
+        if ( is_wp_error( $response ) ) {
+            if ( 'wpstream_not_connected' === $response->get_error_code() ) {
+                return false;
+            }
+            return array( 'success' => false, 'error' => $response->get_error_message() );
+        }
 
-
-        // Decode and return the response as an associative array.
-        $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-
-        return $curl_response_decoded;
+        return $response;
 
 
     }
@@ -610,23 +753,21 @@ class Wpstream_Live_Api_Connection  {
 
     function api20_wpstream_update_event($response,$channel_id){
 
-        // Only arrays can be iterated into post meta.
-        if( is_array($response) )  {
-            $event_data_for_transient               =   array();
-            $transient_name                         =   'event_data_to_return_'.$channel_id;
-
-            // Mirror each response field into post meta and the transient payload.
-            foreach($response as $key=>$value){
-                update_post_meta($channel_id,$key,$value);
-                $event_data_for_transient[$key]=$value;
-            }
-            // Cache the assembled event data for 45 seconds.
-            set_transient($transient_name,$event_data_for_transient,45);
-            return $event_data_for_transient;
-        }else{
+        // Allowlist filtering and the status-cache write are owned by
+        // Wpstream_Channel_State (the cache's single writer); it returns the
+        // filtered payload, or false for a non-array response.
+        $event_data_for_transient = Wpstream_Channel_State::store( $channel_id, $response );
+        if ( false === $event_data_for_transient ) {
             // Non-array response: nothing to store.
             return false;
         }
+
+        // Mirror each stored field into post meta — same allowlisted set as
+        // the cache, so a response can never plant arbitrary meta keys.
+        foreach ( $event_data_for_transient as $key => $value ) {
+            update_post_meta( $channel_id, $key, $value );
+        }
+        return $event_data_for_transient;
 
 
     }
@@ -655,32 +796,25 @@ class Wpstream_Live_Api_Connection  {
             exit('not admin');
         }
 
-        // Read the target channel id and the raw posted option array.
-        $show_id        =   intval($_POST['show_id']);
-        $option_array   =   $_POST['option'];
+		$channel_id = intval( $_POST['show_id'] ?? 0 );
+		if ( ! $this->is_published_live_channel( $channel_id ) ) {
+			wp_send_json_error( array( 'success' => false, 'error' => 'invalid_channel' ), 400 );
+		}
 
-        // Sanitize each key/value pair before persisting.
-        $to_save_option=array();
-        foreach($option_array as $key=>$value){
-            $to_save_option[sanitize_key($key)]=sanitize_text_field($value);
-        }
+		$result = $this->channel_settings->apply(
+			array(
+				'type'       => 'save_customized',
+				'channel_id' => $channel_id,
+				'options'    => ( isset( $_POST['option'] ) && is_array( $_POST['option'] ) ) ? $_POST['option'] : array(),
+			)
+		);
 
-        // Low-latency or adaptive bitrate is incompatible with encryption.
-        if(   $to_save_option['low_latency'] == 1 ||   $to_save_option['adaptive_bitrate'] ==1 ){
-            $to_save_option['encrypt']=0;
-        }
+		if ( empty( $result['success'] ) ) {
+			wp_send_json_error( array( 'success' => false, 'error' => $result['error'] ?? 'invalid_value' ), 400 );
+		}
 
-        // Conversely, encryption disables low-latency and adaptive bitrate.
-        if(  $to_save_option['encrypt']==1){
-            $to_save_option['low_latency'] = 0;
-            $to_save_option['adaptive_bitrate'] =0;
-        }
-
-
-
-        // Save locally, then sync the resolved options up to the API.
-        update_post_meta ($show_id,'local_event_options',$to_save_option);
-        $this->wpstream_update_chanel_on_baker($show_id,$to_save_option);
+		$this->send_channel_settings_baker_result( $result );
+		wp_send_json( array( 'success' => true === ( $result['baker_success'] ?? false ) ) );
 
     }
 
@@ -710,11 +844,9 @@ class Wpstream_Live_Api_Connection  {
 			wp_send_json_error(['success' => false, 'message' => __('Missing parameters', 'wpstream')]);
 		}
 
-		// Load the global defaults and apply them to the given channel.
+		// Apply the Channel's resolved saved snapshot.
 		$show_id = intval($_POST['show_id']);
-		$default_channel_settings = get_option('wpstream_user_streaming_global_channel_options') ;
-
-		$this->wpstream_update_chanel_on_baker($show_id, $default_channel_settings);
+		$this->wpstream_update_channel_on_baker( $show_id, array() );
 	}
 
 	/**
@@ -741,41 +873,66 @@ class Wpstream_Live_Api_Connection  {
 			wp_send_json_error(['success' => false, 'message' => __('Missing parameters', 'wpstream')]);
 		}
 
-		// Read the channel id and the desired global/local flag.
-		$show_id                  = intval($_POST['show_id']);
-		$use_global_event_options = intval($_POST['use_global']);
-
-		// Persist the flag onto the channel post meta.
-		$result = update_post_meta(
-			$show_id,
-			'use_global_event_options',
-			$use_global_event_options
-		);
-
-		// update_post_meta returns false when the value is unchanged or fails.
-		if ( !$result ) {
-			wp_send_json_error(['success' => false, 'message' => __('Failed to update event', 'wpstream')]);
+		$channel_id = intval( $_POST['show_id'] );
+		if ( ! $this->is_published_live_channel( $channel_id ) ) {
+			wp_send_json_error( array( 'success' => false, 'error' => 'invalid_channel' ), 400 );
 		}
 
-		// Current local overrides for this channel (may be empty).
-		$local_event_options = get_post_meta($show_id,'local_event_options',true);
+		$result = $this->channel_settings->apply(
+			array(
+				'type'       => 'select_mode',
+				'channel_id' => $channel_id,
+				'mode'       => intval( $_POST['use_global'] ) ? 'defaults' : 'customized',
+			)
+		);
 
-		if( $use_global_event_options ) {
-			// Using global: sync the global option set to the API.
-			$global_event_options = get_option('wpstream_user_streaming_global_channel_options');
+		if ( empty( $result['success'] ) ) {
+			wp_send_json_error( array( 'success' => false, 'message' => __( 'Failed to update event', 'wpstream' ) ) );
+		}
 
-			$this->wpstream_update_chanel_on_baker( $show_id, $global_event_options );
-		} else {
-			// Using local: still need a baseline if none exists yet.
-			$global_event_options = get_option('wpstream_user_streaming_global_channel_options');
+		$this->send_channel_settings_baker_result( $result );
+		// The channel now resolves to a different settings map (its own, or its
+		// creation snapshot) than the one the modal on screen was rendered with.
+		// Return that map so the browser can repaint the switches: a bare
+		// {success} reply leaves stale switches, and the next option click would
+		// save those stale values over the channel's real settings.
+		wp_send_json(
+			array(
+				'success' => true === ( $result['baker_success'] ?? false ),
+				'mode'    => $result['state']['mode'] ?? '',
+				'options' => $result['state']['options'] ?? array(),
+			)
+		);
+	}
 
-			// if the local options are not set, we need to set them to the global ones
-			if ( !is_array($local_event_options) ) {
-				update_post_meta( $show_id, 'local_event_options', $global_event_options );
-			}
+	/**
+	 * Whether Channel Settings may mutate the requested post.
+	 *
+	 * @param int $channel_id Candidate post ID.
+	 * @return bool
+	 */
+	private function is_published_live_channel( $channel_id ) {
+		$post = get_post( $channel_id );
+		if ( ! $post instanceof WP_Post || 'publish' !== $post->post_status ) {
+			return false;
+		}
 
-			// Sync the global option set to the API.
-			$this->wpstream_update_chanel_on_baker( $show_id, $global_event_options );
+		return 'wpstream_product' === $post->post_type
+			|| ( 'product' === $post->post_type && has_term( 'live_stream', 'product_type', $post ) );
+	}
+
+	/** Preserve the legacy disconnected response emitted by settings AJAX Adapters. */
+	private function send_channel_settings_baker_result( $result ) {
+		$baker_result = $result['baker_result'] ?? null;
+		if ( is_wp_error( $baker_result ) && 'wpstream_not_connected' === $baker_result->get_error_code() ) {
+			wp_send_json(
+				array(
+					'is_record'  => '',
+					'connected'  => false,
+					'event_data' => '',
+					'error'      => esc_html__( 'You are not connected to wpstream.net! Please check your WpStream credentials!', 'wpstream' ),
+				)
+			);
 		}
 	}
 
@@ -790,47 +947,39 @@ class Wpstream_Live_Api_Connection  {
 	 * @return void Emits JSON success/error then dies.
 	 */
 	public function wpstream_update_default_channel_settings() {
-		// Settings-nonce gate (no explicit capability check here).
+		// CSRF gate, then authorization: writing site-wide defaults requires manage_options.
+		// The nonce alone is not authorization — anyone holding a valid settings nonce must
+		// still be an administrator to change these options.
 		check_ajax_referer( 'wpstream-settings-nonce', 'security' );
-
-		// Sanitize each posted option key/value.
-		$options_array= $_POST['option'];
-		$sanitized_options = array();
-		foreach( $options_array as $key => $value ) {
-			$sanitized_options[ sanitize_key( $key ) ] = sanitize_text_field( $value );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'success' => false ), 403 );
 		}
 
-		// Low-latency/ABR disable encryption...
-		if ( $sanitized_options['low_latency'] == 1 || $sanitized_options['adaptive_bitrate'] == 1 ) {
-			$sanitized_options['encrypt'] = 0;
+		// Sanitize each posted option key/value, keeping only keys the plugin defines.
+		// This is a fixed catalog (the global event options), so an arbitrary key set
+		// cannot inject unknown entries into the stored option.
+		$result = $this->channel_settings->apply(
+			array(
+				'type'    => 'save_defaults',
+				'options' => ( isset( $_POST['option'] ) && is_array( $_POST['option'] ) ) ? $_POST['option'] : array(),
+			)
+		);
+
+		if ( empty( $result['success'] ) ) {
+			wp_send_json_error( array( 'success' => false, 'error' => $result['error'] ?? 'invalid_value' ), 400 );
 		}
+
+		wp_send_json( array( 'success' => true ) );
+
+		// Low-latency/ABR disable encryption... (keys may be absent after allowlist filtering).
 
 		// ...and encryption disables low-latency/ABR (mutually exclusive).
-		if ( $sanitized_options['encrypt'] == 1 ) {
-			$sanitized_options['low_latency'] = 0;
-			$sanitized_options['adaptive_bitrate'] = 0;
-		}
 
-		// Persist the global defaults option.
-		$successful_update = update_option( 'wpstream_user_streaming_global_channel_options', $sanitized_options );
+		// Merge the posted keys onto the stored option rather than replacing it. The
+		// settings form only posts the channel toggles, so a plain update_option() would
+		// drop sibling keys the form never sends — notably the site-wide ses_encrypt flag.
 
-		if ( $successful_update ) {
-			// Saved (value changed).
-			wp_send_json(
-				array(
-					'success' => true,
-				)
-			);
-		} else {
-			// update_option returned false (unchanged value or failure).
-			wp_send_json_error(
-				array(
-					'success' => false,
-				)
-			);
-		}
-
-		wp_die();
+		// Persist the merged global defaults option.
 	}
 
 	/**
@@ -843,35 +992,72 @@ class Wpstream_Live_Api_Connection  {
 	 * @return void Emits JSON success/error then dies.
 	 */
 	public function wpstream_update_settings() {
-		// Settings-nonce gate (no explicit capability check here).
+		// CSRF gate, then authorization: this generic option writer requires manage_options.
+		// A valid settings nonce is not authorization on its own.
 		check_ajax_referer( 'wpstream-settings-nonce', 'security' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'success' => false ), 403 );
+		}
 
 		// Option identity and its field type drive the sanitization below.
-		$option_name    = sanitize_key( $_POST['option_name'] );
-		$option_type    = sanitize_key( $_POST['option_type'] );
+		$option_name    = sanitize_key( $_POST['option_name'] ?? '' );
+		$option_type    = sanitize_key( $_POST['option_type'] ?? '' );
+
+		// Only the settings-screen fields that auto-save through this endpoint may be written.
+		// This is an explicit allowlist rather than "any wpstream_ key": it deliberately excludes
+		// the credential options (api_username / api_password), which are never editable here.
+		// Deliberately not filterable: a filter would let any plugin re-open those
+		// credential options through admin-ajax.
+		$allowed_options = array(
+			'free_media_slug',
+			'free_media_slug_vod',
+			'stream_role',
+			'user_streaming_channel_type',
+			'user_streaming_default_price',
+			'global_sub',
+			'global_sub_id',
+			'product_not_login',
+			'product_not_bought',
+			'product_not_subscribe',
+			'product_thankyou',
+			'subscription_active',
+			'you_are_not_live',
+			'video_player_theme',
+			'player_logo_position',
+			'vod_autoplay',
+			'vod_start_muted',
+			'vod_domain_lock',
+			'vod_encrypt',
+		);
+		if ( ! in_array( $option_name, $allowed_options, true ) ) {
+			wp_send_json_error( array( 'success' => false ), 400 );
+		}
+
+		// Read the raw value once (may be a string or, for multi-selects, an array).
+		$raw_option_value = $_POST['option_value'] ?? '';
 
 		// Sanitize the incoming value per field type.
 		switch( $option_type ) {
 			case 'checkbox':
 				// Coerce to an int (0/1).
-				$option_value = filter_var( $_POST['option_value'], FILTER_VALIDATE_INT );
+				$option_value = filter_var( $raw_option_value, FILTER_VALIDATE_INT );
 				break;
 			case 'text':
 			case 'select':
 				// Single scalar text value.
-				$option_value = sanitize_text_field( $_POST['option_value'] );
+				$option_value = sanitize_text_field( $raw_option_value );
 				break;
 			case 'multiple-select':
 				// Expect an array; empty when not an array.
-				if ( !is_array( $_POST['option_value'] ) ) {
+				if ( !is_array( $raw_option_value ) ) {
 					$option_value = array();
 					break;
 				}
-				$option_value = array_map( 'sanitize_text_field', $_POST['option_value'] );
+				$option_value = array_map( 'sanitize_text_field', $raw_option_value );
 				break;
 			default:
 				// Fallback: treat as plain text.
-				$option_value = sanitize_text_field( $_POST['option_value'] );
+				$option_value = sanitize_text_field( $raw_option_value );
 		}
 
 		// Persist under a namespaced option name.
@@ -900,115 +1086,156 @@ class Wpstream_Live_Api_Connection  {
      * Push a channel's resolved streaming config to the API (channel/update).
      *
      * Builds CORS origin, key-access IP, record/encrypt/low-latency/ABR flags
-     * from the saved options and POSTs them. Prints the raw API response.
+     * from the saved options and POSTs them. Prints a minimal {success} JSON.
      *
      * @param int   $channel_id     Channel post ID.
-     * @param array $to_save_option Sanitized option map (record/encrypt/low_latency/adaptive_bitrate...).
-     * @return void Prints the API response then exits.
+     * @param array $to_save_option Retained for compatibility; the Module resolves the saved snapshot.
+     * @return void Prints a {success} JSON then exits.
      * @since 4.2
     */
 
 
-    public function wpstream_update_chanel_on_baker($channel_id,$to_save_option){
+    public function wpstream_update_channel_on_baker( $channel_id, $to_save_option = array() ) {
 
-        // Require a valid token; otherwise emit a "not connected" JSON and stop.
-        $access_token   =   $this->wpstream_get_token();
-        if($access_token==''){
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-            echo json_encode(   array(
-                    'is_record'     =>  '',
-                    'conected'      =>  false,
-                    'event_data'    =>  '',
-                    'error'         =>  esc_html('You are not connected to wpstream.net! Please check your WpStream credentials!','wpstream'),
-                ));
-            exit();
-        }
-        // Current user id (captured but not sent in the request below).
-        $current_user       =   wp_get_current_user();
-        $userID             =   $current_user->ID;
-
-
-
-        // (First $url assignment; overwritten to 'channel/update' below.)
-        $url            =   '/channel/update';
-        // Any per-channel local overrides, used only for the domain_lock check.
-        $local_event_options =   get_post_meta($channel_id,'local_event_options',true);
-
-        // Determine site host + scheme for CORS origin.
-        $domain         = parse_url ( get_site_url() );
-        $domain_scheme  =   'http';
-        if(is_ssl()){
-            $domain_scheme='https';
-        }
-
-        // Server IP allowed to fetch HLS keys; fall back to open range.
-        $domain_ip= esc_html( $_SERVER['SERVER_ADDR'] );
-        if($domain_ip==''){
-            $domain_ip="0.0.0.0/0";
-        }
-
-        // domain_lock off => allow any origin; on => restrict to this site.
-        $corsorigin='*';
-        if( isset($local_event_options['domain_lock']) && intval( $local_event_options['domain_lock']) ==0 ){
-            $corsorigin='*';
-        } else{
-            $corsorigin=$domain_scheme.'://'.$domain['host'];
-        }
-
-
-        // Actual endpoint path used for the request.
-        $url            =   'channel/update';
-
-
-        // Map the boolean record option to the API's string flag.
-        $to_record="false";
-        if($to_save_option['record']){
-            $to_record="true";
-        }
-
-        // Re-apply the encrypt vs low-latency/ABR mutual-exclusion rules.
-        if(   $to_save_option['low_latency'] == 1 ||   $to_save_option['adaptive_bitrate'] ==1 ){
-            $to_save_option['encrypt']=0;
-        }
-
-        if(  $to_save_option['encrypt']==1){
-            $to_save_option['low_latency'] = 0;
-            $to_save_option['adaptive_bitrate'] =0;
-        }
-
-
-        // Adaptive bitrate maps to the 'common' ABR profile, else none.
-        $abr='none';
-        if($to_save_option['adaptive_bitrate'] ==1 ){
-            $abr='common';
-        }
-
-
-
-        // Assemble the channel/update POST body.
-        $curl_post_fields=array(
-            'access_token'          =>  $access_token,
-            'channel_id'            =>  $channel_id,
-            'domain'                =>  $domain['host'],
-            'allow_access_from'     =>  $corsorigin,
-            'record'                =>  $to_record,
-            'encrypt'               =>  boolval($to_save_option['encrypt']),
-            'autostart'             =>  'true',
-            'low_latency'           =>  boolval($to_save_option['low_latency']),
-            'abr'                   =>  $abr,
-            'hls_keys_url_prefix'   =>  get_site_url().'?wpstream_livedrm=',
-            'allow_key_access_from' =>  $domain_ip,
-            'to_save_option'        =>  $to_save_option,
-        );
-
-
-
-        // POST to channel/update and echo the raw response back to the caller.
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-        print_r($curl_response);
-        exit();
+		$configuration = $this->channel_settings->prepare_baker( (int) $channel_id );
+		$response      = $this->synchronize_channel_settings( (int) $channel_id, $configuration );
+		wp_send_json(
+			array(
+				'success' => ! is_wp_error( $response ) && ! empty( $response['success'] ),
+			)
+		);
     }
+
+    /**
+    * Deprecated misspelled alias of wpstream_update_channel_on_baker().
+    *
+    * Kept because the method is public and may be called by external code.
+    *
+    * @deprecated 4.13.4 Use wpstream_update_channel_on_baker() instead.
+    */
+    public function wpstream_update_chanel_on_baker( $channel_id, $to_save_option = array() ) {
+        return $this->wpstream_update_channel_on_baker( $channel_id, $to_save_option );
+    }
+
+	/**
+	 * Address this site fetches HLS keys from, as sent to Baker in `allow_key_access_from`.
+	 *
+	 * Prefers the web server's own SERVER_ADDR. When that is absent (CLI, cron,
+	 * proxies, containers) the site's host name is resolved once and cached for
+	 * an hour. Only when resolution fails too does the value fall open to
+	 * 0.0.0.0/0, and a warning is written to the plugin log so the operator
+	 * can see that key delivery is not pinned to this server.
+	 *
+	 * @return string IPv4 address or '0.0.0.0/0'.
+	 */
+	public function wpstream_key_access_address() {
+		// The request's own server address is the best answer when present.
+		$server_addr = isset( $_SERVER['SERVER_ADDR'] ) ? (string) $_SERVER['SERVER_ADDR'] : '';
+		if ( false !== filter_var( $server_addr, FILTER_VALIDATE_IP ) ) {
+			return $server_addr;
+		}
+
+		// Otherwise use the resolved site address cached from an earlier request.
+		$cached = get_transient( 'wpstream_key_access_address' );
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		// Resolve the site's host name; gethostbyname() echoes the name back on failure.
+		$host     = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+		$resolved = '' !== $host ? gethostbyname( $host ) : '';
+		if ( false !== filter_var( $resolved, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+			set_transient( 'wpstream_key_access_address', $resolved, HOUR_IN_SECONDS );
+			return $resolved;
+		}
+
+		// Last resort: leave key access open and say so in the log.
+		$logger = new WpStream_Logger();
+		$logger->add( new WpStream_Log_Entry( array(
+			'type'        => 'error',
+			'description' => 'HLS key access left open (0.0.0.0/0): SERVER_ADDR is missing and "' . $host . '" could not be resolved.',
+		) ) );
+
+		return '0.0.0.0/0';
+	}
+
+	/**
+	 * The address or CIDR range allowed to fetch a channel's HLS keys.
+	 *
+	 * A filtered value is accepted only when it is an IP address or an
+	 * IP/prefix CIDR range; anything else keeps the detected address so a
+	 * malformed callback cannot open or break key delivery.
+	 *
+	 * @param int $channel_id Live Channel post ID.
+	 * @return string IP address or CIDR range.
+	 */
+	private function allow_key_access_from( $channel_id ) {
+		$detected = $this->wpstream_key_access_address();
+
+		/**
+		 * Filter the address allowed to fetch the channel's HLS keys.
+		 *
+		 * Use when keys are served from a different host than this site
+		 * (CDN, reverse proxy). Must be an IP or CIDR range.
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param string $address    Detected server address (or `0.0.0.0/0` when unknown).
+		 * @param int    $channel_id Live Channel post ID.
+		 */
+		$filtered = trim( (string) apply_filters( 'wpstream_allow_key_access_from', $detected, (int) $channel_id ) );
+
+		// Accept "ip" or "ip/prefix" only; the prefix is bounded by the address family.
+		$parts      = explode( '/', $filtered, 2 );
+		$is_ip      = false !== filter_var( $parts[0], FILTER_VALIDATE_IP );
+		$max_prefix = false !== filter_var( $parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ? 32 : 128;
+		$is_ok      = $is_ip && ( ! isset( $parts[1] ) || ( ctype_digit( $parts[1] ) && (int) $parts[1] <= $max_prefix ) );
+
+		return $is_ok ? $filtered : $detected;
+	}
+
+	/**
+	 * The URL prefix Baker's players fetch HLS keys from for a channel.
+	 *
+	 * @param int $channel_id Live Channel post ID.
+	 * @return string URL prefix the key name is appended to.
+	 */
+	private function hls_keys_url_prefix( $channel_id ) {
+		/**
+		 * Filter the HLS key delivery URL prefix.
+		 *
+		 * The key name is appended verbatim; the endpoint must answer with the
+		 * plugin's DRM key delivery (see Wpstream_Drm_Key_Delivery).
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param string $prefix     Default `{site_url}?wpstream_livedrm=`.
+		 * @param int    $channel_id Live Channel post ID.
+		 */
+		return esc_url_raw( (string) apply_filters( 'wpstream_hls_keys_url_prefix', get_site_url() . '?wpstream_livedrm=', (int) $channel_id ) );
+	}
+
+	/** Production Baker Adapter operation; authentication and HTTP remain connection-owned. */
+	public function synchronize_channel_settings( $channel_id, $configuration ) {
+		$domain    = wp_parse_url( get_site_url() );
+
+		return $this->authorized_request(
+			'channel/update',
+			array(
+				'channel_id'            => (int) $channel_id,
+				'domain'                => $domain['host'] ?? '',
+				'allow_access_from'     => $configuration['allow_access_from'],
+				'record'                => $configuration['record'],
+				'encrypt'               => $configuration['encrypt'],
+				'autostart'             => $configuration['autostart'],
+				'low_latency'           => $configuration['low_latency'],
+				'abr'                   => $configuration['abr'],
+				'hls_keys_url_prefix'   => $this->hls_keys_url_prefix( $channel_id ),
+				'allow_key_access_from' => $this->allow_key_access_from( $channel_id ),
+				'to_save_option'        => $configuration['options'],
+			)
+		);
+	}
 
 
 
@@ -1018,7 +1245,7 @@ class Wpstream_Live_Api_Connection  {
     * AJAX: stop a running channel (channel/stop).
     *
     * Requires a token and stream permission, then POSTs the stop request and
-    * echoes a connected/answer JSON payload.
+    * echoes a minimal connected/error JSON payload.
     * Endpoint: wp_ajax_wpstream_turn_of_channel.
     *
     * @return void Prints JSON then dies.
@@ -1041,18 +1268,7 @@ class Wpstream_Live_Api_Connection  {
         }
 
         // Require a valid token; otherwise emit a "not connected" JSON and stop.
-        $access_token   =   $this->wpstream_get_token();
-        if($access_token==''){
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-            echo json_encode(   array(
-                    'is_record'     =>  '',
-                    'conected'      =>  false,
-                    'event_data'    =>  '',
-                    'error'         =>  esc_html('You are not connected to wpstream.net! Please check your WpStream credentials!','wpstream'),
-                ));
-            exit();
-        }
+        $this->require_token_or_die();
         // Current user id (captured; not used further here).
         $current_user       =   wp_get_current_user();
         $userID             =   $current_user->ID;
@@ -1064,11 +1280,20 @@ class Wpstream_Live_Api_Connection  {
             exit('You are not allowed to stream.Code 407');
         }
 
+        /**
+         * Fires when an authorised stop request is about to be sent to Baker.
+         *
+         * @since 4.14.0
+         *
+         * @param int $channel_id Live Channel post ID.
+         * @param int $user_id    User who asked to stop the channel.
+         */
+        do_action( 'wpstream_channel_stop_requested', intval( $channel_id ), intval( $userID ) );
+
         // Build and send the channel/stop request.
         $url            =   'channel/stop';
         $domain         =   parse_url ( get_site_url() );
         $curl_post_fields=array(
-            'access_token'          =>  $access_token,
             'channel_id'            =>  $channel_id,
             'domain'                =>  $domain['host'],
 
@@ -1076,30 +1301,46 @@ class Wpstream_Live_Api_Connection  {
 
 
 
-        // POST to channel/stop and decode the response.
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-        $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-
-
+        // POST to channel/stop.
+        $response = $this->authorized_request( $url, $curl_post_fields );
 
         // Success => report connected; otherwise report already off / not found.
-        if( isset($curl_response_decoded['success']) && $curl_response_decoded['success']===true   ){
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-            echo json_encode(   array(
-                'conected'      =>  true,
-                'answer'        =>  $curl_response_decoded,
-            ));
-        }else{
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-            echo json_encode(   array(
-                'conected'      =>  false,
-                'error'         =>  esc_html__('Channel is already turned off or does not exist!','wpstream'),
-                'answer'        =>  $curl_response_decoded,
-            ));
+        // Only the outcome is returned — the decoded upstream response stays
+        // server-side (no JS consumer reads it, and it can carry API internals).
+        if ( ! is_wp_error( $response ) && isset( $response['success'] ) && $response['success'] === true ) {
+
+            // End-of-stream hook: fire once per live session. The stored
+            // status is the guard — only a channel still marked active
+            // transitions here, and persisting 'stopped' immediately keeps
+            // both this path and the status poll from firing again for the
+            // same session.
+            if ( get_post_meta( $channel_id, 'status', true ) === 'active' ) {
+                update_post_meta( $channel_id, 'status', 'stopped' );
+
+                /** This action is documented in wpstream_check_event_status() above. */
+                do_action( 'wpstream_channel_became_inactive', $channel_id, $response, 'wpstream_turn_of_channel' );
+            }
+
+            wp_send_json( array(
+                'connected' => true,
+            ) );
+        } else {
+            /**
+             * Fires when Baker refused (or failed) a stop request.
+             *
+             * @since 4.14.0
+             *
+             * @param int   $channel_id Live Channel post ID.
+             * @param array $response   Decoded upstream response; a transport
+             *                          failure is reported as array( 'error' => message ).
+             */
+            do_action( 'wpstream_channel_stop_failed', intval( $channel_id ), is_wp_error( $response ) ? array( 'error' => $response->get_error_message() ) : (array) $response );
+
+            wp_send_json( array(
+                'connected' => false,
+                'error'     => esc_html__( 'Channel is already turned off or does not exist!', 'wpstream' ),
+            ) );
         }
-        die();
 
 
 
@@ -1137,18 +1378,7 @@ class Wpstream_Live_Api_Connection  {
         }
 
         // Require a valid token; otherwise emit a "not connected" JSON and stop.
-        $access_token   =   $this->wpstream_get_token();
-        if($access_token==''){
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-            echo json_encode(   array(
-                    'is_record'     =>  '',
-                    'conected'      =>  false,
-                    'event_data'    =>  '',
-                    'error'         =>  esc_html('You are not connected to wpstream.net! Please check your WpStream credentials!','wpstream'),
-                ));
-            exit();
-        }
+        $access_token = $this->require_token_or_die();
 
         // Current user id (used as the request-by id for the API call).
         $current_user       =   wp_get_current_user();
@@ -1173,68 +1403,30 @@ class Wpstream_Live_Api_Connection  {
 
 
         // Decide whether to use this channel's local options or the global set.
-        $local_event_options = get_post_meta($channel_id,'local_event_options',true);
-		$use_global_event_options = get_post_meta($channel_id,'use_global_event_options',true);
-	    // Local options apply when they exist and global is not requested/enabled.
-	    $is_local_event_options_enabled = ( is_array( $local_event_options ) && empty( $use_global_event_options ) ) ||
-            ( !empty($use_global_event_options) && intval( $use_global_event_options ) === 0 );
-	    if( !$is_local_event_options_enabled ) {
-		    // Fall back to the site-wide global defaults.
-		    $local_event_options = get_option('wpstream_user_streaming_global_channel_options') ;
-	    }
+		$channel_configuration = $this->channel_settings->prepare_baker( $channel_id );
+		$is_autostart          = $channel_configuration['autostart'];
+		$is_record             = $channel_configuration['record'];
+		$is_encrypt            = $channel_configuration['encrypt'] ? 'true' : 'false';
+		$low_latency           = $channel_configuration['low_latency'] ? 'true' : 'false';
+		$adaptive_bitrate      = 'common' === $channel_configuration['abr'] ? 'true' : 'false';
+		$corsorigin            = $channel_configuration['allow_access_from'];
 
-	    // API flags default to string "true"/"false" (the API expects strings).
-	    $is_autostart="true";
-	    $is_encrypt="false";
-	    $low_latency="false";
-	    $adaptive_bitrate="false";
-	    $is_record="false";
-	    $corsorigin='*';
+		/**
+		 * Fires when a go-live request passed ownership and streaming permission,
+		 * just before Baker is asked to start the channel. Quota has only been
+		 * read to pick the feature tier; it is enforced upstream and an exhausted
+		 * account surfaces through wpstream_channel_start_failed.
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param int   $channel_id    Live Channel post ID.
+		 * @param int   $user_id       User who asked to go live.
+		 * @param array $configuration Resolved Channel Settings in Baker's
+		 *                             flag conventions (record, encrypt, ...).
+		 */
+		do_action( 'wpstream_channel_start_requested', intval( $channel_id ), intval( $userID ), $channel_configuration );
 
 	    // Translate the resolved option map into the API flag strings.
-	    if ( is_array($local_event_options) ) {
-
-		    // Encryption enabled?
-		    if ( isset($local_event_options['encrypt']) &&
-		         intval( $local_event_options['encrypt']) == 1 ) {
-			    $is_encrypt = "true";
-		    }
-
-		    // Low-latency enabled?
-		    if ( isset($local_event_options['low_latency']) &&
-		         intval( $local_event_options['low_latency']) == 1 ) {
-			    $low_latency = "true";
-		    }
-
-		    // Adaptive bitrate enabled?
-		    if ( isset($local_event_options['adaptive_bitrate']) &&
-		         intval( $local_event_options['adaptive_bitrate']) == 1 ) {
-			    $adaptive_bitrate = "true";
-		    }
-
-		    // Recording enabled?
-		    if ( isset($local_event_options['record']) &&
-		         intval( $local_event_options['record']) == 1 ) {
-			    $is_record = "true";
-		    }
-
-		    // domain_lock unset or 0 => allow any origin.
-		    if ( !isset($local_event_options['domain_lock']) || intval( $local_event_options['domain_lock']) == 0 ) {
-			    $corsorigin = '*';
-		    }
-	    }
-
-	    // Encryption is incompatible with ABR/low-latency: turn it off if either is on.
-	    if( $adaptive_bitrate=="true" || $low_latency=="true" ) {
-		    $is_encrypt="false";
-	    }
-
-	    // Conversely, encryption forces ABR/low-latency off.
-	    if( $is_encrypt=="true" ) {
-		    $adaptive_bitrate="false";
-		    $low_latency="false";
-	    }
-
 	    // Fire the channel/start request with the resolved flags.
 	    $event_data = $this->wpstream_request_live_stream_uri(
 		    $channel_id,
@@ -1251,19 +1443,29 @@ class Wpstream_Live_Api_Connection  {
 
         // Success => return the event data with connected:true.
         if( isset($event_data['success']) && $event_data['success']===true   ){
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-            echo json_encode(   array(
-                'is_record'     =>  $is_record,
-                'conected'      =>  true,
-                'event_data'    =>  $event_data,
+            /**
+             * Fires when Baker issued the ingest for a channel — earlier than
+             * wpstream_channel_became_active, which waits for the status poll.
+             * The ingest credentials are deliberately not passed.
+             *
+             * @since 4.14.0
+             *
+             * @param int $channel_id Live Channel post ID.
+             * @param int $user_id    User who went live.
+             */
+            do_action( 'wpstream_channel_started', intval( $channel_id ), intval( $userID ) );
 
-                ));
+            wp_send_json( array(
+                'is_record'   => $is_record,
+                'connected'   => true,
+                'event_data'  => $event_data,
+            ) );
         }else{
             // Failure => map known error codes to a friendly message.
             $default_error= 'Failed to turn channel ON. Please try again in a few minutes.';
+            $plumer_error = '';
             if( isset($event_data['error'])){
-                $plumer_error = $event_data['error'];
+                $plumer_error = is_scalar( $event_data['error'] ) ? (string) $event_data['error'] : 'unknown';
                 switch ($plumer_error) {
                     case 'NOT_ENOUGH_TRAFFIC':
                         // Quota exhausted: prompt an upgrade.
@@ -1273,39 +1475,29 @@ class Wpstream_Live_Api_Connection  {
                 }
 
             }
-            // cleanup any previous echo before sending json
-            ob_end_clean();
-            echo json_encode(   array(
-                'is_record'     =>  $is_record,
-                'conected'      =>  false,
-                'event_data'    =>  $event_data,
-                'error'         =>  $default_error,
 
-
-                ));
+            /**
+             * Fires when Baker refused to start a channel.
+             *
+             * @since 4.14.0
+             *
+             * @param int    $channel_id Live Channel post ID.
+             * @param string $error_code Upstream error code (e.g. NOT_ENOUGH_TRAFFIC,
+             *                           provisioning_failed), '' when none was given,
+             *                           'unknown' when it was not a scalar.
+             * @param int    $user_id    User who asked to go live.
+             */
+            do_action( 'wpstream_channel_start_failed', intval( $channel_id ), $plumer_error, intval( $userID ) );
+            // The raw upstream response stays server-side: the JS failure path
+            // only reads `error`, and upstream objects can carry API internals.
+            wp_send_json( array(
+                'is_record'   => $is_record,
+                'connected'   => false,
+                'event_data'  => '',
+                'error'       => $default_error,
+            ) );
         }
-        die();
     }
-
-	/**
-	 * Whether the current user is on the "streamify" HLS-proxy path.
-	 *
-	 * Currently hard-disabled (returns false); the quota-based logic is retained
-	 * commented-out for reference.
-	 *
-	 * @return bool Always false.
-	 */
-	public function wpstream_is_streamify_user() {
-		return false;
-//		global $wpstream_plugin;
-//		$pack_details = $wpstream_plugin->main->quota_manager->get_live_quota_data( 'wpstream_is_streamify_user' );
-//
-//		if ( isset( $pack_details['available_data'] ) && $pack_details['available_data'] <= 0 ) {
-//			return true;
-//		}
-//		return false;
-	}
-
 
     /**
      * Send the channel/start request that turns a channel live.
@@ -1341,23 +1533,28 @@ class Wpstream_Live_Api_Connection  {
 		$on_boarding,
 		$basic_streaming
     ) {
+			if ( $this->streaming_content_creation ) {
+				$provisioning = $this->streaming_content_creation->ensure_provisioned( intval( $schannel_id ) );
+				if ( empty( $provisioning['success'] ) ) {
+					return array(
+						'success' => false,
+						'error'   => 'provisioning_failed',
+					);
+				}
+			}
 
-            // Resolve site host + scheme for CORS.
+            // Resolve site host + scheme for CORS. The scheme comes from the
+            // site URL, not is_ssl(): the latter describes the current request
+            // and is false under wp-cli/cron and behind SSL-terminating
+            // proxies, which would pin the origin to http:// on an https site.
             $domain         = parse_url ( get_site_url() );
-            $domain_scheme  =   'http';
-            if(is_ssl()){
-                $domain_scheme='https';
-            }
+            $domain_scheme  = isset( $domain['scheme'] ) ? $domain['scheme'] : 'http';
 
-            // Server IP allowed to fetch HLS keys; fall back to open range.
-            $domain_ip= esc_html( $_SERVER['SERVER_ADDR'] );
-            if($domain_ip==''){
-                $domain_ip="0.0.0.0/0";
-            }
-
-            // If not fully open, lock CORS to this site's scheme+host.
-            if($corsorigin!='*'){
-                $corsorigin=$domain_scheme.'://'.$domain['host'];
+            // The origin comes resolved from the Channel Settings Module (site
+            // origin when domain-locked, `*` or a filtered origin otherwise);
+            // only an empty value falls back to this site.
+            if ( '' === trim( (string) $corsorigin ) ) {
+                $corsorigin = $domain_scheme . '://' . $domain['host'];
             }
 
             // Adaptive bitrate maps to the 'common' ABR profile.
@@ -1376,9 +1573,8 @@ class Wpstream_Live_Api_Connection  {
             // Normalise basic-streaming to a string flag used as the gate below.
             $basic_streaming = $basic_streaming ? 'true' : 'false';
 
-            // Endpoint + auth token.
+            // Endpoint; the auth token is injected by the transport.
             $url            =   'channel/start';
-            $access_token   =   $this->wpstream_get_token();
 
             // Metadata sent with the start request (plugin version, onboarding, permalink).
             $metadata_array=array(
@@ -1393,9 +1589,22 @@ class Wpstream_Live_Api_Connection  {
                 $metadata_array['permalink'] = $permalink;
             }
 
+            /**
+             * Filter the metadata sent with channel/start.
+             *
+             * Stored by the WpStream cloud alongside the session (plugin
+             * version, onboarding flag, permalink); add tenant or campaign
+             * identifiers here. Never put credentials in it.
+             *
+             * @since 4.14.0
+             *
+             * @param array $metadata   Key/value metadata (JSON-encoded for transport).
+             * @param int   $channel_id Live Channel post ID.
+             */
+            $metadata_array = (array) apply_filters( 'wpstream_channel_start_metadata', $metadata_array, (int) $schannel_id );
+
             // Build the channel/start body; advanced flags gated by $basic_streaming.
             $curl_post_fields=array(
-                'access_token'          =>  $access_token,
                 'channel_id'            =>  $schannel_id,
                 'domain'                =>  $domain['host'],
                 'allow_access_from'     =>  $corsorigin,
@@ -1403,19 +1612,21 @@ class Wpstream_Live_Api_Connection  {
                 'encrypt'               =>  $basic_streaming ? $is_encrypt : 'false',
                 'low_latency'           =>  $basic_streaming ? $low_latency : 'false',
                 'abr'                   =>  $basic_streaming ? $abr : 'none',
-                'hls_keys_url_prefix'   =>  get_site_url().'?wpstream_livedrm=',
-                'allow_key_access_from' =>  $domain_ip,
+                'hls_keys_url_prefix'   =>  $this->hls_keys_url_prefix( $schannel_id ),
+                'allow_key_access_from' =>  $this->allow_key_access_from( $schannel_id ),
                 'metadata'              =>  json_encode($metadata_array),
                 'autostart'             =>  'true',
               //  'fakeError'             =>  'init'
             );
 
 
-            // POST to channel/start, decode and return the response.
-            $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-            $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-            // $curl_response_decoded['curl_post_fields']=$curl_post_fields;
-            return $curl_response_decoded;
+            // POST to channel/start; callers read success/error array keys,
+            // so map a WP_Error (not-connected included) onto that shape.
+            $response = $this->authorized_request( $url, $curl_post_fields );
+            if ( is_wp_error( $response ) ) {
+                return array( 'success' => false, 'error' => $response->get_error_message() );
+            }
+            return $response;
 
 
 
@@ -1447,12 +1658,43 @@ class Wpstream_Live_Api_Connection  {
         if ( false === $token || $token === '' || $token=== NULL ) {
             $token = $this->wpstream_club_get_token();
             if ($token !== false){
-                // Cache a good token for ~58 minutes.
-                set_transient( 'wpstream_token_api', $token ,3500);
+                /**
+                 * Filter how long a good cloud access token is cached, in seconds.
+                 *
+                 * Clamped to [1, 3500]: the cloud expires the token itself after
+                 * an hour, so the cache can only be shortened. The token value
+                 * and transient name are never filterable.
+                 *
+                 * @since 4.14.0
+                 *
+                 * @param int $seconds Lifetime; default 3500.
+                 */
+                $ttl = wpstream_tunable( 'wpstream_api_token_ttl', 3500, 3500 );
+                set_transient( 'wpstream_token_api', $token, $ttl );
             }
             else {
-                // cache the failed response for a second, otherwise it'll make a shitload of requests
-                set_transient( 'wpstream_token_api', 'failed' , 1);
+                /**
+                 * Filter how long a failed login is remembered before the next
+                 * attempt, in seconds. Clamped to [1, 300]: without it every
+                 * request would retry the login.
+                 *
+                 * @since 4.14.0
+                 *
+                 * @param int $seconds Cool-down; default 1.
+                 */
+                $failure_ttl = wpstream_tunable( 'wpstream_api_token_failure_ttl', 1, 5 * MINUTE_IN_SECONDS );
+                set_transient( 'wpstream_token_api', 'failed', $failure_ttl );
+
+                /**
+                 * Fires when the WpStream account could not be authenticated
+                 * (wrong or revoked credentials, API down).
+                 *
+                 * Deliberately has no arguments: neither credentials nor the
+                 * token are ever exposed.
+                 *
+                 * @since 4.14.0
+                 */
+                do_action( 'wpstream_api_authentication_failed' );
             }
         }
         // The 'failed' sentinel maps to false for callers.
@@ -1470,9 +1712,9 @@ class Wpstream_Live_Api_Connection  {
      * @since 3.0.1
      */
     protected function wpstream_club_get_token(){
-        // Stored WpStream credentials.
-        $username       = get_option('wpstream_api_username','');
-        $password       = get_option('wpstream_api_password','');
+        // WpStream credentials: wp-config constants win over the stored options.
+        $username       = wpstream_get_api_username();
+        $password       = wpstream_get_api_password();
 
         // No credentials configured: nothing to do.
         if ( $username=='' || $password==''){
@@ -1486,13 +1728,12 @@ class Wpstream_Live_Api_Connection  {
             'username'   => $username,
             'password'   => $password
         );
-        // POST to access_token and decode the response object.
-        $curl_response    = $this->wpstream_baker_do_curl_base($url, $curl_post_fields, true);
-		$response         = json_decode($curl_response);
+        // POST to access_token.
+        $response = $this->request( $url, $curl_post_fields );
 
         // Return the token when present, otherwise signal failure.
-        if( isset( $response->access_token ) && $response->access_token != '' ) {
-            return $response->access_token;
+        if ( ! is_wp_error( $response ) && isset( $response['access_token'] ) && $response['access_token'] != '' ) {
+            return $response['access_token'];
         } else {
              return false;
         }
@@ -1506,18 +1747,6 @@ class Wpstream_Live_Api_Connection  {
     
  
     
-    /**
-    * Return the current user's package/quota data (delegated to the quota service).
-    *
-    * @param string $context Caller label for logging/telemetry.
-    * @return mixed Pack data as returned by the quota service.
-    * @since 3.0.1
-    */
-
-    public function wpstream_request_pack_data_per_user($context = ''){
-		return $this->user_quota_service->request_pack_data_per_user( $context );
-    }
-
 	/**
 	 * Accessor for the composed user-quota service.
 	 *
@@ -1545,6 +1774,17 @@ class Wpstream_Live_Api_Connection  {
 	 */
 	public function wpstream_create_channel( $channel_id, $domain = null ) {
 		return $this->channel_service->create_channel( $channel_id, $domain );
+	}
+
+	/**
+	 * Delete a remote channel (delegated to the channel service).
+	 *
+	 * @param int         $channel_id Channel post ID.
+	 * @param string|null $domain     Optional domain override.
+	 * @return mixed Result from the channel service.
+	 */
+	public function wpstream_delete_channel( $channel_id, $domain = null ) {
+		return $this->channel_service->delete_channel( $channel_id, $domain );
 	}
 
 
@@ -1575,22 +1815,6 @@ class Wpstream_Live_Api_Connection  {
 	}
 
 
-    /**
-    * Report whether the API is reachable.
-    *
-    * Currently a stub that always reports available.
-    *
-    * @return bool Always true.
-    * @since 3.0.1
-    */
-
-    function wpstream_client_check_api_status(){
-        return true;
-    }
-
-
-
-
 
     /**
     * Return the current user's active live events, keyed by channel id.
@@ -1598,11 +1822,10 @@ class Wpstream_Live_Api_Connection  {
     * Gated by the site's stream permission; delegates the API call to
     * wpstream_request_live_stream_for_user() (channel/list).
     *
-    * @param string $with_exit Legacy flag; both branches return early (no output).
     * @return array Map of channel_id => event data (empty when none/not permitted).
     * @since 3.0.1
     */
-    public function wpstream_get_live_event_for_user($with_exit='yes'){
+    public function wpstream_get_live_event_for_user(){
         // Identify the current user.
         $current_user       =   wp_get_current_user();
         $userID             =   $current_user->ID;
@@ -1610,13 +1833,7 @@ class Wpstream_Live_Api_Connection  {
         // Bail (empty) when the user is not allowed to stream.
         global $wpstream_plugin;
         if( !$wpstream_plugin->main->wpstream_check_user_can_stream() ){
-            if($with_exit=='yes'){
-               // esc_html_e ('You are not allowed to start a live stream !','wpstream');
-                return;
-            }else{
-                return;
-            }
-
+            return;
         }
 
 
@@ -1660,27 +1877,19 @@ class Wpstream_Live_Api_Connection  {
 
 
         $url            =   'channel/list';
-        $access_token   =   $this->wpstream_get_token();
 
-        // do not make the call if no token is available
-        if (!$access_token) return false;
-
-        // Request only currently-active channels.
+        // Request only currently-active channels; the token is injected by the transport.
         $curl_post_fields=array(
-                'access_token'  =>  $access_token,
                 'domain'        =>  $domain['host'],
                 'status'        =>  'active'
             );
-        // POST to channel/list and decode.
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-        $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-
-
+        // POST to channel/list; not-connected and transport failures both map to false below.
+        $response = $this->authorized_request( $url, $curl_post_fields );
 
         // Return the channels array on success, false otherwise.
-        if( isset($curl_response_decoded['success']) && $curl_response_decoded['success']==true   ){
-            return $curl_response_decoded['channels'];
-        }else{
+        if ( ! is_wp_error( $response ) && isset( $response['success'], $response['channels'] ) && $response['success'] == true ) {
+            return $response['channels'];
+        } else {
             return false;
         }
 
@@ -1708,7 +1917,17 @@ class Wpstream_Live_Api_Connection  {
         // Cache miss: fetch fresh channel list and cache it.
         if($result===false){
             $result = $this->wpstream_request_live_stream_for_user('');
-            set_transient('wpstream_live_stream_for_user_for_shortcode',$result,30);
+            /**
+             * Filter how long the account's active-channel list is cached for
+             * shortcodes, in seconds. Clamped to [1, 300] so a channel that
+             * just went live shows up within minutes.
+             *
+             * @since 4.14.0
+             *
+             * @param int $seconds Lifetime; default 30.
+             */
+            $ttl = wpstream_tunable( 'wpstream_active_channels_cache_ttl', 30, 5 * MINUTE_IN_SECONDS );
+            set_transient( 'wpstream_live_stream_for_user_for_shortcode', $result, $ttl );
         }
 
         // Reduce the channel entries to just their ids.
@@ -1720,20 +1939,6 @@ class Wpstream_Live_Api_Connection  {
         return $return_array;
      }
 
-
-
-    /**
-    * AJAX: delete/close an event.
-    *
-    * Endpoint: wp_ajax_wpstream_close_event. Placeholder — not implemented.
-    *
-    * @return void
-    * @since 3.0.1
-    */
-
-    public function wpstream_close_event(){
-          //not implemented yet
-    }
 
 
     /**
@@ -1753,26 +1958,17 @@ class Wpstream_Live_Api_Connection  {
 
 
         $url            =   'video/upload';
-        $access_token   =   $this->wpstream_get_token();
 
-        // do not make the call if no token is available
-        if (!$access_token) return array(
-            'success'      =>  false,
-            'error'        =>  'not_connected',
-        );
+        // POST to video/upload with an empty body (token injected by the
+        // transport); return the signed form. Not-connected keeps the literal
+        // 'not_connected' error string the admin JS checks.
+        $response = $this->authorized_request( $url, array() );
+        if ( is_wp_error( $response ) ) {
+            $error = 'wpstream_not_connected' === $response->get_error_code() ? 'not_connected' : $response->get_error_message();
+            return array( 'success' => false, 'error' => $error );
+        }
 
-        // POST to video/upload with just the token; decode the signed form.
-        $curl_post_fields=array(
-               'access_token'  =>  $access_token,
-        );
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-        $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-
-
-       // Return the decoded signed form (the exit() below is unreachable).
-       return $curl_response_decoded;
-       exit();
-
+        return $response;
     }
 
 
@@ -1843,28 +2039,27 @@ class Wpstream_Live_Api_Connection  {
 
 
         $url            =   'video/list';
-        $access_token   =   $this->wpstream_get_token();
 
-        // do not make the call if no token is available
-        if (!$access_token) return false;
+        // POST to video/list with an empty body (token injected by the transport).
+        $response = $this->authorized_request( $url, array() );
 
-        // POST to video/list with just the token.
-        $curl_post_fields=array(
-               'access_token'  =>  $access_token,
-        );
-
-        // Current admin screen (fetched but not used in the request).
-        $current_page= get_current_screen();
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-        $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-
-
-
+        // Not-connected keeps the legacy false return so callers can tell it
+        // from an API failure (empty array).
+        if ( is_wp_error( $response ) && 'wpstream_not_connected' === $response->get_error_code() ) {
+            return false;
+        }
 
         // Return full payload on success, empty array on failure.
-        if( isset($curl_response_decoded['success']) && $curl_response_decoded['success']==true   ){
-            return $curl_response_decoded;
-        }else{
+        if ( ! is_wp_error( $response ) && isset( $response['success'] ) && $response['success'] == true ) {
+            /**
+             * Filter the cloud recordings listing shown on the Recordings screen.
+             *
+             * @since 4.14.0
+             *
+             * @param array $listing Decoded video/list payload (`videos` holds the entries).
+             */
+            return (array) apply_filters( 'wpstream_recordings_list', $response );
+        } else {
            return array();
         }
 
@@ -1884,6 +2079,8 @@ class Wpstream_Live_Api_Connection  {
 
     function wpstream_get_download_link(){
 
+        // CSRF gate: the recordings-list JS sends this nonce as 'security'.
+        check_ajax_referer( 'wpstream_recordings_nonce', 'security' );
         // Admin-only guard.
         if( !current_user_can('administrator') ){
             exit('not admin on get_download_link');
@@ -1892,23 +2089,17 @@ class Wpstream_Live_Api_Connection  {
         // Target video name from the request.
         $video_name                 =   sanitize_text_field($_POST['video_name']);
 
-        $url            =   'video/download';
-        $access_token   =   $this->wpstream_get_token();
-
-        // do not make the call if no token is available
-        if (!$access_token) return false;
-
-        // POST to video/download and echo the raw response (a link payload).
-        $curl_post_fields=array(
-            'access_token'  =>  $access_token,
-            'name'          =>  $video_name,
-        );
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields);
-        print $curl_response;
-        exit();
-
-
-
+        // POST to video/download and return the link payload as JSON; the
+        // token is injected by the transport. Not-connected keeps the legacy
+        // silent return (no JSON emitted).
+        $response = $this->authorized_request( 'video/download', array( 'name' => $video_name ) );
+        if ( is_wp_error( $response ) ) {
+            if ( 'wpstream_not_connected' === $response->get_error_code() ) {
+                return false;
+            }
+            wp_send_json( array( 'success' => false, 'error' => $response->get_error_message() ) );
+        }
+        wp_send_json( $response );
     }
 
 
@@ -1922,6 +2113,8 @@ class Wpstream_Live_Api_Connection  {
     * @since 3.0.1
     */
     public function wpstream_get_delete_file(){
+        // CSRF gate: the recordings-list JS sends this nonce as 'security'.
+        check_ajax_referer( 'wpstream_recordings_nonce', 'security' );
         // Admin-only guard.
         if( !current_user_can('administrator') ){
             exit('not admin on get_delete_file');
@@ -1931,26 +2124,27 @@ class Wpstream_Live_Api_Connection  {
         $video_name                 =   esc_html($_POST['video_name']);
 
 
-        $url            =   'video/delete';
-        $access_token   =   $this->wpstream_get_token();
-
-        // do not make the call if no token is available
-        if (!$access_token) return false;
-
-        // POST to video/delete; response decoded (into unused var) then echoed raw.
-        $curl_post_fields=array(
-            'access_token'  =>  $access_token,
-            'name'=>$video_name,
-        );
-        $curl_response          =   $this->wpstream_baker_do_curl_base($url,$curl_post_fields,true);
-        $curl_response_decoded  =   json_decode($curl_response,JSON_OBJECT_AS_ARRAY);
-
-
-        print $curl_response;
-
-        exit();
-
-
+        // POST to video/delete and return the outcome payload as JSON; the
+        // token is injected by the transport. Not-connected keeps the legacy
+        // silent return (no JSON emitted).
+        $response = $this->authorized_request( 'video/delete', array( 'name' => $video_name ) );
+        if ( is_wp_error( $response ) ) {
+            if ( 'wpstream_not_connected' === $response->get_error_code() ) {
+                return false;
+            }
+            wp_send_json( array( 'success' => false, 'error' => $response->get_error_message() ) );
+        }
+        if ( ! empty( $response['success'] ) ) {
+            /**
+             * Fires after the cloud confirmed a recording was deleted.
+             *
+             * @since 4.14.0
+             *
+             * @param string $video_name Recording file name.
+             */
+            do_action( 'wpstream_recording_deleted', $video_name );
+        }
+        wp_send_json( $response );
     }
 
 

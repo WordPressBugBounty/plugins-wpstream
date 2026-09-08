@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Elementor base class plus the control and box-shadow helpers used below.
 use Elementor\Widget_Base;
 use Elementor\Controls_Manager;

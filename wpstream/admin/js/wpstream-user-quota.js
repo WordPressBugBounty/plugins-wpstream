@@ -77,8 +77,9 @@ function wpstream_format_hours(hours, decimals) {
 function wpstream_fetch_and_update_quota() {
 	// Record when this fetch happened for the visibility-based staleness check.
 	lastQuotaDate = new Date();
-	// Build the admin-ajax endpoint URL from the localized admin base URL.
-	var ajaxurl = wpstream_start_streaming_vars.admin_url + 'admin-ajax.php';
+	// Use this script's own localized admin base URL: the start-streaming script (and
+	// its variables) is not loaded on every screen this widget appears on.
+	var ajaxurl = wpstream_user_quota_vars.admin_url + 'admin-ajax.php';
 	// Security nonce read from a hidden field on the page.
 	var nonce          = jQuery('#wpstream_notice_nonce').val();
 
@@ -118,8 +119,8 @@ function wpstream_fetch_and_update_quota() {
 			}
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
-			// Log transport/parse errors for debugging.
-			console.log(jqXHR, textStatus, errorThrown);
+			// Log the transport/parse error status only — never the response payload.
+			console.error('WpStream: quota refresh failed:', textStatus);
 		}
 	});
 }

@@ -151,9 +151,9 @@ function wpstream_watch_later() {
             return;
         }
 
-        // Target post id, nonce placeholder, and endpoint.
+        // Target post id, localized watch-later nonce, and endpoint.
         const postID = item.attr('data-postID');
-        const nonce = 'nonce';
+        const nonce = wpstreamPluginScriptsVars.watch_later_nonce;
         const wpstream_admin_ajax_url = wpstreamPluginScriptsVars.ajaxurl;
         jQuery.ajax({
             type: 'POST',

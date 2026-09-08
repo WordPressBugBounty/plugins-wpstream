@@ -110,10 +110,9 @@ if ( ! class_exists( 'Wpstream_Recent_Comments_Widget' ) ) {
 							<!-- Comment author display name. -->
 							<span class="wpstream-recent-comment-author "><?php echo esc_html( get_comment_author( $comment ) ); ?></span>
 							<?php
-								// Show a relative "time ago" label when the helper exists.
-								if ( function_exists( 'wpstream_get_published_duration_by_date_time ' ) ) {
-									echo '<span class="wpstream-recent-comment-date text-gray">' . esc_html( wpstream_get_published_duration_by_date_time( $comment->comment_date ) ) . '</span>';
-								}
+								// Show a relative "time ago" label for the comment date.
+								// translators: %s - human-readable time difference, e.g. "5 mins".
+								echo '<span class="wpstream-recent-comment-date text-gray">' . esc_html( sprintf( __( '%s ago', 'hello-wpstream' ), human_time_diff( get_comment_date( 'U', $comment ), current_time( 'timestamp' ) ) ) ) . '</span>';
 							?>
 						</p>
 						<!-- The comment text/excerpt. -->

@@ -23,6 +23,12 @@
 
 
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Build the markup for the Featured Video Items carousel.
  *
@@ -530,9 +536,8 @@ if ( ! function_exists( 'wpstream_theme_return_all_taxomy_array' ) ) {
  * @return string Buffered HTML for the featured card.
  */
 function wpstream_theme_featured_video( $attributes ) { //phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	// Player scripts required to play the featured item.
-	wp_enqueue_script('video.min');
-	wp_enqueue_script('wpstream-player');
+	// Player assets (scripts + styles) required to play the featured item.
+	wpstream_enqueue_player_assets();
 
 	// Card inputs; $preview_video is consumed by the included template.
 	$postId = intval( $attributes['id'] );

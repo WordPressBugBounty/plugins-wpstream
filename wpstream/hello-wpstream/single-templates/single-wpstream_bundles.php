@@ -12,6 +12,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Output the theme header.
 get_header();
 // Whether the free-to-view sidebar should be shown for this layout.
@@ -48,7 +54,7 @@ if ( ! file_exists( $template_path ) ) {
                 <div class="wpstream_player_wrapper wpstream_player_shortcode">
                     <div class="wpstream_player_container">
                         <!-- Poster still, shown until the trailer plays. -->
-                        <div class="wpstream_video_poster_holder wpstream_hide_on_trailer" style="background-image:url('<?php echo esc_attr($poster_url);?>'"></div>
+                        <div class="wpstream_video_poster_holder wpstream_hide_on_trailer" style="background-image:url('<?php echo esc_attr($poster_url);?>')"></div>
                         <!-- Gradient overlay, hidden once playback starts. -->
                         <div class="wpstream_player_container_gradient wpstream_hide_on_play"></div>
 

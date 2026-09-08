@@ -4,16 +4,23 @@
  *
  * Loaded from integrations.php when BuddyPress (or BuddyBoss) is active. It adds
  * a "Live Video" tab to member profiles where a user can pick one of their free
- * channels and drive its live-stream controls, injects live players into the
- * activity timeline, keeps activity items in sync with the channel's live/ended
- * status, and whitelists the extra HTML/data attributes the player markup needs
- * so BuddyBoss's activity sanitizer does not strip them. AJAX handlers back the
- * channel picker and the timeline player generation.
+ * channels and drive its live-stream controls, posts a live-player activity to
+ * the timeline from the `wpstream_channel_became_active` hook and closes it on
+ * `wpstream_channel_became_inactive`, keeps activity items in sync with the
+ * channel's live/ended status, and whitelists the extra HTML/data attributes
+ * the player markup needs so BuddyBoss's activity sanitizer does not strip
+ * them. One AJAX handler backs the channel picker.
  *
  * @package    Wpstream
  * @subpackage Wpstream/integrations
  */
 
+
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /*
 * remove BuddyB video js files
@@ -74,42 +81,27 @@ function wpstream_buddyboss_content() {
       
               
                 <?php
-                // The viewer and their primary role (empty when logged out).
-                $current_user               = wp_get_current_user();
-                $user_role                  ='';
-                if(is_user_logged_in()){
-                    $user_role                  = $current_user->roles[0];
-                }
                 // Viewer id vs. the profile being displayed — used to gate owner-only controls.
                 $author_id                  = get_current_user_id();
                 $profile_owner              = bp_get_displayed_user();
                 // The viewer's own free channels, and the channel they previously selected for this tab.
                 $free_events                = wpstream_buddyboss_load_free_events();
-                $budyboss_selected_channel  = intval( get_user_meta($profile_owner->id,'budyboss_selected_channel',true) );
-                // Roles allowed to stream (from settings); normalize to an array and always include administrators.
-                $extra_roles                = get_option( 'wpstream_stream_role', true );
-                if(!is_array($extra_roles)){
-                    $extra_roles=array();
-                }
-
-                $extra_roles[]='administrator';
-
-
-
-                // if the role permits
-                if (is_array($extra_roles) && in_array($user_role, $extra_roles)){
+                $budyboss_selected_channel  = intval( get_user_meta($profile_owner->id,'wpstream_buddyboss_selected_channel',true) );
+                // The viewer may broadcast: the plugin's single streaming-permission
+                // rule (roles, regular-users option, wpstream_user_can_stream filter).
+                if ( $wpstream_plugin->main->wpstream_check_user_can_stream() ) {
 
 
                     // Owner with at least one channel: show the channel selection dropdown.
                     if(count($free_events) !== 0 && $profile_owner->id == $author_id ){
-                        print '<h4>'.esc_html('Select the Channel','wpstream').'</h4>';
+                        print '<h4>'.esc_html__('Select the Channel','wpstream').'</h4>';
                         print wpstream_buddyboss_display_select_free_events($budyboss_selected_channel,$free_events);
                     }
 
 
                     // Owner: render the go-live / stop controls for the selected channel.
                     if($profile_owner->id == $author_id ){
-                        print '<h4>'.esc_html('Channel Controls','wpstream').'</h4>';
+                        print '<h4>'.esc_html__('Channel Controls','wpstream').'</h4>';
                         echo  $wpstream_plugin->wpstream_live_stream_unit_wrapper(   $budyboss_selected_channel,'front' );
                     }
 
@@ -128,7 +120,7 @@ function wpstream_buddyboss_content() {
 
                 // Owner sees a "Preview" heading above the player.
                 if($profile_owner->id == $author_id ){
-                    print '<h4>'.esc_html('Preview','wpstream').'</h4>';
+                    print '<h4>'.esc_html__('Preview','wpstream').'</h4>';
                 }
 
 
@@ -294,7 +286,6 @@ add_action( 'bp_before_activity_entry', 'wpstream_bb_before_activity_function',9
  */
 function wpstream_bb_before_activity_function($activity) {
     global $activities_template;
-    global $wpstream_plugin;
     // Id of the activity currently in the loop.
     $activity_id = $activities_template->activity->id;
     $notes="wpstream_bb_before_activity_function";
@@ -311,12 +302,12 @@ function wpstream_bb_before_activity_function($activity) {
             // Past event: replace the content with a static "ended" notice.
             $activities_template->activity->content=  esc_html__( 'My Live Stream has ended. Join me next time! ', 'wpstream' ) ;
         }else{
-            // Still potentially live: ask the WpStream API for the current status.
-            $event_status               =   $wpstream_plugin->main->wpstream_live_connection->wpstream_check_event_status_api_call($wpstream_bb_show_id,$notes);
+            // Still potentially live: read the shared channel state (45s cache;
+            // Baker is called at most once per channel per cache lifetime, no
+            // matter how many members scroll the timeline).
+            $state = Wpstream_Channel_State::for_channel( $wpstream_bb_show_id, $notes );
 
-
-
-            if($event_status['status']=='stopped' || $event_status['status']=='ended' || $event_status['status']=='stopping'    ){
+            if ( in_array( $state->status(), array( 'stopped', 'ended', 'stopping' ), true ) ) {
                 // we mark the event as a past one
                 bp_activity_update_meta( $activity_id, 'is_wpstream_bb_show_id_past_event','yes' );
             }
@@ -349,11 +340,9 @@ add_action( 'bp_after_activity_entry', 'wpstream_bb_after_activity_function',99,
  */
 function wpstream_bb_after_activity_function($activity) {
     global $activities_template;
-    global $wpstream_plugin;
 
-    // Make sure the player runtime is available on the timeline page.
-    wp_enqueue_script('video.min');
-    wp_enqueue_script('wpstream-player');
+    // Make sure the player runtime (scripts + styles) is available on the timeline page.
+    wpstream_enqueue_player_assets();
 
     $notes='';
     $chat_url='';
@@ -371,30 +360,11 @@ function wpstream_bb_after_activity_function($activity) {
 
         if($is_wpstream_bb_show_id_past_event !=='yes'){
 
-            // Query the current channel status from the WpStream API.
-            $notes                      =   "check from buddy boss timeline";
-            $event_status               =   $wpstream_plugin->main->wpstream_live_connection->wpstream_check_event_status_api_call($wpstream_bb_show_id,$notes);
-
-
-            // event is live
-            if(isset($event_status['status']) && $event_status['status']=='active'){
-                $autoplay           =   'autoplay';
-                //live event
-                $hls_playback_url='';
-                if(isset($event_status['hls_playback_url'])){
-                    // Persist the live HLS details on the channel post so the player can pick them up.
-                    $hls_playback_url        =   $event_status['hls_playback_url'];
-
-                    update_post_meta($wpstream_bb_show_id,'stream_name',$event_status['stream_name']);
-                    update_post_meta($wpstream_bb_show_id,'hls_key_retrieval_url',$event_status['hls_key_retrieval_url']);
-                    // Invalidate the cached lookup so the fresh stream name is used.
-                    delete_transient(  'free_event_streamName_'.$event_status['stream_name']);
-
-                }
-                // Resolve the live connect URI (side effect / data prep for the player).
-                $live_conect_views = $wpstream_plugin->main->wpstream_player->wpstream_get_live_connect_uri($event_status, 'hls_playback_url');
-                // Player bootstrap now runs from the external DOMContentLoaded module.
-            }
+            // Warm the shared channel state (45s cache): a cache miss fetches
+            // fresh data from Baker, and the state owner itself syncs the
+            // stream_name / hls_key_retrieval_url meta the player reads.
+            // Player bootstrap runs from the external DOMContentLoaded module.
+            Wpstream_Channel_State::for_channel( $wpstream_bb_show_id, 'check from buddy boss timeline' );
         }
     }
     return $activity;
@@ -419,21 +389,24 @@ add_action( 'wp_ajax_wpstream_buddy_boss_select_channel_function', 'wpstream_bud
  * AJAX handler: persist the profile owner's selected channel.
  *
  * Verifies the posted channel belongs to the current user, then saves it to the
- * 'budyboss_selected_channel' user meta and returns a JSON {saved:bool} result.
+ * 'wpstream_buddyboss_selected_channel' user meta and returns a JSON {saved:bool} result.
  */
 function wpstream_buddy_boss_select_channel_function(){
+    // CSRF gate: the integrations JS sends the localized buddy_nonce as 'security'.
+    check_ajax_referer( 'wpstream_buddyboss', 'security' );
+
     // Requested channel id and the current user.
     $show_id    =   intval($_POST['show_id']);
     $userId     =   get_current_user_id();
     $show_data  =   get_post($show_id);
 
     // Ownership guard: refuse channels the current user does not own.
-    if( $show_data->post_author != $userId ){
+    if( !$show_data || $show_data->post_author != $userId ){
         exit('You are not allowed to do that.This channel does not belong to you!');
     }
 
     // Save the selection against the user.
-    $update = update_user_meta($userId,'budyboss_selected_channel',$show_id);
+    $update = update_user_meta($userId,'wpstream_buddyboss_selected_channel',$show_id);
 
     // Return whether the meta update succeeded.
     echo json_encode(
@@ -447,90 +420,110 @@ function wpstream_buddy_boss_select_channel_function(){
 }
 
 /*
-* Generate player to be added in timeline
 *
-*
-*/
-
-// AJAX: build and post a timeline activity containing the channel player.
-add_action( 'wp_ajax_wpstream_buddyb_integrations_generate_player_html', 'wpstream_buddyb_integrations_generate_player_html' );
-
-
-/**
- * AJAX handler: create a timeline player activity and return its buffered output.
- *
- * Buffers the output of wpstream_bp_init_callback() (which posts the activity)
- * and echoes it back as JSON.
- */
-function wpstream_buddyb_integrations_generate_player_html(){
-    // Capture whatever the callback prints.
-    ob_start();
-    $show_id                 =   intval($_POST['show_id']);
-    wpstream_bp_init_callback($show_id);
-    $data=ob_get_contents();
-    ob_end_clean();
-    // Return success plus the captured markup.
-    echo json_encode( array(
-        'success'=>  true,
-        'link'  =>  ($data)
-    ));
-
-
-    die();
-
-}
-
-/*
-*
-*
+* Timeline activity: posted server-side when the channel becomes active
 *
 */
 
+// Post the "Tune in" activity when a channel's status becomes active, whoever observed it.
+add_action( 'wpstream_channel_became_active', 'wpstream_bb_post_live_activity', 10, 1 );
 
 /**
  * Post a BuddyPress activity that embeds the live player for a channel.
  *
- * Builds the player embed, publishes a "Tune in to my Live Stream!" activity as
- * the current user, and tags it with the channel id so the timeline hooks above
- * can recognise and refresh it.
+ * Runs on `wpstream_channel_became_active`, so it covers browser, OBS and
+ * Larix broadcasts alike. The activity is always authored by the channel's
+ * post_author: the hook fires inside whichever request observed the
+ * transition (the owner's status poll, or an admin managing the channel), so
+ * the current user must never be used. The activity is tagged with the
+ * channel id and remembered on the channel so the inactive hook can mark it
+ * as a past event.
  *
- * @param int $show_id Channel post id to embed.
+ * @param int $channel_id Channel post id that became active.
  */
-function wpstream_bp_init_callback($show_id) {
+function wpstream_bb_post_live_activity( $channel_id ) {
     global $wpstream_plugin;
 
+    // This runs inside the go-live request: bail quietly when the Activity component is off.
+    if ( ! function_exists( 'bp_activity_post_update' ) ) {
+        return;
+    }
+
+    $channel_id = intval( $channel_id );
+    $owner_id   = intval( get_post_field( 'post_author', $channel_id ) );
+    if ( $owner_id <= 0 ) {
+        return;
+    }
+
     // Build the player embed markup for this channel.
-    $attributes['id']                   =  $show_id;
-    $attributes['user_id']              =   '';
-    $content = $wpstream_plugin->wpstream_insert_player_elementor($attributes);
+    $attributes['id']      = $channel_id;
+    $attributes['user_id'] = '';
+    $content = $wpstream_plugin->wpstream_insert_player_elementor( $attributes );
 
-    // Link back to the streamer's profile "Live Video" tab.
-    $profile_owner      = bp_get_displayed_user();
-    $profile_link       = $profile_owner->domain.'wpstream';
+    // Link back to the owner's profile "Live Video" tab.
+    $profile_link = bp_core_get_user_domain( $owner_id ) . 'wpstream';
 
-    // Compose the activity: intro line + player embed, authored by the current user.
     $new_activity = array(
-      // 'content' => '<div class="wpstreaam_bb_see_mee_live"><a href="'.esc_url($profile_link).'">'.esc_html__('Tune in to my Live Stream!','wpstream').'</a></div>'.$content,
-       'content' => '<div class="wpstreaam_bb_see_mee_live">'.esc_html__('Tune in to my Live Stream!','wpstream').'</div>'.$content,
-
-       'user_id' => get_current_user_id(),
+        'content' => '<div class="wpstreaam_bb_see_mee_live"><a href="' . esc_url( $profile_link ) . '">' . esc_html__( 'Tune in to my Live Stream!', 'wpstream' ) . '</a></div>' . $content,
+        'user_id' => $owner_id,
     );
 
-    // Publish the activity and capture its id.
-    $activity_id       = bp_activity_post_update( $new_activity );
+    /**
+     * Filters the arguments passed to bp_activity_post_update() for the
+     * "went live" timeline activity. Return an empty array to suppress
+     * the activity for this channel.
+     *
+     * @since 4.14.0
+     *
+     * @param array $new_activity Activity args (content, user_id).
+     * @param int   $channel_id   Channel post ID that became active.
+     */
+    $new_activity = apply_filters( 'wpstream_buddyboss_activity_args', $new_activity, $channel_id );
+    if ( empty( $new_activity ) ) {
+        return;
+    }
+    // The author is not negotiable: the activity always belongs to the channel owner.
+    $new_activity['user_id'] = $owner_id;
 
+    // Publish the activity and tag it so the timeline hooks recognise and refresh it.
+    $activity_id = bp_activity_post_update( $new_activity );
+    if ( ! $activity_id ) {
+        return;
+    }
+    bp_activity_update_meta( $activity_id, 'wpstream_bb_show_id', $channel_id );
+    bp_activity_update_meta( $activity_id, 'is_wpstream_bb_show_id', 'yes' );
+    // Remember the current session's activity so the inactive hook can close it.
+    update_post_meta( $channel_id, '_wpstream_bb_activity_id', $activity_id );
 
-    // Tag the activity so the timeline hooks recognise and refresh it.
-    bp_activity_update_meta( $activity_id, 'wpstream_bb_show_id', $show_id );
-    bp_activity_update_meta( $activity_id, 'is_wpstream_bb_show_id','yes' );
- }
- 
+    // The LIVE card badge reads a site-wide cache: drop it so the badge is right now.
+    delete_transient( 'wpstream_bb_get_live_event_for_user' );
+}
 
+// Close the session's activity when the channel stops, instead of waiting for a timeline scroll.
+add_action( 'wpstream_channel_became_inactive', 'wpstream_bb_end_live_activity', 10, 1 );
 
+/**
+ * Mark the channel's current live activity as a past event.
+ *
+ * Runs on `wpstream_channel_became_inactive`. The timeline hook
+ * wpstream_bb_before_activity_function() rewrites past-event activities to
+ * the "ended" message at render time, so flagging the meta is all that is
+ * needed here. Also drops the LIVE badge cache.
+ *
+ * @param int $channel_id Channel post id that became inactive.
+ */
+function wpstream_bb_end_live_activity( $channel_id ) {
+    $channel_id  = intval( $channel_id );
+    $activity_id = intval( get_post_meta( $channel_id, '_wpstream_bb_activity_id', true ) );
 
+    if ( $activity_id > 0 && function_exists( 'bp_activity_update_meta' ) ) {
+        bp_activity_update_meta( $activity_id, 'is_wpstream_bb_show_id_past_event', 'yes' );
+        delete_post_meta( $channel_id, '_wpstream_bb_activity_id' );
+    }
 
+    delete_transient( 'wpstream_bb_get_live_event_for_user' );
+}
 
- 
 
 /*
 *
@@ -649,9 +642,8 @@ function wpstream_bb_activity_allowed_tags_callback( $allow_html_tags ) {
 function wpstream_enqueue_buddyboss_scripts() {
 	// Check if we're on the activity directory, single activity page, or member activity page
 	if (bp_is_activity_component() && (bp_is_activity_directory() || bp_is_single_activity() || bp_is_user_activity())) {
-		// Load the video.js runtime and the WpStream player script on activity views.
-		wp_enqueue_script('video.min');
-		wp_enqueue_script('wpstream-player');
+		// Load the full player stack on activity views.
+		wpstream_enqueue_player_assets();
 	}
 }
 // Enqueue the player assets on BuddyPress front-end pages.

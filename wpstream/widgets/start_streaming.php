@@ -62,7 +62,7 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 */
 	public function get_title() {
             // Wrap the translated label in the theme's widget-title markup.
-            return '<div class="wpestate_elementor_widget_title">'.__( 'WpStream - Start Streaming', 'wpstream' ).'</div>';
+            return '<div class="wpstream_elementor_widget_title">'.__( 'WpStream - Start Streaming', 'wpstream' ).'</div>';
 	}
 
 	/**
@@ -81,57 +81,12 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 
 	
 
-	/**
-	 * Retrieve the list of scripts the widget depended on.
-	 *
-	 * Used to set scripts dependencies required to run the widget.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @access public
-	 *
-	 * @return array Widget scripts dependencies.
-	 */
-	public function get_script_depends() {
-	// No extra script handles are registered as dependencies.
-	return [ '' ];
-	}
-
-	/**
-	 * Register the widget controls.
-	 *
-	 * Adds different input fields to allow the user to change and customize the widget settings.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @access protected
-	 */
-     
-        /**
-         * Flatten a list of {value,label} pairs into a value => label map.
-         *
-         * @param array $input List of arrays each holding 'value' and 'label'.
-         * @return array Map keyed by each item's 'value' with its 'label'.
-         */
-        public function elementor_transform($input){
-            // Accumulator for the resulting value => label map.
-            $output=array();
-            // Only iterate when we were actually handed an array.
-            if( is_array($input) ){
-                // Re-key each entry so the option value becomes the map key.
-                foreach ($input as $key=>$tax){
-                    $output[$tax['value']]=$tax['label'];
-                }
-            }
-            return $output;
-        }
-
         /**
          * Register the widget's editor controls.
          *
          * @access protected
          */
-        protected function _register_controls() {
+        protected function register_controls() {
                 // Theme-wide taxonomy list kept in scope (unused by this widget).
                 global $all_tax;
                
@@ -179,32 +134,6 @@ class Wpstream_Start_Streaming_Base extends Widget_Base {
 	 *
 	 * @access protected
 	 */
-        
-         /**
-          * Join array values into a single comma-separated string.
-          *
-          * @param array|string $input Values to concatenate; '' short-circuits to empty.
-          * @return string Comma-separated list, or empty string when nothing to join.
-          */
-         public function wpresidence_send_to_shortcode($input){
-            // Start with an empty result buffer.
-            $output='';
-            // Nothing to concatenate for an empty input.
-            if($input!==''){
-                // Track the total so we can skip the trailing separator.
-                $numItems = count($input);
-                $i = 0;
-
-                // Append each value, comma-separating all but the last.
-                foreach ($input as $key=>$value){
-                    $output.=$value;
-                    if(++$i !== $numItems) {
-                      $output.=', ';
-                    }
-                }
-            }
-            return $output;
-        }
         
 	/**
 	 * Render the widget on the frontend.

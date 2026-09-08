@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Guard against redeclaration when function names overlap.
 if ( ! function_exists( 'wpstream_theme_image_gallery' ) ) {
 	/**

@@ -11,6 +11,12 @@
  * @package wpstream-plugin
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Registers and resolves the plugin's front-end templates for the companion theme.
  */
@@ -120,10 +126,10 @@ class WpStream_Template_Loader {
 				'wpstreamDashboardVars',
 				array(
 					'admin_url'     => get_admin_url(),
-					'saving'        => esc_html__( 'Updating your details....', 'hello-wpstream' ),
-					'saved'         => esc_html__( 'The changes were saved', 'hello-wpstream' ),
-					'notsaved'      => esc_html__( 'Something did not not work. Please try again.', 'hello-wpstream' ),
-					'createchannel' => esc_html__( 'We are creating the channel. The page will refresh after this is done.', 'hello-wpstream' ),
+					'saving'        => esc_html__( 'Updating your details....', 'wpstream' ),
+					'saved'         => esc_html__( 'The changes were saved', 'wpstream' ),
+					'notsaved'      => esc_html__( 'Something did not not work. Please try again.', 'wpstream' ),
+					'createchannel' => esc_html__( 'We are creating the channel. The page will refresh after this is done.', 'wpstream' ),
 				)
 			);
 

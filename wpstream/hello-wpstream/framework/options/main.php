@@ -9,6 +9,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Require options general.
 // Load the General options section from the active theme directory.
 require_once get_theme_file_path( '/framework/options/general.php' );

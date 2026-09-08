@@ -6,6 +6,12 @@
  * @package wpstream_theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 ?>
 
 <!-- Dashboard "Edit account" screen: hidden Bootstrap modal form plus the read-only account summary. -->

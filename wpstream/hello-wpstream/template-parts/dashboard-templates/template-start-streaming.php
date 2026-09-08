@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Only users allowed to stream may see this screen; bail otherwise.
 if ( ! wpstream_check_if_user_can_stream()) {
 	return;

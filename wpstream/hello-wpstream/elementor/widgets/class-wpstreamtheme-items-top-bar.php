@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Elementor base class plus the repeater, control, box-shadow and typography helpers used below.
 use Elementor\Group_Control_Box_Shadow;
 use Elementor\Core\Files\Assets\Svg\Svg_Handler;

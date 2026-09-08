@@ -3,11 +3,15 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.13.2
+ * Version:           4.14.0
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
  * Domain Path:       /languages/
+ * License:           GPLv2 or later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Requires at least: 5.8
+ * Requires PHP:      7.1
  */
 
 /**
@@ -16,8 +20,8 @@
  * WordPress reads the header comment above to list the plugin. This file then
  * defines the plugin's global constants (version, remote API/player/click host
  * URLs, path helpers), wires activation/deactivation hooks, schedules a daily
- * log cleanup cron event, loads the core plugin class plus the Elementor and
- * streamify integrations, conditionally loads the hello-wpstream theme
+ * log cleanup cron event, loads the core plugin class plus the Elementor
+ * integration, conditionally loads the hello-wpstream theme
  * framework, registers the custom broadcaster-page rewrite endpoint, and finally
  * instantiates and runs the Wpstream class.
  *
@@ -30,7 +34,7 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 // Current plugin version (kept in sync with the header "Version" field above).
-define('WPSTREAM_PLUGIN_VERSION', '4.13.2');
+define('WPSTREAM_PLUGIN_VERSION', '4.14.0');
 // Base host for WpStream account/club links.
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 // Scheme used when building club links.
@@ -47,6 +51,11 @@ define('WPSTREAM_PLUGIN_BASE',  plugin_basename(__FILE__) );
 if( !defined('WPSTREAM_API' ) ) {
     // Default API host.
     define('WPSTREAM_API', 'https://baker.wpstream.net');
+}
+// Legacy REST API host (server-id lookups); guarded so it can be overridden.
+if( !defined('WPSTREAM_REST_API' ) ) {
+    // Default legacy REST host.
+    define('WPSTREAM_REST_API', 'https://rest-baker.wpstream.net');
 }
 // Telemetry/click-tracking host; guarded so it can be overridden.
 if ( !defined( 'WPSTREAM_CLICK' ) ) {
@@ -67,6 +76,30 @@ if ( !defined( 'LIVE_PLAYER_URL_PREFIX' ) ) {
 
 // Default network timeout (seconds) for remote API requests.
 define('WPSTREAM_TIMEOUT_CONST', 20); // in seconds
+
+// Register the classmap autoloader before anything references a plugin class,
+// so activation hooks, cron callbacks, and the bootstrap below all resolve.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-wpstream-autoloader.php';
+Wpstream_Autoloader::register();
+
+/**
+ * Declare WooCommerce High-Performance Order Storage (HPOS) compatibility.
+ *
+ * All order access in the plugin goes through wc_get_orders() /
+ * wc_customer_bought_product(), which are HPOS-safe, so the plugin can be
+ * declared compatible with custom order tables. WooCommerce requires this
+ * declaration to run inside the before_woocommerce_init hook.
+ *
+ * @return void
+ */
+function wpstream_declare_hpos_compatibility() {
+	// Guard: FeaturesUtil only exists on WooCommerce 6.9+.
+	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+	}
+}
+// WooCommerce fires this hook early on init; the declaration must happen there.
+add_action( 'before_woocommerce_init', 'wpstream_declare_hpos_compatibility' );
 
 /**
  * Cron callback that purges expired WpStream log entries.
@@ -118,6 +151,89 @@ register_activation_hook( __FILE__, 'activate_wpstream' );
 register_deactivation_hook( __FILE__, 'deactivate_wpstream' );
 
 /**
+ * One-time cleanup of leftovers from the removed streamify HLS proxy.
+ *
+ * Older plugin versions shipped a /wpstreamify/ proxy that scheduled a
+ * recurring cron event, registered a rewrite rule, and kept a cache directory
+ * under uploads. Sites upgrading past its removal still carry all three, so
+ * this clears them once and records a marker option so later loads skip it.
+ *
+ * @return void
+ */
+function wpstream_cleanup_streamify_leftovers() {
+	// Already cleaned on this site — nothing to do.
+	if ( get_option( 'wpstream_streamify_removed' ) ) {
+		return;
+	}
+
+	// Remove the recurring proxy-cache cleanup event the old code scheduled.
+	wp_clear_scheduled_hook( 'wpstreamify_cleanup_event' );
+
+	// Regenerate the saved rewrite rules so the stale /wpstreamify/ route
+	// (whose query var no longer exists) drops out of them.
+	flush_rewrite_rules();
+
+	// Delete the orphaned proxy cache directory and its segment files.
+	$wpstream_streamify_cache_dir = WP_CONTENT_DIR . '/uploads/wpstreamify_cache/';
+	if ( is_dir( $wpstream_streamify_cache_dir ) ) {
+		$wpstream_streamify_files = glob( $wpstream_streamify_cache_dir . '*' );
+		foreach ( is_array( $wpstream_streamify_files ) ? $wpstream_streamify_files : array() as $wpstream_streamify_file ) {
+			if ( is_file( $wpstream_streamify_file ) ) {
+				unlink( $wpstream_streamify_file );
+			}
+		}
+		rmdir( $wpstream_streamify_cache_dir );
+	}
+
+	// Mark the cleanup done; autoloaded because it is checked on every load.
+	update_option( 'wpstream_streamify_removed', 1 );
+}
+// Run late on init so every remaining rewrite registration precedes the flush.
+add_action( 'init', 'wpstream_cleanup_streamify_leftovers', 99 );
+
+/**
+ * One-time rename of the VOD list Elementor widget key in stored page data.
+ *
+ * Older plugin versions registered the widget under 'class Wpstream_Media_List_Vod'
+ * (a stray "class " prefix left in get_name()). The name is now the clean
+ * 'Wpstream_Media_List_Vod', so any Elementor page saved with the old key would
+ * render the widget as "missing". This rewrites the stored widgetType in every
+ * _elementor_data row (pages and revisions alike), clears Elementor's generated
+ * CSS so the wrapper class regenerates, and records a marker option so later
+ * loads skip it.
+ *
+ * @return void
+ */
+function wpstream_fix_vod_widget_name() {
+	// Already migrated on this site — nothing to do.
+	if ( get_option( 'wpstream_vod_widget_name_fixed' ) ) {
+		return;
+	}
+
+	global $wpdb;
+
+	// Rewrite the exact quoted JSON pair so user-authored content can never match.
+	$wpdb->query(
+		"UPDATE {$wpdb->postmeta}
+		 SET meta_value = REPLACE( meta_value,
+		     '\"widgetType\":\"class Wpstream_Media_List_Vod\"',
+		     '\"widgetType\":\"Wpstream_Media_List_Vod\"' )
+		 WHERE meta_key = '_elementor_data'
+		   AND meta_value LIKE '%class Wpstream_Media_List_Vod%'"
+	);
+
+	// Elementor caches per-post CSS containing the old wrapper class; regenerate it.
+	if ( class_exists( '\\Elementor\\Plugin' ) ) {
+		\Elementor\Plugin::instance()->files_manager->clear_cache();
+	}
+
+	// Mark the migration done; autoloaded because it is checked on every load.
+	update_option( 'wpstream_vod_widget_name_fixed', 1 );
+}
+// Run on init so Elementor (loaded on plugins_loaded) is available for the cache clear.
+add_action( 'init', 'wpstream_fix_vod_widget_name', 99 );
+
+/**
  * Wrapper function for wpstream_dashboard_save_channel_data to be called from theme
  * This provides backward compatibility for the theme
  */
@@ -137,11 +253,10 @@ function wpstream_dashboard_save_channel_data_plugin() {
  */
 // Load the core plugin class (defines i18n, admin, and public hooks).
 require plugin_dir_path( __FILE__ ) . 'includes/class-wpstream.php';
-// Load the Elementor requirement gate/integration.
-require plugin_dir_path( __FILE__ ) . 'wpstream-elementor.php';
-// Load the streamify HLS proxy integration.
-require plugin_dir_path( __FILE__ ) . 'streamify/streamify.php';
-
+// Migrate legacy option, transient and user-meta names once per site.
+require plugin_dir_path( __FILE__ ) . 'includes/class-wpstream-storage-migration.php';
+// Elementor requirement gate + widget registrar (autoloaded; checks run on plugins_loaded).
+new Wpstream_Elementor_Widgets();
 // Load third-party integrations bootstrap.
 require plugin_dir_path( __FILE__ ) . 'integrations/integrations.php';
 
@@ -229,6 +344,75 @@ add_action( 'after_setup_theme', 'wpstream_load_theme_functionality' );
  * @return void
  */
 // Guard the definition so the theme can define its own version without collision.
+if ( ! function_exists( 'wpstream_enqueue_player_assets' ) ) {
+	/**
+	 * Enqueue the full player stack (scripts + styles) at a player render site.
+	 *
+	 * Every handle is registered (not enqueued) on wp_enqueue_scripts, so nothing
+	 * loads on pages without a player; render sites call this the moment player
+	 * markup is emitted. Scripts print in the footer; the two stylesheets print
+	 * late as well, which is fine because the player element is built by JS.
+	 * videojs-logo / quality-selector / quality-levels arrive as dependencies
+	 * of wpstream-player.
+	 *
+	 * @return void
+	 */
+	function wpstream_enqueue_player_assets() {
+		// Video.js core.
+		wp_enqueue_script( 'video.min' );
+		// WpStream player wrapper script (drags logo/quality deps with it).
+		wp_enqueue_script( 'wpstream-player' );
+		// Base Video.js CSS + the WpStream player skin.
+		wp_enqueue_style( 'video-js.min' );
+		wp_enqueue_style( 'videojs-wpstream-player' );
+	}
+}
+
+if ( ! function_exists( 'wpstream_get_product_type_name' ) ) {
+	/**
+	 * Safely read a product's first product_type term name.
+	 *
+	 * wp_get_post_terms() returns a WP_Error when the taxonomy is unavailable
+	 * and an empty array when the product carries no term; naive
+	 * $term_list[0]->name reads crash on both under PHP 8. Callers that need the
+	 * display label use this accessor; branching logic uses the slug accessor below.
+	 *
+	 * @param int $product_id Product/post id.
+	 * @return string The first term name, or '' when none can be read.
+	 */
+	function wpstream_get_product_type_name( $product_id ) {
+		$term_list = wp_get_post_terms( intval( $product_id ), 'product_type' );
+
+		// WP_Error (missing taxonomy) or no assigned term: report "no type".
+		if ( is_wp_error( $term_list ) || empty( $term_list[0]->name ) ) {
+			return '';
+		}
+
+		return $term_list[0]->name;
+	}
+}
+
+if ( ! function_exists( 'wpstream_get_product_type_slug' ) ) {
+	/**
+	 * Return the stable WooCommerce product-type identifier for a post.
+	 *
+	 * Product-type names are editable display labels, while the slug is the
+	 * identifier used by WooCommerce and WpStream branching logic.
+	 *
+	 * @param int $product_id Product/post id.
+	 * @return string The first term slug, or '' when none can be read.
+	 */
+	function wpstream_get_product_type_slug( $product_id ) {
+		$term_list = wp_get_post_terms( intval( $product_id ), 'product_type' );
+
+		if ( is_wp_error( $term_list ) || empty( $term_list[0]->slug ) ) {
+			return '';
+		}
+
+		return $term_list[0]->slug;
+	}
+}
+
 if ( ! function_exists( 'wpstream_load_player_js_on_demand' ) ) {
 	/**
 	 * Enqueue player scripts only when unit cards are configured to use video.
@@ -241,10 +425,8 @@ if ( ! function_exists( 'wpstream_load_player_js_on_demand' ) ) {
 		$wpstream_unit_card_use_video = get_theme_mod('wpstream_unit_card_use_video');
 		// Only enqueue the player assets when that setting is enabled.
 		if ($wpstream_unit_card_use_video) {
-			// Video.js core.
-			wp_enqueue_script('video.min');
-			// WpStream player wrapper script.
-			wp_enqueue_script('wpstream-player');
+			// Full player stack (scripts + styles).
+			wpstream_enqueue_player_assets();
 		}
 
 	}
@@ -268,7 +450,7 @@ $wpstream_plugin = new Wpstream();
 $wpstream_plugin->run();
 
 // After any core/plugin/theme update completes, run our upgrade cleanup.
-add_action( 'upgrader_process_complete', 'wpstream_my_upgrate_function',10, 2);
+add_action( 'upgrader_process_complete', 'wpstream_my_upgrade_function',10, 2);
 
 /**
  * Clear cached API token data after this plugin is updated.
@@ -277,7 +459,7 @@ add_action( 'upgrader_process_complete', 'wpstream_my_upgrate_function',10, 2);
  * @param array       $options         Details about what was upgraded.
  * @return void
  */
-function wpstream_my_upgrate_function( $upgrader_object, $options ) {
+function wpstream_my_upgrade_function( $upgrader_object, $options ) {
 
 
     // This plugin's basename, used to detect if it was among the updated plugins.
@@ -294,9 +476,9 @@ function wpstream_my_upgrate_function( $upgrader_object, $options ) {
                     // Drop the cached API token transient.
                     delete_transient('wpstream_token_api');
                     // Reset the stored token expiry timestamp.
-                    update_option('wp_estate_token_expire',0);
+                    update_option('wpstream_token_expire',0);
                     // Blank out the stored current token.
-                    update_option('wp_estate_curent_token',' ');
+                    update_option('wpstream_current_token',' ');
 
                 }
             }
@@ -308,39 +490,9 @@ function wpstream_my_upgrate_function( $upgrader_object, $options ) {
 
 
 
-// Inject Open Graph share meta tags into the document head.
-add_action('wp_head', 'wpstream_add_custom_meta_to_header');
-
-/**
- * Output Open Graph meta tags on product / stream / VOD single pages.
- *
- * @return void
- */
-function wpstream_add_custom_meta_to_header(){
-    // The current post being displayed.
-    global $post;
-
-
-    // Only add share tags on WooCommerce product and WpStream product/VOD singles.
-    if ( is_singular('product') || is_singular('wpstream_product') || is_singular('wpstream_product_vod')  ){
-        // Featured image attachment ID for this post.
-        $image_id       =   get_post_thumbnail_id();
-        // Full-size image source array ([0] is the URL) for og:image.
-        $share_img      =   wp_get_attachment_image_src( $image_id, 'full');
-        // Full post object, used for the description below.
-        $the_post       =   get_post($post->ID); ?>
-
-        <meta property='og:title' content="<?php print esc_html(get_the_title($post->ID)); ?>"/>
-        <?php if(isset($share_img[0])){ ?>
-            <meta property="og:image" content="<?php print esc_url($share_img[0]); ?>"/>
-            <meta property="og:image:secure_url" content="<?php print esc_url($share_img[0]); ?>" />
-        <?php }?>
-       
-        <meta property="og:description"  content=" <?php print wp_strip_all_tags( $the_post->post_content);?>" />
-    <?php }
-
-
-}
+// Front-end SEO metadata (Open Graph, Twitter cards, structured data). The file
+// registers its own wp_head hook when loaded — see Wpstream_Seo::init().
+require plugin_dir_path( __FILE__ ) . 'includes/class-wpstream-seo.php';
 
 
 /*
@@ -373,21 +525,8 @@ add_action( 'plugins_loaded', 'wpstream_check_integrations' );
 *
 */
 
-/**
- * Redirect to the onboarding screen right after this plugin is activated.
- *
- * @param string $plugin Basename of the plugin that was just activated.
- * @return void
- */
-function wpstream_activation_redirect( $plugin ) {
-    // Only redirect when it is this plugin that was activated.
-    if( $plugin == plugin_basename( __FILE__ ) ) {
-        // Send the admin to the onboarding page and stop further execution.
-        exit( wp_redirect( admin_url( 'admin.php?page=wpstream_onboard' ) ) );
-    }
-}
-// Fire the redirect on the activated_plugin hook.
-add_action( 'activated_plugin', 'wpstream_activation_redirect' );
+// Queue activation intent, then consume it safely on the next admin request.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-wpstream-activation-redirect.php';
 
 
 

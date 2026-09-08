@@ -2,16 +2,22 @@
 /**
  * Thin client for the WPStream "user/quota" API endpoint.
  *
- * Fetches the account's request-pack/quota data, caches a successful response
- * in a short-lived transient, and records the resolved username as an option.
+ * Fetch-only: asks the API for the account's request-pack/quota data and
+ * records the resolved username as an option. Caching the payload is the
+ * job of WpStream_Quota_Manager, the transient's single owner — this class
+ * never touches the cache.
  *
  * @package    Wpstream
  * @subpackage Wpstream/includes/api
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 class Wpstream_User_Quota_Service {
-	/** @var string Transient key caching the last successful quota response. */
-	const TRANSIENT_KEY = 'wpstream_request_pack_data_per_user_transient';
 	/** @var string Option key storing the username resolved from the access token. */
 	const USERNAME_OPTION_KEY = 'wpstream_api_username_from_token';
 
@@ -21,57 +27,43 @@ class Wpstream_User_Quota_Service {
 	/**
 	 * Store the injected API connection dependency.
 	 *
-	 * @param object $api_connection Connection exposing wpstream_get_token() and wpstream_baker_do_curl_base().
+	 * @param object $api_connection Connection exposing authorized_request().
 	 */
 	public function __construct( $api_connection ) {
 		$this->api_connection = $api_connection;
 	}
 
 	/**
-	 * Fetch user quota/pack data from the WPStream API and cache successful responses.
+	 * Fetch user quota/pack data from the WPStream API.
 	 *
 	 * @param string $context Caller context for API logging/analytics.
 	 * @return array|false Decoded API response on success, or false when no token or request fails.
 	 */
 	public function request_pack_data_per_user( $context = '' ) {
-		// Target endpoint and the account access token used to authenticate the call.
-		$url          = 'user/quota';
-		$access_token = $this->api_connection->wpstream_get_token();
-
-		// do not make the call if no token is available
-		if ( ! $access_token ) {
-			return false;
-		}
-
-		// Build the POST body: credentials, caller context, and the running plugin version.
+		// Build the POST body: caller context and the running plugin version.
+		// The access token is injected by the connection's authorized transport.
 		$curl_post_fields = array(
-			'access_token'   => $access_token,
 			'context'        => $context,
 			'plugin_version' => WPSTREAM_PLUGIN_VERSION,
 		);
 
-		// Issue the request to the user/quota endpoint through the shared cURL helper.
-		$curl_response = $this->api_connection->wpstream_baker_do_curl_base(
-			$url,
-			$curl_post_fields,
-			true,
-			false,
-			WPSTREAM_TIMEOUT_CONST
-		);
+		// Issue the request to the user/quota endpoint; not-connected and
+		// transport failures both surface as WP_Error and map to false.
+		// Short timeout: this fetch runs on admin page loads, where a slow API
+		// must cost seconds at most — failures are cached by the quota manager.
+		$response = $this->api_connection->authorized_request( 'user/quota', $curl_post_fields, 5 );
+		if ( is_wp_error( $response ) ) {
+			return false;
+		}
 
-		// Decode the JSON response into an associative array.
-		$curl_response_decoded = json_decode( $curl_response, JSON_OBJECT_AS_ARRAY );
-
-		// On a successful response, cache it briefly and remember the resolved username.
-		if ( isset( $curl_response_decoded['success'] ) && $curl_response_decoded['success'] === true ) {
-			// Cache the payload for 60 seconds to avoid hammering the API.
-			set_transient( self::TRANSIENT_KEY, $curl_response_decoded, 60 );
+		// On a successful response, remember the resolved username.
+		if ( isset( $response['success'] ) && $response['success'] === true ) {
 			// Persist the username when the response carries one.
-			if ( isset( $curl_response_decoded['username'] ) ) {
-				update_option( self::USERNAME_OPTION_KEY, $curl_response_decoded['username'] );
+			if ( isset( $response['username'] ) ) {
+				update_option( self::USERNAME_OPTION_KEY, $response['username'] );
 			}
 
-			return $curl_response_decoded;
+			return $response;
 		}
 
 		// Missing token handled above; any non-success response falls through to false.

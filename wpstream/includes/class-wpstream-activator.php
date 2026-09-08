@@ -10,6 +10,12 @@
  * @subpackage Wpstream/includes
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Fired during plugin activation.
  *
@@ -33,7 +39,7 @@ class Wpstream_Activator {
 	public static function activate() {
 
             // Load the class that declares WpStream's custom post types.
-            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream_product.php';
+            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-product.php';
             // Instantiate the post-type registrar.
             $plugin_post_types = new Wpstream_Product();
             // Register the custom post types (channels, VODs, etc.).

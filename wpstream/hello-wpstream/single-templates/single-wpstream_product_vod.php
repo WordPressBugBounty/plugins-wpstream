@@ -12,6 +12,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Output the theme header.
 get_header();
 // Whether the free-to-view sidebar should be shown for this layout.

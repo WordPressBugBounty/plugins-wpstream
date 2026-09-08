@@ -12,6 +12,12 @@
  * @subpackage Wpstream/includes
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * The core plugin class.
  *
@@ -82,12 +88,26 @@ class Wpstream {
         public $wpstream_player;
         /** @var Wpstream_Quota_Manager Quota cache manager. */
         public $quota_manager;
+		/** @var Wpstream_Channel_Settings Deep Module for per-Channel streaming settings. */
+		public $channel_settings;
+		/** @var Wpstream_Streaming_Content_Creation Deep Module for Live Channel and VOD creation. */
+		public $streaming_content_creation;
+		/** @var Wpstream_Drm_Key_Delivery Deep Module for live and VOD DRM Key delivery. */
+		public $drm_key_delivery;
+		/** @var Wpstream_Media_List Deep Module for Channel and VOD lists. */
+		public $media_list;
+		/** @var Wpstream_Playback_Presentation Deep Module for approved player presentation. */
+		public $playback_presentation;
         /** @var object User quota service resolved from the live connection. */
         public $user_quota_service;
         /** @var mixed Unused/reserved property. */
         public $xtest;
         /** @var Wpstream_Admin Admin controller (also stored in $admin). */
         public $plugin_admin;
+        /** @var Wpstream_Onboarding|null Lazily-created onboarding workflow module. */
+        private $onboarding;
+		/** @var Wpstream_Live_Channel_Presentation|null Lazily-created Live Channel presentation module. */
+		private $live_channel_presentation;
 
 	/**
 	 * Bootstrap the plugin: resolve version/name, load dependencies, then wire
@@ -121,7 +141,28 @@ class Wpstream {
         $this->wpstream_load_theme_notice();
 
         // Instantiate the cloud API connection (and user quota service).
-        $this->wpstream_conection();
+        $this->wpstream_connection();
+		// Compose the deep Channel Settings Module with its WordPress and Baker Adapters.
+		$this->channel_settings = new Wpstream_Channel_Settings(
+			new Wpstream_WordPress_Channel_Settings_Storage(),
+			new Wpstream_Baker_Channel_Settings_Adapter( $this->wpstream_live_connection )
+		);
+		$this->wpstream_live_connection->set_channel_settings( $this->channel_settings );
+		$this->drm_key_delivery = new Wpstream_Drm_Key_Delivery(
+			$this->channel_settings,
+			new Wpstream_WordPress_Drm_Key_Remote_Fetch()
+		);
+		$this->media_list = new Wpstream_Media_List(
+			new Wpstream_Baker_Media_List_Active_Catalog( $this->wpstream_live_connection )
+		);
+		$this->playback_presentation = new Wpstream_Playback_Presentation( $this );
+		$this->streaming_content_creation = new Wpstream_Streaming_Content_Creation(
+			$this,
+			$this->channel_settings,
+			new Wpstream_Baker_Streaming_Content_Provisioning( $this->wpstream_live_connection ),
+			new Wpstream_Baker_Streaming_Content_Recording_Catalog( $this->wpstream_live_connection )
+		);
+		$this->wpstream_live_connection->set_streaming_content_creation( $this->streaming_content_creation );
         // Instantiate the player service.
         $this->wpstream_player();
         // Instantiate the quota cache manager.
@@ -134,16 +175,14 @@ class Wpstream {
 
 
         /**
-         * Convert a bandwidth figure from megabits to gigabits.
+         * Convert a quota figure from megabytes to gigabytes.
          *
-         * @param float|int $megabits Value in megabits.
-         * @return float Value in gigabits, rounded to one decimal.
+         * @param float|int $megabytes Value in megabytes.
+         * @return float Value in gigabytes, floored to two decimals.
          */
-        public function wpstream_convert_band($megabits){
-            // 1 gigabit = 1000 megabits.
-            $gigabit = $megabits * 0.001;
-            // Return with a single decimal place.
-            return floatval( sprintf( '%.1f', $gigabit ) );
+        public function wpstream_convert_band( $megabytes ) {
+            // Quota payloads use binary megabytes. Never round remaining allowance up.
+            return $this->wpstream_floor_decimals( (float) $megabytes / 1024, 2 );
         }
 
         /**
@@ -171,8 +210,7 @@ class Wpstream {
          * Load and instantiate the AJAX handler service.
          */
         private function define_ajax_hooks() {
-            // Pull in the AJAX class and construct it with the main instance.
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-wpstream-ajax.php';
+            // Construct the AJAX service with the main instance (class autoloads).
             $this->wpstream_ajax = new WpStream_Ajax( $this->main );
         }
 
@@ -180,9 +218,8 @@ class Wpstream {
         /**
          * Load the cloud API connection and resolve the user quota service.
          */
-        private function wpstream_conection(){
-            // Pull in and instantiate the live/cloud API client.
-            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-live-api-connection.php';
+        private function wpstream_connection(){
+            // Instantiate the live/cloud API client (class autoloads).
             $this->wpstream_live_connection = new Wpstream_Live_Api_Connection();
             // Cache the user quota service exposed by the connection.
             $this->user_quota_service = $this->wpstream_live_connection->get_user_quota_service();
@@ -193,8 +230,7 @@ class Wpstream {
          * Load and instantiate the player service.
          */
         private function wpstream_player(){
-            // Pull in the player class and build it with the main instance.
-            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-player.php';
+            // Build the player service with the main instance (class autoloads).
             $this->wpstream_player = new Wpstream_Player($this->main);
         }
 
@@ -202,8 +238,7 @@ class Wpstream {
          * Load and instantiate the quota cache manager.
          */
         private function wpstream_init_quota_manager() {
-            // Pull in the quota manager and build it with this main instance.
-            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-quota-manager.php';
+            // Build the quota cache manager with this main instance (class autoloads).
             $this->quota_manager = new Wpstream_Quota_Manager( $this );
         }
 
@@ -212,8 +247,7 @@ class Wpstream {
          * Load and register the front-end template loader.
          */
         private function wpstream_load_page_templates() {
-	        // Pull in the loader and register its hooks by constructing it.
-	        require_once WPSTREAM_PLUGIN_PATH . 'includes/class-wpstream-templates.php';
+	        // Register the template loader's hooks by constructing it (class autoloads).
 	        new WpStream_Template_Loader();
         }
 
@@ -221,94 +255,63 @@ class Wpstream {
          * Load and register the companion-theme update admin notice.
          */
         private function wpstream_load_theme_notice() {
-            // Pull in the notice class and register it by constructing it.
-            require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-theme-notice.php';
+            // Register the notice by constructing it (class autoloads).
             new WPStream_Theme_Notice();
         }
         
         
 	/**
-	 * Load the required dependencies for this plugin.
+	 * Load the dependencies the classmap autoloader cannot serve.
 	 *
-	 * Include the following files that make up the plugin:
-	 *
-	 * - Wpstream_Loader. Orchestrates the hooks of the plugin.
-	 * - Wpstream_i18n. Defines internationalization functionality.
-	 * - Wpstream_Admin. Defines all hooks for the admin area.
-	 * - Wpstream_Public. Defines all hooks for the public side of the site.
-	 *
-	 * Create an instance of the loader which will be used to register the hooks
-	 * with WordPress.
+	 * Plugin classes resolve through Wpstream_Autoloader on first use, so this
+	 * only requires what an autoloader can never load: the WooCommerce product
+	 * types (kept behind a WooCommerce guard because they extend WC_Product)
+	 * and the function-only helper files. It then creates the hook loader that
+	 * the define_*_hooks() methods populate.
 	 *
 	 * @since    3.0.1
 	 * @access   private
 	 */
 	private function load_dependencies() {
 
-		/**
-		 * The class responsible for orchestrating the actions and filters of the
-		 * core plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-loader.php';
-
-		/**
-		 * The class responsible for defining internationalization functionality
-		 * of the plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream-i18n.php';
-
-		/**
-		 * The class responsible for defining all actions that occur in the admin area.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-wpstream-admin.php';
-
-		/**
-		 * The class responsible for defining all actions that occur in the public-facing
-		 * side of the site.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-wpstream-public.php';
-		/**
-		 * The class responsible for custom post type
-
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wpstream_product.php';
-		// WooCommerce product-type classes are only needed when WooCommerce is active.
+		// WooCommerce product-type classes extend WC_Product, so loading them
+		// without WooCommerce active would fatal at class-link time; they stay
+		// behind this guard instead of the classmap.
 		if(  class_exists( 'WooCommerce' ) ){
 			// Paid live-stream product type.
-			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_live_stream.php';
+			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc-product-live-stream.php';
 			// Paid video-on-demand product type.
-			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc_product_video_on_demand.php';
+			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wc-product-video-on-demand.php';
 		}
+
+		// Function-only helper files: no class inside, so the autoloader can
+		// never serve them and they must be required eagerly.
 
 		// Channel-ownership authorization helper (wpstream_can_manage_channel),
 		// used by every live/broadcast handler to enforce per-channel ownership.
 		require_once plugin_dir_path(__FILE__) . 'Helpers/wpstream-authorization.php';
 
-		// Logging helper classes used across the plugin.
-		require_once plugin_dir_path(__FILE__) . 'Helpers/class-wpstream-log-entry.php';
-		require_once plugin_dir_path(__FILE__) . 'Logger/class-wpstream-logger.php';
+		// Viewing-entitlement helper (wpstream_user_entitled_for_product),
+		// the single rule every playback access gate must call.
+		require_once plugin_dir_path(__FILE__) . 'Helpers/wpstream-entitlement.php';
+
+		// WpStream account credential accessors (constant override + options).
+		require_once plugin_dir_path(__FILE__) . 'Helpers/wpstream-credentials.php';
+
+		// Viewer-facing presentation strings (wpstream_not_live_message), shared by
+		// the player, the public JS config and the bundled theme framework.
+		require_once plugin_dir_path(__FILE__) . 'Helpers/wpstream-presentation.php';
+
+		// My Account list collector (wpstream_account_list_products) shared by the
+		// event-list and video-list templates.
+		require_once plugin_dir_path(__FILE__) . 'Helpers/wpstream-account-lists.php';
+
+		// Tunables (wpstream_tunable): cache TTLs, poll intervals and limits run
+		// through their filter and are clamped in one place.
+		require_once plugin_dir_path(__FILE__) . 'Helpers/wpstream-tunables.php';
 
 		// Create the hook loader that other define_*_hooks() methods populate.
 		$this->loader = new Wpstream_Loader();
-
-	}
-
-	/**
-	 * Define the locale for this plugin for internationalization.
-	 *
-	 * Uses the Wpstream_i18n class in order to set the domain and to register the hook
-	 * with WordPress.
-	 *
-	 * @since    3.0.1
-	 * @access   private
-	 */
-	private function set_locale() {
-
-		// Internationalization helper responsible for loading the text domain.
-		$plugin_i18n = new Wpstream_i18n();
-
-		// Load the translations early on plugins_loaded.
-		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain', 1 );
 
 	}
 
@@ -319,6 +322,55 @@ class Wpstream {
 	 * @since    3.0.1
 	 * @access   private
 	 */
+	/**
+	 * Whether a post edit route can present Live Channel controls.
+	 *
+	 * @param string       $post_type Current post type.
+	 * @param WP_Post|null $post      Current post, when one exists.
+	 * @return bool
+	 */
+	private function is_live_channel_admin_post( $post_type, $post = null ) {
+		if ( 'wpstream_product' === $post_type ) {
+			return true;
+		}
+
+		if ( 'product' !== $post_type ) {
+			return false;
+		}
+
+		$post_id = $post instanceof WP_Post ? intval( $post->ID ) : 0;
+		if ( ! $post_id && isset( $_GET['post'] ) ) {
+			$post_id = absint( wp_unslash( $_GET['post'] ) );
+		}
+
+		if ( $post_id ) {
+			$product_type = wpstream_get_product_type_slug( $post_id );
+			return 'live_stream' === $product_type
+				|| ( 'subscription' === $product_type && 'yes' === get_post_meta( $post_id, '_subscript_live_event', true ) );
+		}
+
+		return isset( $_GET['new_stream'] ) && 'new' === sanitize_key( wp_unslash( $_GET['new_stream'] ) );
+	}
+
+	/**
+	 * Whether the current wp-admin screen presents Live Channel controls.
+	 *
+	 * @param WP_Screen|null $screen Current WordPress screen.
+	 * @return bool
+	 */
+	private function is_live_channel_admin_screen( $screen ) {
+		if ( ! $screen ) {
+			return false;
+		}
+
+		if ( 'wpstream_page_wpstream_live_channels' === $screen->base ) {
+			return true;
+		}
+
+		global $post;
+		return $this->is_live_channel_admin_post( $screen->post_type, $post instanceof WP_Post ? $post : null );
+	}
+
 	private function define_admin_hooks() {
 
                 // Build the admin controller and keep a reference to it.
@@ -329,7 +381,20 @@ class Wpstream {
 			    // Admin CSS/JS and the plugin's admin menu (late priority).
 			    $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin,  'enqueue_styles' );
 		        $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin,  'enqueue_scripts' );
+				add_action(
+					'admin_enqueue_scripts',
+					function () {
+						$screen = get_current_screen();
+						if ( $this->is_live_channel_admin_screen( $screen ) ) {
+							$this->get_live_channel_presentation()->enqueue_assets();
+						}
+					},
+					20
+				);
                 $this->loader->add_action( 'admin_menu',            $plugin_admin,  'wpstream_manage_admin_menu',999);
+
+                // "Chat Room" metabox: bind an existing Better Messages room to a channel.
+                new Wpstream_Chat_Room_Binding();
 
                 // Register the custom post types on init.
                 $plugin_post_types = new Wpstream_Product();
@@ -342,7 +407,17 @@ class Wpstream {
                 $this->loader->add_action( 'save_post',     $plugin_admin, 'wpstream_free_product_update_post',1,2 );
                 $this->loader->add_action( 'publish_wpstream_product',     $plugin_admin, 'wpstream_publish_wpstream_product',1,2 );
                 $this->loader->add_action( 'publish_wpstream_product',     $plugin_admin, 'wpstream_create_remote_channel_on_publish',20,2 );
+		        $this->loader->add_action( 'publish_wpstream_product_vod', $plugin_admin, 'wpstream_create_remote_channel_on_publish', 20, 2 );
 		        $this->loader->add_action( 'publish_product', $plugin_admin, 'wpstream_create_remote_channel_on_publish', 20, 2 );
+		        // Mirror of the publish hooks above: a permanently deleted Live
+		        // Channel is deleted at the service too (trash is untouched).
+		        $this->loader->add_action( 'before_delete_post', $plugin_admin, 'wpstream_delete_remote_channel_on_delete', 10, 2 );
+		        $this->loader->add_action( 'before_delete_post', $plugin_admin, 'wpstream_invalidate_vod_drm_on_delete', 5, 2 );
+		        $this->loader->add_action( 'transition_post_status', $plugin_admin, 'wpstream_invalidate_vod_drm_on_status_change', 10, 3 );
+		        // WooCommerce restores products to their previous published status.
+		        // Paid Live Channels follow the safer channel lifecycle instead:
+		        // restore as draft and require an explicit republish.
+		        $this->loader->add_filter( 'wp_untrash_post_status', $plugin_admin, 'wpstream_paid_live_untrash_status', 20, 3 );
 
 
 
@@ -351,23 +426,50 @@ class Wpstream {
 
 
 
-                // show streaming controls on sidebar
-                $this->loader->add_action('add_meta_boxes', $plugin_admin, 'wpstream_startstreaming_sidebar_meta');
+				// Add Live Channel controls only on edit screens that can own them.
+				add_action(
+					'add_meta_boxes',
+					function ( $post_type, $post ) {
+						if ( $this->is_live_channel_admin_post( $post_type, $post ) ) {
+							$this->get_live_channel_presentation()->register_metaboxes();
+						}
+					},
+					10,
+					2
+				);
 
-                // on boarding actions
-                // Onboarding wizard markup plus its AJAX channel/VOD/login/register endpoints.
-                $this->loader->add_action('admin_footer',$plugin_admin, 'wpstream_admin_footer_onboarding');
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_channel',  $plugin_admin,'wpstream_on_board_create_channel' );
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_channel_ppv',  $plugin_admin,'wpstream_on_board_create_channel_ppv' );
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_free_vod',  $plugin_admin,'wpstream_on_board_create_free_vod' );
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_create_ppv_vod',  $plugin_admin,'wpstream_on_board_create_ppv_vod' );
+				// Load onboarding only when its page assets or one of its AJAX routes runs.
+				add_action(
+					'admin_enqueue_scripts',
+					function () {
+						$screen       = get_current_screen();
+						$is_quickstart = $screen && 'wpstream_page_wpstream_onboard' === $screen->base;
+						$is_post_edit  = isset( $_GET['onboard'] ) && 'yes' === $_GET['onboard'];
 
+						if ( $is_quickstart || $is_post_edit ) {
+							$this->get_onboarding()->enqueue_assets();
+						}
+					},
+					20
+				);
 
-                // Onboarding login/registration plus the captcha challenge (logged-in and guest).
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_login',  $plugin_admin,'wpstream_on_board_login' );
-                $this->loader->add_action( 'wp_ajax_wpstream_on_board_register',  $plugin_admin,'wpstream_on_board_register' );
-				$this->loader->add_action( 'wp_ajax_wpstream_get_captcha_challenge', $plugin_admin, 'wpstream_get_captcha_challenge' );
-				$this->loader->add_action( 'wp_ajax_nopriv_wpstream_get_captcha_challenge', $plugin_admin, 'wpstream_get_captcha_challenge' );
+				$onboarding_ajax_actions = array(
+					'wpstream_on_board_create_channel',
+					'wpstream_on_board_create_channel_ppv',
+					'wpstream_on_board_create_free_vod',
+					'wpstream_on_board_create_ppv_vod',
+					'wpstream_on_board_login',
+					'wpstream_on_board_register',
+					'wpstream_get_captcha_challenge',
+				);
+				foreach ( $onboarding_ajax_actions as $onboarding_ajax_action ) {
+					add_action(
+						'wp_ajax_' . $onboarding_ajax_action,
+						function () use ( $onboarding_ajax_action ) {
+							return $this->get_onboarding()->handle_ajax( $onboarding_ajax_action );
+						}
+					);
+				}
                 
                 // Register AJAX actions for multipart uploads
                 $this->loader->add_action( 'wp_ajax_wpstream_initiate_multipart_upload', $plugin_admin, 'handle_initiate_multipart_upload' );
@@ -421,24 +523,35 @@ class Wpstream {
                        
                 // WooCommerce-only admin hooks: register the custom product types,
                 // their data tabs/fields, pricing visibility, and add-to-cart handling.
-                if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
+                // Deferred to plugins_loaded because WooCommerce may load after this
+                // plugin, and detection uses class_exists (not the active_plugins
+                // option) so network-activated WooCommerce on multisite is seen too.
+                // Registered directly (not via the loader) because the loader runs
+                // before plugins_loaded fires; every hook below fires later than
+                // plugins_loaded, so nothing is missed by the deferral.
+                add_action( 'plugins_loaded', function () use ( $plugin_admin ) {
+                    // Without WooCommerce none of these hooks have anything to do.
+                    if ( ! class_exists( 'WooCommerce' ) ) {
+                        return;
+                    }
 
                     // Register product types and map them to their PHP classes.
-                    $this->loader->add_action( 'init',                          $plugin_admin, 'wpstream_add_custom_wc_products' );
-                    $this->loader->add_filter( 'product_type_selector',         $plugin_admin, 'wpstream_add_products' );
-                    $this->loader->add_filter( 'woocommerce_product_class',     $plugin_admin, 'wpstream_add_products_class', 10, 2 );
+                    add_action( 'init',                          array( $plugin_admin, 'wpstream_add_custom_wc_products' ) );
+                    add_filter( 'product_type_selector',         array( $plugin_admin, 'wpstream_add_products' ) );
+                    add_filter( 'woocommerce_product_class',     array( $plugin_admin, 'wpstream_add_products_class' ), 10, 2 );
                     // Pricing-field visibility, tab hiding, and purchasability rules.
-                    $this->loader->add_action( 'admin_enqueue_scripts',         $plugin_admin, 'wpstream_enqueue_wc_product_pricing_visibility', 20 );
-                    $this->loader->add_filter( 'woocommerce_product_data_tabs', $plugin_admin, 'wpstream_hide_attributes_data_panel',10,1 );
-                    $this->loader->add_filter( 'woocommerce_is_purchasable',    $plugin_admin, 'wpstream_hide_buy_now_subscription_mode',10,2);
+                    add_action( 'admin_enqueue_scripts',         array( $plugin_admin, 'wpstream_enqueue_wc_product_pricing_visibility' ), 20 );
+                    add_filter( 'woocommerce_product_data_tabs', array( $plugin_admin, 'wpstream_hide_attributes_data_panel' ), 10, 1 );
+                    add_filter( 'woocommerce_is_purchasable',    array( $plugin_admin, 'wpstream_hide_buy_now_subscription_mode' ), 10, 2 );
 
                     // Custom general-tab fields (render + save) and add-to-cart wiring.
-                    $this->loader->add_action( 'woocommerce_product_options_general_product_data', $plugin_admin, 'wpstream_add_custom_general_fields', 20 );
-                    $this->loader->add_filter( 'woocommerce_process_product_meta',$plugin_admin, 'wpstream_add_custom_general_fields_save',10,1 );
-                    $this->loader->add_action( 'woocommerce_live_stream_add_to_cart', $plugin_admin, 'wpstream_add_to_cart',10,1);
-                    $this->loader->add_action( 'woocommerce_video_on_demand_add_to_cart', $plugin_admin, 'wpstream_add_to_cart',10,1);
-                    $this->loader->add_filter( 'woocommerce_loop_add_to_cart_link', $plugin_admin,'replacing_add_to_cart_button', 10, 2 );
-                }
+                    add_action( 'woocommerce_product_options_general_product_data', array( $plugin_admin, 'wpstream_add_custom_general_fields' ), 20 );
+                    add_filter( 'woocommerce_process_product_meta', array( $plugin_admin, 'wpstream_add_custom_general_fields_save' ), 10, 1 );
+					add_action( 'woocommerce_process_product_meta', array( $plugin_admin, 'wpstream_initialize_paid_streaming_product' ), 30, 1 );
+                    add_action( 'woocommerce_live_stream_add_to_cart', array( $plugin_admin, 'wpstream_add_to_cart' ), 10, 1 );
+                    add_action( 'woocommerce_video_on_demand_add_to_cart', array( $plugin_admin, 'wpstream_add_to_cart' ), 10, 1 );
+                    add_filter( 'woocommerce_loop_add_to_cart_link', array( $plugin_admin, 'replacing_add_to_cart_button' ), 10, 2 );
+                } );
 	}
 
 
@@ -483,7 +596,9 @@ class Wpstream {
 		$this->loader->add_action( 'woocommerce_email_order_details', $plugin_public,'wpstream_email_order_details', 20,4 );
 
 		// My Account: add the Events/Videos menu items and their endpoint content.
-		$this->loader->add_filter( 'woocommerce_account_menu_items', $plugin_public,'wpstream_custom_my_account_menu_items' );
+		// Run after themes have built their account navigation so a theme that
+		// replaces the menu cannot discard the plugin-owned Events/Videos links.
+		$this->loader->add_filter( 'woocommerce_account_menu_items', $plugin_public, 'wpstream_custom_my_account_menu_items', 99 );
 		$this->loader->add_action( 'woocommerce_account_event-list_endpoint', $plugin_public,'wpstream_custom_endpoint_content_event_list' );
 		$this->loader->add_action( 'woocommerce_account_video-list_endpoint', $plugin_public,'wpstream_custom_endpoint_video_list' );
 
@@ -556,6 +671,34 @@ class Wpstream {
 	public function get_version() {
             // Return the resolved plugin version string.
             return $this->version;
+	}
+
+	/**
+	 * Return the onboarding workflow, creating it only when an onboarding route
+	 * actually needs it.
+	 *
+	 * @return Wpstream_Onboarding
+	 */
+	public function get_onboarding() {
+		if ( ! $this->onboarding ) {
+			$this->onboarding = new Wpstream_Onboarding( $this );
+		}
+
+		return $this->onboarding;
+	}
+
+	/**
+	 * Return the Live Channel admin presentation, creating it only when a
+	 * relevant screen or shared go-live card needs it.
+	 *
+	 * @return Wpstream_Live_Channel_Presentation
+	 */
+	public function get_live_channel_presentation() {
+		if ( ! $this->live_channel_presentation ) {
+			$this->live_channel_presentation = new Wpstream_Live_Channel_Presentation( $this );
+		}
+
+		return $this->live_channel_presentation;
 	}
 
     /**
@@ -666,9 +809,8 @@ class Wpstream {
         /**
 	 * help function for media list elementor widget
 	 *
-	 * Builds and renders a grid of media items (free CPTs or WooCommerce
-	 * products) based on widget attributes, with ordering, pagination, an
-	 * optional live-only filter, and a "no media found" fallback.
+	 * Compatibility delegate for customer themes that call the historical
+	 * renderer on the main plugin object.
 	 *
 	 * @since     3.0.1
 	 * @param     array       $attributes Widget attributes (counts, type, order, labels).
@@ -677,276 +819,11 @@ class Wpstream {
 	 */
 
         public function wpstream_media_list_elementor_function($attributes, $content = null){
-
-
-                // Number of items to show (default 3).
-                $media_number=3;
-                if ( isset($attributes['media_number']) ){
-                    $media_number=$attributes['media_number'];
-                }
-
-
-                // Number of columns per row (default 3, capped at 4).
-                $row_number=3;
-                if ( isset($attributes['row_number']) ){
-                    $row_number=$attributes['row_number'];
-                }
-                if($row_number>4){
-                    $row_number=4;
-                }
-
-
-                // Buffer all output so it can be returned as a string.
-                ob_start();
-
-                // check if is vod or live stream
-                // Query scaffolding: meta and taxonomy query arrays.
-                $meta_query     =   array();
-                $tax_query_array=   array();
-                $tax_query      =   array();
-
-                // check if the media is paid or free
-                // Decide which post types to query based on free/paid and live/VOD.
-                $event_types            =   array();
-                $product_type_free_paid =   0;
-                if ( isset($attributes['product_type_free_paid']) ){
-                    $product_type_free_paid=$attributes['product_type_free_paid'];
-
-                    // Free path: plugin CPTs (live product, or VOD when product_type == 2).
-                    if($product_type_free_paid==0){
-                        $event_types=array('wpstream_product');
-
-                        if ( isset($attributes['product_type']) && intval($attributes['product_type'])==2){
-                            $event_types=array('wpstream_product_vod');
-                        }
-
-                    }else{
-                        // Paid path: WooCommerce products, filtered by product_type taxonomy.
-                        $event_types=array('product');
-                        if ( isset($attributes['product_type']) ){
-                            // Map the numeric product_type to a WooCommerce term slug.
-                            $product_type       =   $attributes['product_type'];
-                            $product_type_slug  =   'video_on_demand';
-                            if($product_type==1){
-                                $product_type_slug ='live_stream';
-                            }
-
-                            // Restrict the WP_Query to that product_type term.
-                            $tax_query_array =  array(
-                                            'taxonomy'     => 'product_type',
-                                            'field'        => 'slug',
-                                            'terms'        => $product_type_slug  
-                                        );
-                            
-                            $tax_query= array(
-                                        'relation'  => 'AND',
-                                        $tax_query_array
-                                    );
-                         
-                        }
-                    }
-                    
-                }
-                // Optional "see product" label rendered under each free item.
-                $see_product='';
-                if(isset($attributes['free_label'])){
-                    $see_product=$attributes['free_label'];
-                }
-
-                // pagination
-                // Current page number; the front page uses the 'page' query var instead.
-                $paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
-                if( is_front_page() ){
-                    $paged= (get_query_var('page')) ? get_query_var('page') : 1;
-                }
-
-
-                //order
-                // Sort order: map the numeric order_by attribute to orderby/order.
-                $orderby='ID';
-                $order  ='ASC';
-                if ( isset($attributes['order_by']) ){
-                    $order_by=intval($attributes['order_by']);
-                     switch ($order_by) {
-                        case 0:
-                            $orderby='ID';
-                            $order  ='ASC';
-                            break;
-                        case 1:
-                            $orderby='ID';
-                            $order  ='DESC';
-                            break;
-                        case 2:
-                            $orderby='title';
-                            $order  ='ASC';
-                            break;
-                         case 3:
-                            $orderby='title';
-                            $order  ='DESC';
-                            break;
-                    }
-                                     }
-                
-                // building wp_query arg array
-                // Assemble the WP_Query arguments from the values computed above.
-                $args = array(
-                    'post_type'      => $event_types,
-                    'post_status'    => 'publish',
-                    'meta_query'     => $meta_query,
-                    'posts_per_page' => $media_number,
-                    'paged'          => $paged,
-                    'orderby'        => $orderby,
-                    'order'          => $order,
-                    'tax_query'      =>  $tax_query
-                );
-                
-             
-             
-                // show live events
-                // Optional filter: restrict results to the user's currently-live channels.
-                if ( isset($attributes['product_show_live']) && $attributes['product_show_live']=='yes'){
-                    $live_event_for_user    =    $this->main->wpstream_live_connection->api20_wpstream_request_live_stream_for_user_for_shortcode('shortcode');
-
-
-                    if( is_array($live_event_for_user) ){
-                        // Append 0 so post__in is never empty (which would return all posts).
-                        $live_event_for_user[]=0;
-
-                        $args['post__in']=$live_event_for_user;
-                    }
-                }
-
-
-
-
-                // Run the query and render either a grid or a "no media" message.
-                $media_list= new WP_Query($args);
-                if($media_list->have_posts()){
-                    print '<ul class="wpstream_media_list_wrapper products columns-'.esc_attr($row_number).'" >';
-                        // Loop over each matched post.
-                        while($media_list->have_posts()):$media_list->the_post();
-                            // Free items: render a custom card with thumbnail and title.
-                            if($product_type_free_paid==0 ){
-
-                                // Resolve the medium thumbnail, falling back to a default image.
-                                $thumb=wp_get_attachment_image_src(get_post_thumbnail_id(),'medium');
-
-                                $thumb_src='';
-                                if( isset($thumb[0]) ){
-                                    $thumb_src=$thumb[0];
-                                }
-
-                                if(($thumb_src)==''){
-                                    $thumb_src= plugin_dir_url( dirname( __FILE__ ) ). 'img/default_300.png';
-                                }
-                                print '<li class="wpstream_product_unit">'
-                                .'<a href="'.get_permalink().'" class="product_title" ><div class="product_image" style="background-image:url('.esc_url($thumb_src).')"></div></a>'
-                                .'<a href="'.get_permalink().'" class="product_title" >'.get_the_title().'</a>';
-
-                                // Optional "see product" call-to-action link.
-                                if($see_product!=''){
-                                    print '<a href="'.get_permalink().'"class="see_product">'.$see_product.'</a>';
-                                }
-                                print '</li>';
-                            }else{
-                                // Paid items: use WooCommerce's product content template part.
-                                wc_get_template_part( 'content', 'product' );
-                            }
-                        endwhile;
-                    print '</ul>';
-                }else{
-                    // No results for the current query/page.
-                    print esc_html__('No media found! ','wpstream');
-                }
-
-
-                // Restore the global post/query state after the custom loop.
-                wp_reset_query();
-                wp_reset_postdata();
-
-                // Append pagination controls beneath the grid.
-                $this->wpstream_pagination($media_list->max_num_pages,$range=2);
-                // Capture the buffered markup and return it.
-                $return_string= ob_get_contents();
-                ob_end_clean();
-
-                return $return_string;
+				$kind = isset( $attributes['product_type'] ) && 2 === intval( $attributes['product_type'] )
+					? 'vod'
+					: 'live_channel';
+				return $this->media_list->render( $kind, is_array( $attributes ) ? $attributes : array() );
         }
-        
-        
-        
-        
-        
-        
-    /*
-     *
-     *
-     * Pagination for media lista
-     *
-     *
-     *
-     */
-
-    /**
-     * Print a numbered pagination control for the media list.
-     *
-     * @param int|string $pages Total number of pages; falls back to the main query.
-     * @param int        $range How many page links to show either side of the current page.
-     */
-    function wpstream_pagination($pages = '', $range = 2){
-
-        // Total number of page links visible in the window.
-        $showitems = ($range * 2)+1;
-        // Current page from the global; default to page 1.
-        global $paged;
-        if(empty($paged)) $paged = 1;
-
-
-        // Fall back to the main query's page count when none was passed in.
-        if($pages == ''){
-            global $wp_query;
-            $pages = $wp_query->max_num_pages;
-            if(!$pages)
-            {
-                $pages = 1;
-            }
-        }
-
-        // Only render pagination when there is more than one page.
-        if(1 != $pages){
-            print '<ul class="wpstream_pagination ">';
-            // Previous-page arrow.
-            print '<li class="roundleft"><a href="'.get_pagenum_link($paged - 1).'"> < </a></li>';
-
-            // Emit a link for each page within the visible window.
-            for ($i=1; $i <= $pages; $i++)
-            {
-                // Show this page number only if inside the range window (or few pages total).
-                if (1 != $pages &&( !($i >= $paged+$range+1 || $i <= $paged-$range-1) || $pages <= $showitems ))
-                {
-                    // Mark the current page as active.
-                    if ($paged == $i){
-                       print '<li class="active"><a href="'.esc_url(get_pagenum_link($i)).'" >'.$i.'</a><li>';
-                    }else{
-                       print '<li><a href="'.esc_url(get_pagenum_link($i)).'" >'.$i.'</a><li>';
-                    }
-                }
-            }
-
-            // Compute the next-page URL, clamping at the last page.
-            $prev_page= get_pagenum_link($paged + 1);
-            if ( ($paged +1) > $pages){
-               $prev_page= get_pagenum_link($paged );
-            }else{
-                $prev_page= get_pagenum_link($paged + 1);
-            }
-
-
-            // Next-page arrow.
-            print '<li class="roundright"><a href="'.$prev_page.'"> > </a><li>';
-            print '</ul>';
-        }
-    }
 
         
         
@@ -994,7 +871,7 @@ class Wpstream {
 
                 // No product id but a user id: resolve that author's first channel.
                 if(intval($product_id)==0 && $user_id!=0 ){
-                    $product_id= $this->wpstream_player_retrive_first_id($user_id);
+                    $product_id= $this->wpstream_player_retrieve_first_id($user_id);
                 }
 
 
@@ -1016,54 +893,6 @@ class Wpstream {
                 return $return_string;
         }
         
-          /**
-	 * help function for player low latency elementor widget
-	 *
-	 * Same as the standard player helper but renders the low-latency player.
-	 *
-	 * @since     3.0.1
-	 * @param     array       $attributes Widget attributes ('id', 'user_id').
-	 * @param     string|null $content    Unused shortcode inner content.
-	 * @return    string      Rendered low-latency player markup.
-	 */
-
-        public function wpstream_insert_player__low_latency_elementor($attributes, $content = null){
-                // Normalize incoming attributes with defaults.
-                $product_id     =   '';
-                $return_string  =   '';
-                $attributes =   shortcode_atts(
-                    array(
-                        'id'                       => 0,
-                         'user_id'                  => 0,
-                    ), $attributes) ;
-
-
-                // Explicit product id, if provided.
-                if ( isset($attributes['id']) ){
-                    $product_id=$attributes['id'];
-                }
-
-                // Optional author id used to look up a channel.
-                if ( isset($attributes['user_id']) ){
-                    $user_id = intval( $attributes['user_id'] );
-                }
-
-                // No product id but a user id: resolve that author's first channel.
-                if(intval($product_id)==0 && $user_id!=0){
-                    $product_id= $this->wpstream_player_retrive_first_id($user_id);
-                }
-
-
-                // Buffer the low-latency player output and return it.
-                ob_start();
-                $this->main->wpstream_player->wpstream_video_player_shortcode_low_latency($product_id);
-                $return_string= ob_get_contents();
-                ob_end_clean();
-
-                return $return_string;
-        }
-
-
 
         /**
          * Resolve the first channel/event id belonging to a given author.
@@ -1071,62 +900,40 @@ class Wpstream {
          * @param string|int $received_user_id Author user id.
          * @return int|string Post id of the author's first channel, or 0 when none.
          */
-        public function wpstream_player_retrive_first_id($received_user_id=''){
+        public function wpstream_player_retrieve_first_id($received_user_id=''){
             // Free vs paid channel type is a site-wide option.
             $channel_type   =   get_option ('wpstream_user_streaming_channel_type');
             // Look up the author's most relevant event id for that type.
             $product_id     =   $this->wpstream_get_current_event_per_author($received_user_id,$channel_type);
             return $product_id;
         }
-        
-        
-        
-         /**
-	 * help function for chat elementor widget
-	 *
-	 * Renders the chat widget for a product and wires up its client connection.
-	 *
-	 * @since     3.0.1
-	 * @param     array       $attributes Widget attributes ('id').
-	 * @param     string|null $content    Unused shortcode inner content.
-	 * @return    string      Rendered chat markup.
-	 */
 
-        public function wpstream_insert_chat_elementor($attributes, $content = null){
-                // Normalize incoming attributes with defaults.
-                $product_id     =   '';
-                $return_string  =   '';
-                $attributes =   shortcode_atts(
-                    array(
-                        'id'                       => 0,
-                    ), $attributes) ;
-
-
-                // Explicit product id, if provided.
-                if ( isset($attributes['id']) ){
-                    $product_id=$attributes['id'];
-                }
-
-                // Open the wrapper, buffer the chat markup, then close the wrapper.
-                $return_string.= '<div class="wpstream_plugin_chat_wrapper">';
-                ob_start();
-                    $this->main->wpstream_player->wpstream_chat_wrapper($product_id);
-                    $return_string.= ob_get_contents();
-                ob_end_clean();
-                $return_string.='</div>';
-                // Emit the chat client connection script for this product.
-                $this->main->wpstream_player->wpstream_connect_to_chat($product_id);
-
-                return $return_string;
+        /**
+        * Deprecated misspelled alias of wpstream_player_retrieve_first_id().
+        *
+        * Kept because the method is public and may be called by external code.
+        *
+        * @deprecated 4.13.4 Use wpstream_player_retrieve_first_id() instead.
+        */
+        public function wpstream_player_retrive_first_id($received_user_id=''){
+            return $this->wpstream_player_retrieve_first_id($received_user_id);
         }
         
         
+        
         /**
-        * edited 4.0 
+        * edited 4.0
         * 
-        * Check if user is allowed to stream
+        * Check if the current user is allowed to stream.
+        *
+        * The one broadcasting-permission rule: administrators always may; other
+        * users need their primary role on the "streamer roles" list or the
+        * "regular users may stream" option. The verdict passes through the
+        * wpstream_user_can_stream filter, so membership plugins replace the
+        * role rule in one place. Guests are refused before the filter.
         *
         * @since    3.7
+        * @return bool
         */
         
         public function wpstream_check_user_can_stream(){
@@ -1136,34 +943,44 @@ class Wpstream {
             // Guests can never stream.
             if( !is_user_logged_in() ){
                 return false;
-                exit('user not logged in');
             }
 
-            if(current_user_can('administrator')){
-                // admins can always brodcast
-                return true;
+            // Admins can always broadcast.
+            $can = current_user_can( 'administrator' );
+
+            if ( ! $can ) {
+                // Site-configured list of roles that are allowed to stream.
+                $extra_roles    =   get_option( 'wpstream_stream_role', true );
+                // The user's primary role (first in the roles array).
+                $user_role = '';
+                if( is_array( $current_user->roles) && count( $current_user->roles ) > 0 ){
+                    $user_role = $current_user->roles[0];
+                }
+
+                // Allow when the user's role is in the configured allow-list.
+                if ( is_array($extra_roles) && in_array( $user_role, $extra_roles ) ) {
+                    $can = true;
+                }
+
+                // Allow when the "regular users may stream" option is enabled.
+                if(function_exists('wpstream_get_option') && intval(wpstream_get_option('allow_streaming_regular_users',''))==1 ){
+                    $can = true;
+                }
             }
 
-            // Site-configured list of roles that are allowed to stream.
-            $extra_roles    =   get_option( 'wpstream_stream_role', true );
-            // The user's primary role (first in the roles array).
-            $user_role = '';
-            if( is_array( $current_user->roles) && count( $current_user->roles ) > 0 ){
-                $user_role = $current_user->roles[0];
-            }
-
-            // Allow when the user's role is in the configured allow-list.
-            if ( is_array($extra_roles) && in_array( $user_role, $extra_roles ) ) {
-                return true;
-            }
-
-            // Allow when the "regular users may stream" option is enabled.
-            if(function_exists('wpstream_get_option') && intval(wpstream_get_option('allow_streaming_regular_users',''))==1 ){
-                return true;
-            }
-
-            // Otherwise deny.
-            return false;
+            /**
+             * Filters whether the current (logged-in) user may broadcast.
+             *
+             * Gates every go-live surface: the start/stop endpoints, the
+             * start-streaming dashboard and channel creation.
+             *
+             * @since 4.14.0
+             *
+             * @param bool $can     The built-in verdict (administrator, streamer
+             *                      role list, or the regular-users option).
+             * @param int  $user_id Current user ID.
+             */
+            return (bool) apply_filters( 'wpstream_user_can_stream', $can, intval( $current_user->ID ) );
         }
         
 
@@ -1182,17 +999,23 @@ class Wpstream {
             // Coerce to an integer id.
             $item_id = intval($item_id);
 
+            // The unit's controller script (+ its QR dependency chain) and the shared
+            // admin stylesheet are registered on every page but only enqueued here,
+            // where the go-live unit actually renders (scripts print in the footer).
+            wp_enqueue_script( 'wpstream-start-streaming' );
+            wp_enqueue_style( 'wpstream_front_style' );
+
             if($item_id == 0){
                 //retrive or  create channel for front end streamers
-                $item_id=$this->wpstream_retrive_front_end_channel();
+                $item_id=$this->wpstream_retrieve_front_end_channel();
             }
             // Modal backdrop and reusable error-notification markup.
             print'<div class="wpstream_modal_background"></div>';
             print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er2</div>
             <div class="wpstream_error_ok wpstream_button" type="button">'.esc_html__('Close','wpstream').'</div>
             </div>';
-            // Delegate the actual start-streaming UI to the admin controller.
-            $this->admin->wpstream_live_stream_unit(  $item_id,$type );
+			// Render through the shared Live Channel presentation module.
+			$this->get_live_channel_presentation()->render_channel( $item_id, $type );
         }
         
         
@@ -1211,17 +1034,21 @@ class Wpstream {
             // Coerce to an integer id.
             $item_id = intval($item_id);
 
+            // Same render-time asset loading as wpstream_live_stream_unit_wrapper().
+            wp_enqueue_script( 'wpstream-start-streaming' );
+            wp_enqueue_style( 'wpstream_front_style' );
+
             if($item_id == 0){
                 //retrive or  create channel for front end streamers
-                $item_id=$this->wpstream_retrive_front_end_channel();
+                $item_id=$this->wpstream_retrieve_front_end_channel();
             }
             // Modal backdrop and reusable error-notification markup.
             print'<div class="wpstream_modal_background"></div>';
             print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er2</div>
             <div class="wpstream_error_ok wpstream_button" type="button">'.esc_html__('Close','wpstream').'</div>
             </div>';
-            // Delegate to the admin controller's theme-specific renderer.
-            $this->admin->wpstream_live_stream_unit_for_theme(  $item_id,$type );
+			// Render the companion-theme variant through the same presentation module.
+			$this->get_live_channel_presentation()->render_channel( $item_id, 'theme' );
         }
         
         
@@ -1234,7 +1061,7 @@ class Wpstream {
         * @since    3.7
         * @return int Channel/product id for the current user.
         */
-        public function wpstream_retrive_front_end_channel(){
+        public function wpstream_retrieve_front_end_channel(){
 
             // Current user plus the site-wide channel type and default price.
             $current_user   = wp_get_current_user();
@@ -1246,12 +1073,23 @@ class Wpstream {
 
             // None found: create one on the fly.
             if(intval($front_end_streamin_channel) == 0){
-                $front_end_streamin_channel= $this->wpstrea_create_front_end_event($current_user->ID,$current_user->user_login ,$channel_type,$channel_price);
+                $front_end_streamin_channel= $this->wpstream_create_front_end_event($current_user->ID,$current_user->user_login ,$channel_type,$channel_price);
             }
             return $front_end_streamin_channel;
 
         }
-          
+
+        /**
+        * Deprecated misspelled alias of wpstream_retrieve_front_end_channel().
+        *
+        * Kept because the method is public and may be called by external code.
+        *
+        * @deprecated 4.13.4 Use wpstream_retrieve_front_end_channel() instead.
+        */
+        public function wpstream_retrive_front_end_channel(){
+            return $this->wpstream_retrieve_front_end_channel();
+        }
+
         /**
         * create the event from front end
         *
@@ -1266,49 +1104,35 @@ class Wpstream {
         * @return int|void New post id, or void when the user may not stream.
         */
 
-        public function wpstrea_create_front_end_event($userID,$userLogin,$channel_type,$channel_price){
+        public function wpstream_create_front_end_event($userID,$userLogin,$channel_type,$channel_price){
+			$request = array(
+				'actor_id' => intval( $userID ),
+				'owner_id' => intval( $userID ),
+				'kind'     => 'live_channel',
+				'access'   => 'paid' === $channel_type ? 'paid' : 'free',
+				'title'    => sprintf( esc_html__( '%s Channel', 'wpstream' ), $userLogin ),
+			);
+			if ( 'paid' === $request['access'] ) {
+				$request['price'] = $channel_price;
+			}
 
-           // Refuse to create a channel for users without streaming permission.
-           if( !$this->wpstream_check_user_can_stream() ){
-               return;
-           }
-
-            // Free channels use the plugin CPT; paid channels use WooCommerce products.
-            $post_type='wpstream_product';
-            if($channel_type=='paid'){
-                $post_type='product';
-            }
-
-            // Build and insert the channel post.
-            $post = array(
-                'post_title'	=>  sprintf( esc_html__('%s Channel','wpstream'),$userLogin),
-                'post_content'	=>  '',
-                'post_type'     =>  $post_type ,
-                'post_author'   =>  $userID,
-                'post_status'   =>  'publish',
-            );
-            $post_id =  wp_insert_post($post );
-            // For paid channels, configure the WooCommerce product pricing and type.
-            if($channel_type=='paid'){
-                $product    =   wc_get_product($post_id);
-                $price      =   wc_format_decimal($channel_price);
-
-                $product = wc_get_product( $post_id );
-                // Set the product active price (regular)
-                $product->set_price( $price );
-                $product->set_regular_price( $price ); // To be sure
-                $product->save();
-                // Mark as not-yet-passed and tag it as a live_stream product.
-                update_post_meta ($post_id,'event_passed',0);
-                wp_set_object_terms( $post_id, 'live_stream', 'product_type' );
-            }
-            // Flag the post as a live event (product type 1).
-            update_post_meta($post_id,'wpstream_product_type',1);
-
-            return $post_id;
+			$result = $this->streaming_content_creation->create( $request );
+			return ! empty( $result['success'] ) ? intval( $result['content_id'] ) : null;
         }
-        
-        
+
+        /**
+        * Deprecated misspelled alias of wpstream_create_front_end_event().
+        *
+        * Kept because the method is public and may be called by external code.
+        *
+        * @deprecated 4.13.4 Use wpstream_create_front_end_event() instead.
+        */
+        public function wpstrea_create_front_end_event($userID,$userLogin,$channel_type,$channel_price){
+            return $this->wpstream_create_front_end_event($userID,$userLogin,$channel_type,$channel_price);
+        }
+
+
+
         /**
         * Find the first channel/event id owned by a given author.
         *

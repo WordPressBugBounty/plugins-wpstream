@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Resolve the post ID: prefer the global $post, otherwise the $post_id passed
 // in when this partial is rendered from wpstream_theme_display_player.
 if(isset($post->ID)){

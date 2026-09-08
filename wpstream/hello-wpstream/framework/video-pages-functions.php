@@ -9,6 +9,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Guard against redeclaration.
 if ( ! function_exists( 'wpstream_video_item_card_selector' ) ) {
 	/**

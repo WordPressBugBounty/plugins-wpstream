@@ -11,6 +11,12 @@
  * @subpackage Wpstream/hello-wpstream
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * CHeck if we display chat
  *
@@ -130,10 +136,12 @@ function wpstream_theme_display_better_messages_chat($post_id){
 	if(function_exists('better_messages')){
 
 		// Look up the chat room already linked to this post, if any.
-		$chat_post_id=get_post_meta( $post_id, 'wpstream_chat_post_id',true );
-		// No room yet: create one and store its ID against the post.
-		if(intval($chat_post_id)===0){
-			$chat_post_id  = wpstream_create_better_messages_chat($post_id);
+		$chat_post_id = intval( get_post_meta( $post_id, 'wpstream_chat_post_id', true ) );
+		// No room yet, or the bound room was deleted/trashed: create a fresh one
+		// and re-bind it instead of rendering the shortcode against a dead id.
+		$room_status = $chat_post_id > 0 ? get_post_status( $chat_post_id ) : false;
+		if ( false === $room_status || 'trash' === $room_status ) {
+			$chat_post_id = wpstream_create_better_messages_chat( $post_id );
 		}
 
 		// Render the chat room via its Better Messages shortcode.
@@ -152,8 +160,9 @@ endif;
 /**
  * Create Better messages chat room 
  *
- * Creates a Better Messages chat post (post type bpbm-chat) owned by the current
- * user and links it back to the content via post meta.
+ * Creates a Better Messages chat post (post type bpbm-chat) owned by the
+ * content's author (never the visitor who happened to trigger creation) and
+ * links it back to the content via post meta.
  *
  * @param int $post_id The content the new chat room is attached to.
  * @return int|null New chat room post ID, or null when Better Messages is inactive.
@@ -168,20 +177,45 @@ endif;
 		
 		// Bail silently unless Better Messages is available.
 		if(function_exists('better_messages')){
-			// The chat room is authored by the current user.
-			$current_user           =   wp_get_current_user();
-			$userID                 =   $current_user->ID;
+			$post_id = intval( $post_id );
 
-			// Build the chat post: titled after the content, published, owned by the user.
+			// Build the chat post: titled after the content, published, owned by the content's author.
 			$post = array(
-				'post_title'	=> sanitize_text_field(get_the_title( $post_id )),
-				'post_status'	=> 'publish',
+				'post_title'  => sanitize_text_field( get_the_title( $post_id ) ),
+				'post_status' => 'publish',
 				'post_type'   => 'bpbm-chat',
-				'post_author' => $userID,
-		);
+				'post_author' => intval( get_post_field( 'post_author', $post_id ) ),
+			);
+
+			/**
+			 * Filters the post array used to create the Better Messages chat
+			 * room bound to a Live Channel or VOD.
+			 *
+			 * @since 4.14.0
+			 *
+			 * @param array $post    Arguments for wp_insert_post().
+			 * @param int   $post_id Content the room is attached to.
+			 */
+			$post = apply_filters( 'wpstream_chat_room_post_args', $post, $post_id );
+
 			// Insert the chat room and remember its ID on the source content.
-			$chat_post_id =  wp_insert_post($post );
-			update_post_meta( $post_id, 'wpstream_chat_post_id',$chat_post_id );
+			$chat_post_id = wp_insert_post( $post );
+			if ( ! $chat_post_id || is_wp_error( $chat_post_id ) ) {
+				return null;
+			}
+			update_post_meta( $post_id, 'wpstream_chat_post_id', $chat_post_id );
+
+			/**
+			 * Fires after a Better Messages chat room is created and bound to
+			 * its content — on first creation and when a dead room is replaced.
+			 *
+			 * @since 4.14.0
+			 *
+			 * @param int $chat_post_id The bpbm-chat post ID.
+			 * @param int $post_id      Content the room is attached to.
+			 */
+			do_action( 'wpstream_chat_room_created', $chat_post_id, $post_id );
+
 			// Hand the new chat room ID back to the caller.
 			return $chat_post_id;
 
@@ -387,42 +421,17 @@ if ( ! function_exists( 'wpstream_display_trailer' ) ) {
 	 */
 	function wpstream_display_trailer( $post_id, $poster_thumb = '' ) {
 
-		// Bundle this item may belong to, and the current user (for ownership checks).
-		$possible_bundle = get_post_meta( $post_id, 'wpstream_part_of_bundle', true );
-		$current_user    = wp_get_current_user();
-
-		// In several "already has access" cases the plugin's own player renders the
-		// trailer, so this theme-side trailer must NOT render. Each branch below detects
-		// one of those cases and bails early.
-		// Case 1: a purchased video-on-demand product.
+		// When the viewer already has access (entitled WooCommerce product, or a
+		// free VOD post) the plugin's own player renders the trailer, so this
+		// theme-side trailer must NOT render. One shared entitlement rule
+		// replaces the old per-case purchase / subscription / bundle checks.
+		// Free live posts (wpstream_product) are deliberately excluded: their
+		// trailer has always been theme-rendered.
 		if (
-			get_post_type( $post_id ) === 'product' &&
-			function_exists('wc_get_product') &&
-			wc_get_product( $post_id )->get_type() === 'video_on_demand' &&
-			function_exists( 'wc_customer_bought_product' ) &&
-			wc_customer_bought_product( $current_user->user_email, $current_user->ID, $post_id )
+			in_array( get_post_type( $post_id ), array( 'product', 'wpstream_product_vod' ), true ) &&
+			function_exists( 'wpstream_user_entitled_for_product' ) &&
+			wpstream_user_entitled_for_product( $post_id )
 		) {
-			echo 'do not display trailer player - trailer in plugin';
-			return; // We will display trailer in the plugin player.
-		} elseif (
-			get_post_type( $post_id ) === 'product' &&  
-			function_exists('wc_get_product') &&
-			wc_get_product( $post_id )->get_type() === 'subscription' &&
-			function_exists( 'wcs_user_has_subscription' ) &&
-			wcs_user_has_subscription( $current_user->ID, $post_id, 'active' )
-		) {
-			echo 'do not display trailer player - trailer in plugin';
-			return; // We will display trailer in the plugin player.
-		} elseif (
-			get_post_type( $post_id ) === 'product' &&
-			intval( $possible_bundle ) !== 0 &&
-			function_exists( 'wc_customer_bought_product' ) &&
-			wc_customer_bought_product( $current_user->user_email, $current_user->ID, $possible_bundle )
-		) {
-			echo 'do not display trailer player - trailer in plugin';
-			return; // We will display trailer in the plugin player.
-		// Case 4: free VOD content also renders its trailer in the plugin player.
-		} elseif ( get_post_type( $post_id ) === 'wpstream_product_vod' ) {
 			echo 'do not display trailer player - trailer in plugin';
 			return; // We will display trailer in the plugin player.
 		}
@@ -470,6 +479,7 @@ if ( ! function_exists( 'wpstream_display_trailer' ) ) {
 }
 
 
+if ( ! function_exists( 'wpstream_video_cards_column_class' ) ) :
 /**
  * Determine the column classes for video cards based on the number of columns per row.
  *
@@ -494,18 +504,48 @@ function wpstream_video_cards_column_class( $per_row ) {
 	} 
 	return $return;
 }
+endif;
 
+if ( ! function_exists( 'wpstream_theme_not_live_message' ) ) :
+/**
+ * The "we are not live" text for one channel.
+ *
+ * Goes through the plugin's filterable accessor when the running plugin has
+ * it; older plugins fall back to the raw option.
+ *
+ * @param int $channel_id The ID of the channel.
+ * @return string Plain-text message (not yet escaped).
+ */
+function wpstream_theme_not_live_message( $channel_id ) {
+	if ( function_exists( 'wpstream_not_live_message' ) ) {
+		return wpstream_not_live_message( $channel_id );
+	}
+	return (string) get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' );
+}
+endif;
+
+if ( ! function_exists( 'wpstream_theme_not_live_section' ) ) :
 /**
  * Generate the HTML markup for the non-live section of the WPStream theme.
+ *
+ * Also registered on the plugin's `wpstream_not_live_html` filter, which is
+ * how the player picks this section up once the function-name shim is gone.
  *
  * @param int $channel_id The ID of the channel.
  * @return string The HTML markup for the non-live section.
  */
 function wpstream_theme_not_live_section( $channel_id ) {
-    // Load the cached event status/error for this channel (written by the polling code).
-    $transient_name = 'event_data_to_return_'.   $channel_id;
-    $event_data = get_transient( $transient_name );
-	$status = isset( $event_data['status'] ) ? $event_data['status'] : '';
+    // Channel status/error via the plugin's channel-state owner when available;
+    // older plugin versions fall back to reading the status cache directly.
+    if ( function_exists( 'wpstream_channel_state' ) ) {
+        $channel_state = wpstream_channel_state( $channel_id );
+        $status        = $channel_state->status();
+        $error_value   = $channel_state->error();
+    } else {
+        $event_data  = get_transient( 'event_data_to_return_' . $channel_id );
+        $status      = isset( $event_data['status'] ) ? $event_data['status'] : '';
+        $error_value = isset( $event_data['error'] ) ? $event_data['error'] : '';
+    }
     // Channels with a stored embed URL render an immediate status box; channels
     // without one show a spinner placeholder while the front-end polls the live state.
     $embedUrl = get_post_meta( $channel_id, 'embedUrl', true );
@@ -526,8 +566,8 @@ function wpstream_theme_not_live_section( $channel_id ) {
 	    // Emit the message container, then the actual message text per status/error.
 	    $return_string .= '<div class="' . esc_attr( implode( ' ', $message_classes ) ) . '">';
 	    if ( ( in_array( $status, array( 'stopped', 'stopping', 'starting' ) ) || $status === '' ) ||
-	         ( isset( $event_data['error'] ) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ) {
-		    $return_string .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );;
+	         ( $error_value === 'NO_SUCH_CHANNEL' ) ) {
+		    $return_string .= esc_html( wpstream_theme_not_live_message( $channel_id ) );
 	    }
 	    if ( in_array( $status, array( 'active' ) ) ) {
 		    $return_string .= esc_html__( 'The live stream has not yet started', 'hello-wpstream' );
@@ -540,10 +580,9 @@ function wpstream_theme_not_live_section( $channel_id ) {
 
 	    // If the cached status already says stopped/starting (or the channel is unknown),
 	    // show the "not live" text immediately; otherwise keep the loading spinner.
-	    if ( ( isset( $event_data['status']) &&
-	           in_array( $event_data['status'], array( 'stopped', 'stopping', 'starting' ) ) ) ||
-	         ( isset($event_data['error']) && $event_data['error'] === 'NO_SUCH_CHANNEL' ) ){
-		    $return_string  .= esc_html( get_option( 'wpstream_you_are_not_live', 'We are not live at this moment' ) );
+	    if ( in_array( $status, array( 'stopped', 'stopping', 'starting' ), true ) ||
+	         $error_value === 'NO_SUCH_CHANNEL' ) {
+		    $return_string  .= esc_html( wpstream_theme_not_live_message( $channel_id ) );
 	    } else {
 		    $return_string .= '<div class="wpstream_loading_spinner vjs-loading-spinner" style="display: block;"></div>';
 	    }
@@ -554,7 +593,23 @@ function wpstream_theme_not_live_section( $channel_id ) {
 	$return_string .= '</div>';
 	return $return_string;
 }
+endif;
 
+if ( ! function_exists( 'wpstream_theme_not_live_section_filter' ) ) :
+/**
+ * Supply the framework's not-live section to the player through the filter.
+ *
+ * @param string $html       Default overlay markup (ignored).
+ * @param int    $channel_id Channel post ID.
+ * @return string Framework section markup.
+ */
+function wpstream_theme_not_live_section_filter( $html, $channel_id ) {
+	return wpstream_theme_not_live_section( $channel_id );
+}
+add_filter( 'wpstream_not_live_html', 'wpstream_theme_not_live_section_filter', 5, 2 );
+endif;
+
+if ( ! function_exists( 'wpstream_past_broascast_for_non_live_section' ) ) :
 /**
  * Generate the HTML markup for past broadcasts in the non-live section of the WPStream theme.
  *
@@ -607,3 +662,4 @@ function wpstream_past_broascast_for_non_live_section( $channel_id ) {
 
 	return $return;
 }
+endif;

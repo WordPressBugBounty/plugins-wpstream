@@ -1030,6 +1030,10 @@ class WpStreamTheme_Contact_Form_Builder extends Widget_Base {
 	 * @access protected
 	 */
 	protected function render() {
+		// The form's submit handling lives in the plugin helper script; enqueue it
+		// at render time so non-hello-wpstream themes get it only where needed.
+		wp_enqueue_script( 'wpstream-plugin-scripts' );
+
 		// Current post is referenced for context (kept global for template parity).
 		global $post;
 		// Pull the resolved control values for this widget instance.

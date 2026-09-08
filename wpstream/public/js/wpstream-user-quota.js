@@ -113,8 +113,8 @@ function wpstream_fetch_and_update_quota() {
 			}
 		},
 		error: function (jqXHR, textStatus, errorThrown) {
-			// Network/parse failure: log details for debugging, leave UI unchanged.
-			console.log(jqXHR, textStatus, errorThrown);
+			// Network/parse failure: log the status only (never the response payload), leave UI unchanged.
+			console.error('WpStream: quota refresh failed:', textStatus);
 		}
 	});
 }

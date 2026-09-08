@@ -128,7 +128,7 @@ if (!defined('ABSPATH')) exit;
 				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/main/widgets.wie',
 				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/main/customizer.dat',
 				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/main/preview.png'  ,
-				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'wpstream' ),
 				'preview_url'                 =>  'https://theme.wpstream.net/',
 
 			),
@@ -138,7 +138,7 @@ if (!defined('ABSPATH')) exit;
 				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/esports/widgets.wie',
 				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/esports/customizer.dat',
 				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/esports/preview.png' ,
-				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'wpstream' ),
 				'preview_url'                 =>  'https://esports.wpstream.net/',
 			),
 			'church-demo' =>  array(
@@ -147,7 +147,7 @@ if (!defined('ABSPATH')) exit;
 				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/church/widgets.wie',
 				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/church/customizer.dat',
 				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/church/preview.png' ,
-				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'wpstream' ),
 				'preview_url'                 =>  'https://church.wpstream.net/',
 
 			),
@@ -157,7 +157,7 @@ if (!defined('ABSPATH')) exit;
 				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_widgets.wie',
 				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/live-shoping/live_shoping_customizer.dat',
 				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/live-shoping/preview.png' ,
-				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'wpstream' ),
 				'preview_url'                 =>  'https://liveshopping.wpstream.net/',
 			),
 			'believe-demo' => array(
@@ -166,7 +166,7 @@ if (!defined('ABSPATH')) exit;
 				'import_widget_file_url'      =>  'https://wpstream.net/downloads/demos/believe/widgets.wie',
 				'import_customizer_file_url'  =>  'https://wpstream.net/downloads/demos/believe/customizer.dat',
 				'import_preview_image_url'    =>  'https://wpstream.net/downloads/demos/believe/preview.png' ,
-				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'hello-wpstream' ),
+				'import_notice'               =>  esc_html__( 'Clear theme cache after demo import is complete!', 'wpstream' ),
 				'preview_url'                 =>  'https://believe.wpstream.net/',
 			)
 		);

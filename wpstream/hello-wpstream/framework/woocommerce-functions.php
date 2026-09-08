@@ -10,12 +10,22 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Require class wc product bundle.
 // The bundle product-type class depends on WooCommerce, so only load it when active.
 if ( class_exists( 'WooCommerce' ) ) {
 	require_once 'class-wc-product-wpstream-bundle.php';
 }
 
+// Make WooCommerce form field labels visible on theme forms.
+add_filter( 'woocommerce_form_field_args', 'wpstream_theme_custom_remove_class_from_labels', 10, 3 );
+
+if ( ! function_exists( 'wpstream_theme_custom_remove_class_from_labels' ) ) :
 /**
  * Remove the "screen-reader-text" class from WooCommerce form field labels.
  *
@@ -24,7 +34,7 @@ if ( class_exists( 'WooCommerce' ) ) {
  * @param mixed  $value The field value.
  * @return array        The filtered field arguments.
  */
-add_filter( 'woocommerce_form_field_args', 'wpstream_theme_custom_remove_class_from_labels', 10, 3 );function wpstream_theme_custom_remove_class_from_labels( $args, $key, $value ) {
+function wpstream_theme_custom_remove_class_from_labels( $args, $key, $value ) {
     // Specify the class you want to remove
     $class_to_remove = 'screen-reader-text';
 
@@ -37,10 +47,12 @@ add_filter( 'woocommerce_form_field_args', 'wpstream_theme_custom_remove_class_f
 
     return $args;
 }
+endif;
 
 
 // Print custom copy just above the related-products block on single product pages.
 add_action( 'woocommerce_before_related_products', 'wpstream_before_related_products' );
+if ( ! function_exists( 'wpstream_before_related_products' ) ) :
 /**
  * Output custom content before the related products section.
  */
@@ -48,7 +60,9 @@ function wpstream_before_related_products() {
 	// Placeholder text rendered before the related products list.
 	echo '<p>This is some custom text before the related products:</p>';
 }
+endif;
 
+if ( ! function_exists( 'wpstream_save_extra_fields_on_account_save' ) ) :
 /**
  * Save extra fields on account save.
  *
@@ -70,10 +84,12 @@ function wpstream_save_extra_fields_on_account_save( $user_id ) {
 		update_user_meta( $user_id, 'custom_picture_small', sanitize_text_field( wp_unslash( $_POST['custom_picture_small'] ) ) );
 	}
 }
+endif;
 // Hook the extra-field save into WooCommerce's account-save action.
 add_action( 'woocommerce_save_account_details', 'wpstream_save_extra_fields_on_account_save' );
 
 
+if ( ! function_exists( 'wpstream_hide_add_to_cart_if_purchased' ) ) :
 /**
  * Remove "Add to Cart" button if product has already been purchased by the customer.
  *
@@ -103,6 +119,7 @@ function wpstream_hide_add_to_cart_if_purchased( $purchasable, $product ) {
 
 	return $purchasable;
 }
+endif;
 
 // Filter WooCommerce's purchasable check with the already-owned guard.
 add_filter( 'woocommerce_is_purchasable', 'wpstream_hide_add_to_cart_if_purchased', 10, 2 );
@@ -111,6 +128,7 @@ add_filter( 'woocommerce_is_purchasable', 'wpstream_hide_add_to_cart_if_purchase
 
 // Register the custom bundle product type in the product-type dropdown.
 add_filter( 'product_type_selector', 'wpstream_theme_add_products_type' );
+if ( ! function_exists( 'wpstream_theme_add_products_type' ) ) :
 /**
  * Add custom product type to WooCommerce.
  *
@@ -122,7 +140,9 @@ function wpstream_theme_add_products_type( $types ) {
 	$types['wpstream_bundle'] = __( 'Video Collection', 'hello-wpstream' );
 	return $types;
 }
+endif;
 
+if ( ! function_exists( 'wpstream_show_general_tab_for_custom_product' ) ) :
 /**
  * Show the general tab for custom product types in WooCommerce.
  *
@@ -134,24 +154,28 @@ function wpstream_show_general_tab_for_custom_product( $tabs ) {
 	$tabs['general']['class'][] = 'show_if_live_stream  show_if_video_on_demand show_if_wpstream_bundle';
 	return $tabs;
 }
+endif;
 
 // Limit the number of orders shown on the My Account orders screen.
-add_filter( 'woocommerce_my_account_my_orders_query', 'custom_my_orders_query' );
+add_filter( 'woocommerce_my_account_my_orders_query', 'wpstream_custom_my_orders_query' );
 
+if ( ! function_exists( 'wpstream_custom_my_orders_query' ) ) :
 /**
  * Customizes the query for displaying customer orders.
  *
  * @param array $args Query arguments.
  * @return array Modified query arguments.
  */
-function custom_my_orders_query( $args ) {
+function wpstream_custom_my_orders_query( $args ) {
 	// Show at most 5 orders per page.
 	$args['posts_per_page'] = 5;
 	return $args;
 }
+endif;
 
 
 
+if ( ! function_exists( 'wpstream_theme_products_tag' ) ) :
 /**
  * Echo the media type badge (LIVE / VIDEO / COLLECTION / SUBSCRIPTION) for a product.
  *
@@ -202,3 +226,4 @@ function wpstream_theme_products_tag($product_id,$product){
 	endif;
 		
 }
+endif;

@@ -5,6 +5,12 @@
  * @package wpstream
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Handles wpstream/v1/playback-session-verify and wpstream_issue_playback_session.
  */
@@ -18,18 +24,90 @@ class Wpstream_Playback_Session {
 		add_action( 'rest_api_init', array( $this, 'wpstream_register_playback_session_rest_routes' ) );
 		// AJAX endpoint that issues a session token to a logged-in viewer.
 		add_action( 'wp_ajax_wpstream_issue_playback_session', array( $this, 'wpstream_ajax_issue_playback_session' ) );
-		// Logged-out viewers may still be entitled (e.g. free wpstream_product_vod); nonce + entitlement gate the call.
+		// Logged-out viewers may still be entitled (e.g. free wpstream_product_vod); the entitlement check gates the call.
 		add_action( 'wp_ajax_nopriv_wpstream_issue_playback_session', array( $this, 'wpstream_ajax_issue_playback_session' ) );
 	}
 
 	/**
 	 * Base URL embedded as validatePlaybackSessionUrl (presence server verifies via GET).
 	 *
+	 * The product ID travels as a path segment so verification is bound to the exact
+	 * video the URL was rendered for; the URL is hashed into the embed key, so it
+	 * cannot be swapped for another product's without invalidating the key.
+	 *
+	 * @param int $product_id Product/channel post ID to bind verification to (0 = unbound legacy URL).
 	 * @return string
 	 */
-	public function wpstream_get_default_validate_playback_session_url() {
+	public function wpstream_get_default_validate_playback_session_url( $product_id = 0 ) {
 		// Absolute, escaped URL of the verification REST route embedded in the player.
-		return esc_url_raw( rest_url( 'wpstream/v1/playback-session-verify' ) );
+		$path = 'wpstream/v1/playback-session-verify';
+		if ( (int) $product_id > 0 ) {
+			$path .= '/' . (int) $product_id;
+		}
+		return esc_url_raw( rest_url( $path ) );
+	}
+
+	/**
+	 * Whether a host name is plausibly reachable from the public internet.
+	 *
+	 * Loopback/private/reserved IPs, reserved development TLDs (.test, .local,
+	 * .localhost, .example, .invalid) and bare single-label intranet names can
+	 * never be resolved or reached by an external service.
+	 *
+	 * @param string $host Host name or IP literal (no scheme/port).
+	 * @return bool True when the host could be reached from outside.
+	 */
+	public function wpstream_is_host_publicly_routable( $host ) {
+		// Normalize: lowercase, trimmed, IPv6 brackets removed.
+		$host = strtolower( trim( (string) $host ) );
+		$host = trim( $host, '[]' );
+		if ( '' === $host || 'localhost' === $host ) {
+			return false;
+		}
+
+		// IP literal: private (10/8, 172.16/12, 192.168/16) and reserved
+		// (loopback, link-local, ::1, ...) ranges are unreachable from outside.
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			return (bool) filter_var(
+				$host,
+				FILTER_VALIDATE_IP,
+				FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+			);
+		}
+
+		// Reserved / conventional development TLDs never resolve publicly.
+		$tld = substr( (string) strrchr( $host, '.' ), 1 );
+		if ( in_array( $tld, array( 'localhost', 'test', 'local', 'example', 'invalid', 'internal' ), true ) ) {
+			return false;
+		}
+
+		// A bare single-label name (intranet host) is not publicly routable.
+		if ( false === strpos( $host, '.' ) ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Whether playback-session validation can work for this site at all.
+	 *
+	 * The presence backend has to fetch this site's REST verify URL; when the
+	 * site lives on a non-publicly-routable host (local dev, intranet) that
+	 * fetch can never succeed and the hosted player refuses to start
+	 * (presence bootstrap 401 VALIDATION_UNAVAILABLE). Such sites must not
+	 * advertise a validate URL — the gate protects nothing there, while
+	 * sending it guarantees a dead player.
+	 *
+	 * Overridable via the wpstream_playback_session_validation_available
+	 * filter (e.g. a tunnel setup where an unroutable-looking host IS exposed).
+	 *
+	 * @return bool True when the verify URL is worth advertising.
+	 */
+	public function wpstream_playback_session_validation_available() {
+		$host      = (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+		$available = $this->wpstream_is_host_publicly_routable( $host );
+		return (bool) apply_filters( 'wpstream_playback_session_validation_available', $available, $host );
 	}
 
 	/**
@@ -54,57 +132,33 @@ class Wpstream_Playback_Session {
 	}
 
 	/**
-	 * Mirrors entitlement used when showing the VOD iframe (woo purchase / bundle / free channel types).
+	 * Whether the current viewer is entitled to this product.
+	 *
+	 * Delegates to the single shared entitlement rule, so session issuance
+	 * grants exactly what the player render does — including active
+	 * subscriptions and Netflix mode, which the old inline copy missed.
 	 *
 	 * @param int $product_id Product or wpstream_* post ID.
 	 * @return bool
 	 */
 	private function wpstream_user_entitled_for_vod_product( $product_id ) {
-		// Normalize and reject non-positive IDs up front.
-		$product_id = (int) $product_id;
-		if ( $product_id <= 0 ) {
-			return false;
-		}
-
-		// Free channel/VOD post types are viewable by anyone, so entitlement is automatic.
-		$post_type = get_post_type( $product_id );
-		if ( in_array( $post_type, array( 'wpstream_product', 'wpstream_product_vod' ), true ) ) {
-			return true;
-		}
-
-		// Anything other than a WooCommerce product cannot be entitled here.
-		if ( 'product' !== $post_type ) {
-			return false;
-		}
-
-		// Paid products require a logged-in user to check a purchase against.
-		if ( ! is_user_logged_in() ) {
-			return false;
-		}
-
-		// WooCommerce must be active for the purchase lookup helpers to exist.
-		$plugins = apply_filters( 'active_plugins', get_option( 'active_plugins', array() ) );
-		if ( ! in_array( 'woocommerce/woocommerce.php', $plugins, true ) ) {
-			return false;
-		}
-
-		// Current user and the bundle product this item may belong to.
-		$user            = wp_get_current_user();
-		$possible_bundle = (int) get_post_meta( $product_id, 'wpstream_part_of_bundle', true );
-
-		// Entitled if the user bought the product directly, or bought the bundle that contains it.
-		return (bool) ( wc_customer_bought_product( $user->user_email, $user->ID, $product_id )
-			|| ( 0 !== $possible_bundle && wc_customer_bought_product( $user->user_email, $user->ID, $possible_bundle ) ) );
+		// The single entitlement rule (includes/Helpers/wpstream-entitlement.php).
+		return wpstream_user_entitled_for_product( $product_id );
 	}
 
 	/**
 	 * Register the GET REST route the presence server calls to verify a session.
+	 *
+	 * The product-bound form (…/playback-session-verify/123) is what the player embeds;
+	 * the bare form stays registered for embeds rendered before the URL carried a product.
 	 */
 	public function wpstream_register_playback_session_rest_routes() {
 		// Public read-only route; the token itself is the credential (permission_callback returns true).
+		// The trailing product segment is optional and carried as a path segment (not a query
+		// param) so it survives any token-appending style the remote player uses.
 		register_rest_route(
 			'wpstream/v1',
-			'/playback-session-verify',
+			'/playback-session-verify(?:/(?P<productId>\d+))?',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'wpstream_rest_verify_playback_session' ),
@@ -112,6 +166,9 @@ class Wpstream_Playback_Session {
 				'args'                => array(
 					'playbackSession' => array(
 						'type' => 'string',
+					),
+					'productId'       => array(
+						'type' => 'integer',
 					),
 				),
 			)
@@ -154,17 +211,38 @@ class Wpstream_Playback_Session {
 			);
 		}
 
-		// Token resolved to a valid session: report success.
-		return new WP_REST_Response( array( 'success' => true ) );
+		// When the route carries a product context, the token must have been issued for
+		// that exact product — a token minted for one video is worthless for any other.
+		$requested_product = (int) $request->get_param( 'productId' );
+		if ( $requested_product > 0 && (int) $data['product_id'] !== $requested_product ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'error'   => 'playback_session_scope_mismatch',
+				),
+				401
+			);
+		}
+
+		// Token resolved to a valid session: report success and name the bound product
+		// so the response is never a scope-less generic success.
+		return new WP_REST_Response(
+			array(
+				'success'   => true,
+				'productId' => (int) $data['product_id'],
+			)
+		);
 	}
 
 	/**
 	 * AJAX callback: issue a fresh playback session token to an entitled viewer.
+	 *
+	 * Deliberately nonce-free: player pages are served from page caches/CDNs, so a
+	 * rendered nonce goes stale and silently breaks issuance. The entitlement check
+	 * below is the gate; issuance is non-destructive and the token cannot be read
+	 * cross-origin, so CSRF adds no protection here.
 	 */
 	public function wpstream_ajax_issue_playback_session() {
-		// Verify the request carries a valid issuing nonce before doing any work.
-		check_ajax_referer( 'wpstream_playback_session_issue', 'nonce' );
-
 		// Read and sanitize the requested product ID from the POST body.
 		$product_id = isset( $_POST['productId'] ) ? intval( wp_unslash( $_POST['productId'] ) ) : 0;
 
@@ -185,6 +263,20 @@ class Wpstream_Playback_Session {
 			),
 			$ttl
 		);
+
+		/**
+		 * Fires after a playback session was issued to a viewer.
+		 *
+		 * An action, never a filter, and the token is deliberately not passed:
+		 * it is the viewer's credential for the presence server.
+		 *
+		 * @since 4.14.0
+		 *
+		 * @param int $product_id Product the session was issued for.
+		 * @param int $user_id    Viewer, 0 for guests.
+		 * @param int $ttl        Session lifetime in seconds.
+		 */
+		do_action( 'wpstream_playback_session_issued', $product_id, get_current_user_id(), intval( $ttl ) );
 
 		// Return the token to the player, which will present it to the presence server.
 		wp_send_json_success(

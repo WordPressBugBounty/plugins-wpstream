@@ -10,6 +10,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Only define once; guards against redeclaration when the theme/plugin overlap.
 if ( ! function_exists( 'wpstream_theme_return_sending_email' ) ) {
 	/**
@@ -89,6 +95,21 @@ if ( ! function_exists( 'wpstream_theme_send_emails' ) ) {
 */
 
 
+if ( ! function_exists( 'wpstream_theme_post_text' ) ) {
+	/**
+	 * Read a POST field as trimmed text.
+	 *
+	 * Missing fields and non-scalar payloads (name[]=x style) both come back
+	 * as '', so callers can validate "empty" without type juggling warnings.
+	 *
+	 * @param string $key POST field name.
+	 * @return string Trimmed scalar value, or '' when absent/non-scalar.
+	 */
+	function wpstream_theme_post_text( $key ) {
+		return ( isset( $_POST[ $key ] ) && is_scalar( $_POST[ $key ] ) ) ? trim( (string) $_POST[ $key ] ) : '';
+	}
+}
+
 // Register the contact-form AJAX handler for both logged-out and logged-in users.
 add_action( 'wp_ajax_nopriv_wpstream_ajax_contact_function', 'wpstream_ajax_contact_function' );
 add_action( 'wp_ajax_wpstream_ajax_contact_function', 'wpstream_ajax_contact_function' );
@@ -118,55 +139,56 @@ if( !function_exists('wpstream_ajax_contact_function') ):
         $allowed_html   =   array();
         // Scratch output buffer (declared but not actively used below).
         $to_print       =   '';
+        // Sanitized message body; stays '' when the Elementor branch gets
+        // no comment field ($name/$email are always set before use).
+        $comment        =   '';
         // Reject the request unless the contact-form nonce is valid.
-        if ( !wp_verify_nonce( $_POST['nonce'], 'ajax-property-contact')) {
+        if ( !wp_verify_nonce( $_POST['nonce'] ?? '', 'ajax-property-contact')) {
             exit("No naughty business please");
         }
-        
-        // Flag: 1 when the submission comes from the Elementor contact widget.
-        $is_elementor_contact_builder =  intval($_POST['is_elementor']);
 
-        // Classic contact form path: validate name/email/comment individually.
+        // Flag: 1 when the submission comes from the Elementor contact widget.
+        $is_elementor_contact_builder =  intval($_POST['is_elementor'] ?? 0);
+
+        // Classic contact form path: validate name/email/comment individually
+        // (each read defaults to '' so a missing field is just an empty one).
         if($is_elementor_contact_builder==0){
             // Validate the name field.
-            if ( isset($_POST['name']) ) {
-                // Empty name (or the untouched placeholder) is treated as invalid.
-                if( trim($_POST['name']) =='' || trim($_POST['name']) ==esc_html__( 'Your Name','hello-wpstream') ){
-                    echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'The name field is empty !','hello-wpstream') ));
-                    exit();
-                }else {
-                    // Sanitize the name (strips all HTML).
-                    $name = wp_kses( trim($_POST['name']),$allowed_html );
-                }
+            $posted_name = wpstream_theme_post_text('name');
+            // Empty name (or the untouched placeholder) is treated as invalid.
+            if( $posted_name =='' || $posted_name ==esc_html__( 'Your Name','hello-wpstream') ){
+                echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'The name field is empty !','hello-wpstream') ));
+                exit();
+            }else {
+                // Sanitize the name (strips all HTML).
+                $name = wp_kses( $posted_name,$allowed_html );
             }
 
 
             //Check email
-            if ( isset($_POST['email']) || trim($_POST['email']) ==esc_html__( 'Your Email','hello-wpstream') ) {
-                  // Empty email is invalid.
-                  if( trim($_POST['email']) ==''){
-                        echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'The email field is empty','hello-wpstream' ) ) );
-                        exit();
-                  // Reject malformed email addresses.
-                  } else if( filter_var($_POST['email'],FILTER_VALIDATE_EMAIL) === false) {
-                        echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'The email doesn\'t look right !','hello-wpstream') ) );
-                        exit();
-                  } else {
-                        // Sanitize the accepted email address.
-                        $email = wp_kses( trim($_POST['email']),$allowed_html );
-                  }
+            $posted_email = wpstream_theme_post_text('email');
+            // Empty email is invalid.
+            if( $posted_email ==''){
+                  echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'The email field is empty','hello-wpstream' ) ) );
+                  exit();
+            // Reject malformed email addresses.
+            } else if( filter_var($posted_email,FILTER_VALIDATE_EMAIL) === false) {
+                  echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'The email doesn\'t look right !','hello-wpstream') ) );
+                  exit();
+            } else {
+                  // Sanitize the accepted email address.
+                  $email = wp_kses( $posted_email,$allowed_html );
             }
 
             //Check comments
-            if ( isset($_POST['comment']) ) {
-                  // Empty message (or the untouched placeholder) is invalid.
-                  if( trim($_POST['comment']) =='' || trim($_POST['comment']) ==esc_html__( 'Your Message','hello-wpstream')){
-                    echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'Your message is empty !','hello-wpstream') ) );
-                    exit();
-                  }else {
-                    // Sanitize the message body.
-                    $comment = wp_kses($_POST['comment'] ,$allowed_html );
-                  }
+            $posted_comment = wpstream_theme_post_text('comment');
+            // Empty message (or the untouched placeholder) is invalid.
+            if( $posted_comment =='' || $posted_comment ==esc_html__( 'Your Message','hello-wpstream')){
+              echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'Your message is empty !','hello-wpstream') ) );
+              exit();
+            }else {
+              // Sanitize the message body.
+              $comment = wp_kses($posted_comment ,$allowed_html );
             }
 
 
@@ -174,18 +196,20 @@ if( !function_exists('wpstream_ajax_contact_function') ):
           $message    .=  esc_html__('Client Name','hello-wpstream').": " . $name . PHP_EOL;
           $message    .=  esc_html__('Email','hello-wpstream').": " . $email . PHP_EOL;
           // Optional website field, when supplied.
-          if(isset($_POST['website'])){
-              $website = wp_kses( trim($_POST['website']),$allowed_html );
+          $posted_website = wpstream_theme_post_text('website');
+          if( $posted_website !== '' ){
+              $website = wp_kses( $posted_website,$allowed_html );
               $message    .=  esc_html__('Website','hello-wpstream').": " . $website . PHP_EOL;
           }
 
         }else{
             // Elementor contact-builder path: use its pre-composed comment only.
-            if ( isset($_POST['comment']) ) {
-                $comment = wp_kses($_POST['comment'] ,$allowed_html );
+            $posted_comment = wpstream_theme_post_text('comment');
+            if ( $posted_comment !== '' ) {
+                $comment = wp_kses($posted_comment ,$allowed_html );
                 // Convert literal "/n" tokens into real line breaks.
                 $comment = str_replace('/n',PHP_EOL,$comment);
-            
+
             }
         }
 

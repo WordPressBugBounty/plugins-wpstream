@@ -739,6 +739,10 @@ if ( ! function_exists( 'wpstream_theme_show_watch_later_icons' ) ) {
 	 * @return string HTML code for watch later icons.
 	 */
 	function wpstream_theme_show_watch_later_icons( $post_id ) {
+		// The emitted button is wired by the plugin helper script; enqueue it at
+		// render time so non-hello-wpstream themes get it only where needed.
+		wp_enqueue_script( 'wpstream-plugin-scripts' );
+
 		// Current visitor's user id (0 when logged out).
 		$user_id           = get_current_user_id();
 		// The user's saved watch-later post ids.

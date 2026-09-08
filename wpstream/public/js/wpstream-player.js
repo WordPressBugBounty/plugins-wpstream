@@ -30,20 +30,56 @@
  * nonces, theme, ABR flags, logo settings, and localized status messages.
  */
 
+/**
+ * Debug-gated console logger for this file.
+ *
+ * Production pages must not leak player settings, content URLs, AJAX payloads
+ * or QoE telemetry to the browser console, so every diagnostic log in this
+ * file routes through here and only prints when the site opts into script
+ * debugging (the SCRIPT_DEBUG constant, surfaced as wpstream_player_vars.debug).
+ */
+function wpstream_player_log() {
+  if (window.wpstream_player_vars && window.wpstream_player_vars.debug) {
+    console.log.apply(console, arguments);
+  }
+}
+
 // Normalise the WebSocket constructor across browsers (older Firefox exposed MozWebSocket).
 window.WebSocket = window.WebSocket || window.MozWebSocket;
 // Warn (but do not hard-fail) when the browser has no WebSocket support at all.
 if (!window.WebSocket) {
-  console.log("Sorry, but your browser does not support WebSockets");
+  wpstream_player_log("Sorry, but your browser does not support WebSockets");
 }
+/**
+ * Announce a theater-mode change to site code via a bubbling CustomEvent.
+ *
+ * Replaces the former eval of settings-provided callback strings (issue #114):
+ * config may only select behavior, never carry code. Sites integrate by
+ * listening for `wpstream:theater-mode` on the player element or document.
+ *
+ * @param {string} action         "enter" or "leave".
+ * @param {string} videoElementId DOM id of the player the event concerns.
+ */
+function wpstream_dispatch_theater_mode(action, videoElementId) {
+  // Dispatch on the player element when present so element-level listeners work;
+  // bubbling delivers it to document-level listeners either way.
+  const target = document.getElementById(videoElementId) || document;
+  target.dispatchEvent(
+    new CustomEvent("wpstream:theater-mode", {
+      bubbles: true,
+      detail: { action, videoElementId },
+    })
+  );
+}
+
 /**
  * Public entry point: build a live player controller from its settings object.
  *
  * @param {Object} settings Localized configuration (element ids, URLs, flags).
+ * @return {WpstreamPlayer} The controller, so integrators can call dispose().
  */
 function wpstream_player_initialize(settings) {
-  // Instantiating the controller wires up everything; the reference is intentionally local.
-  const player = new WpstreamPlayer(settings);
+  return new WpstreamPlayer(settings);
 }
 
 /**
@@ -85,7 +121,9 @@ class WpstreamPlayer {
    * @param {Object} settings Localized player configuration.
    */
   constructor(settings) {
-    console.log("[]WpstreamPlayer: ", settings);
+    wpstream_player_log("[]WpstreamPlayer: ", settings);
+    // Once disposed, no timer may be re-armed and no state change may touch the player.
+    this.disposed = false;
     // Keep the raw settings around for later reference (e.g. theater-mode buttons).
     this.settings = settings;
     // DOM id of the <video> element this controller drives.
@@ -110,10 +148,10 @@ class WpstreamPlayer {
     this.liveConnect = new LiveConnect(this);
     // Outer wrapper element for this player instance.
     this.wrapper = jQuery("#wpstream_live_player_wrapper" + this.id);
-    console.log("wrapper: ", this.wrapper);
+    wpstream_player_log("wrapper: ", this.wrapper);
     // Product/channel id read off the wrapper's data attribute; used for status AJAX.
     this.channelId = this.wrapper.attr("data-product-id");
-    console.log("channelId: ", this.channelId);
+    wpstream_player_log("channelId: ", this.channelId);
     // Playback engine (owns the Video.js instance).
     this.playback = new WpstreamPlayback(this, this.id, this.autoplay);
     // Live viewer-count badge.
@@ -128,14 +166,14 @@ class WpstreamPlayer {
     
     // Grab the underlying Video.js player instance.
     let player = this.playback.player;
-    console.log("player: ", player);
+    wpstream_player_log("player: ", player);
     // Root DOM element of the player.
     let playerElement = player.el();
     // Move the title overlay inside the player element so it overlays the video.
     if (this.titleOverlay){
       playerElement.appendChild(this.titleOverlay);
     }
-    // console.log("playerElement: ", playerElement);
+    // wpstream_player_log("playerElement: ", playerElement);
     // Parent of the player element; used to detect the "simple player" shortcode.
     let playerParentElement = playerElement.parentNode;
 
@@ -155,7 +193,7 @@ class WpstreamPlayer {
       const owner = this;
       // Play-trailer button: hide itself and start the trailer (user-initiated).
       this.playTrailerButton.on("click", function () {
-        console.log("playTrailer()");
+        wpstream_player_log("playTrailer()");
         owner.playTrailerButton.hide();
         owner.playback.playTrailer(owner.trailerUrl, true);
       });
@@ -173,6 +211,27 @@ class WpstreamPlayer {
   }
 
   /**
+   * Tear the controller down: stop the status poll, close the real-time
+   * WebSocket, and dispose the playback engine (watchdog + QoE timers).
+   *
+   * Runs automatically when the Video.js instance fires 'dispose', and may be
+   * called directly by integrators. Safe to call more than once.
+   */
+  dispose() {
+    if (this.disposed) {
+      return;
+    }
+    wpstream_player_log("WpstreamPlayer.dispose()");
+    this.disposed = true;
+    // Stop the 30s AJAX status poll.
+    clearTimeout(this.retrieveDynamicSettingsTimeout);
+    // Close the LiveConnect WebSocket (its onclose is ignored once disposed).
+    this.liveConnect.close();
+    // Stop the watchdog and QoE timers owned by the playback engine.
+    this.playback.dispose();
+  }
+
+  /**
    * Switch the polling mechanism ("ruler").
    *
    * Ruler 1 = periodic AJAX status polling (fallback); Ruler 2 = live WebSocket
@@ -181,10 +240,15 @@ class WpstreamPlayer {
    * @param {number} ruler 1 for AJAX polling, 2 for WebSocket-driven.
    */
   setRuler(ruler) {
-    console.log("setRuler: " + ruler);
+    // A disposed controller must never re-arm the poll timer (the WebSocket's
+    // async onclose otherwise resurrects ruler 1 after teardown).
+    if (this.disposed) {
+      return;
+    }
+    wpstream_player_log("setRuler: " + ruler);
     // Remember the previous ruler so we only kick off a fresh fetch on transition.
     let oldRuler = this.ruler;
-    console.log("oldRuler: ", oldRuler);
+    wpstream_player_log("oldRuler: ", oldRuler);
     // Record the new ruler.
     this.ruler = ruler;
     switch (ruler) {
@@ -193,12 +257,14 @@ class WpstreamPlayer {
         if (oldRuler != 1) {
           this.getDynamicSettings();
         }
-        // Cancel any pending poll timer, then schedule the next poll in 30s.
+        // Cancel any pending poll timer, then schedule the next poll after the
+        // server-provided interval (seconds; 30 when the config is missing).
         clearTimeout(this.retrieveDynamicSettingsTimeout);
         let self = this;
+        const pollSeconds = Math.max(1, parseInt(wpstream_player_vars.status_poll_interval, 10) || 30);
         this.retrieveDynamicSettingsTimeout = setTimeout(
           () => self.getDynamicSettings(),
-          30 * 1000
+          pollSeconds * 1000
         );
         break;
       case 2:
@@ -214,7 +280,7 @@ class WpstreamPlayer {
    * and connect/disconnect chat as appropriate.
    */
   getDynamicSettings() {
-    console.log("getDynamicSettings()");
+    wpstream_player_log("getDynamicSettings()");
     // Build the admin-ajax endpoint URL from the localized admin URL.
     let ajaxurl = wpstream_player_vars.admin_url + "admin-ajax.php";
 	// const nonce = jQuery('.wpstream_live_player_wrapper').attr('data-nonce');
@@ -233,7 +299,12 @@ class WpstreamPlayer {
         nonce: nonce,
       },
       success: function (data) {
-        console.log("dynamicSettings: ", data);
+        wpstream_player_log("dynamicSettings: ", data);
+        // A response landing after teardown must not re-open the WebSocket
+        // or drive the disposed player.
+        if (owner.disposed) {
+          return;
+        }
         // data === 0 → channel is stopped; clear any loading spinner.
         if (data == 0) {
           owner.setState("stopped");
@@ -254,7 +325,7 @@ class WpstreamPlayer {
       },
       error: function (error) {
         // Network/parse failure → surface an error state.
-        console.log("dynamicSettingsError: ", error);
+        wpstream_player_log("dynamicSettingsError: ", error);
 		owner.setState("error");
       },
     });
@@ -281,10 +352,15 @@ class WpstreamPlayer {
    *                       paused/ended/startup/onair/error.
    */
   setState(state) {
-    console.log("setState: ", state);
+    // A late status callback (in-flight AJAX / WebSocket push) may land after
+    // teardown; it must not drive the disposed Video.js instance.
+    if (this.disposed) {
+      return;
+    }
+    wpstream_player_log("setState: ", state);
     // Remember the previous state (used by the "startup" transition below).
     const oldState = this.state;
-    console.log("oldState: ", oldState);
+    wpstream_player_log("oldState: ", oldState);
     // Store the new state.
     this.state = state;
 
@@ -349,9 +425,9 @@ class WpstreamPlayer {
    * currently playing and its muted state.
    */
   showHideMuteTrailerButtons() {
-    console.log("showHideMuteTrailerButtons()");
-    console.log("playingTrailer: ", this.playback.playingTrailer);
-    console.log("muted: ", this.playback.player.muted());
+    wpstream_player_log("showHideMuteTrailerButtons()");
+    wpstream_player_log("playingTrailer: ", this.playback.playingTrailer);
+    wpstream_player_log("muted: ", this.playback.player.muted());
     // Only relevant while a trailer is playing.
     if (this.playback.playingTrailer) {
       if (this.playback.player.muted()) {
@@ -377,7 +453,7 @@ class WpstreamPlayer {
    * @param {boolean} isActive Whether the WebSocket is currently connected.
    */
   onLiveConnectActive(isActive) {
-    console.log("onLiveConnectActive: ", isActive);
+    wpstream_player_log("onLiveConnectActive: ", isActive);
     // Active WebSocket → ruler 2 (suspend AJAX); otherwise fall back to ruler 1.
     this.setRuler(isActive ? 2 : 1);
     // When the real-time channel drops, the viewer count is no longer reliable.
@@ -392,7 +468,7 @@ class WpstreamPlayer {
    * @param {number} count Current viewer count.
    */
   updateViewerCount(count) {
-    console.log("updateViewerCount: ", count);
+    wpstream_player_log("updateViewerCount: ", count);
     this.counter.setCount(count);
   }
 
@@ -402,7 +478,7 @@ class WpstreamPlayer {
    * @param {*} place Position/label describing who must leave first.
    */
   updatePending(place){
-    console.log("updatePending: ", place);
+    wpstream_player_log("updatePending: ", place);
     this.counter.showPending(place);
   }
 
@@ -437,6 +513,10 @@ class WpstreamPlayback {
    * @param {boolean}        autoplay Whether to autoplay.
    */
   constructor(master, id, autoplay) {
+    // Set on dispose(): stops the watchdog from re-arming or touching the player.
+    this.disposed = false;
+    // Handle of the pending watchdog setTimeout, so dispose() can cancel it.
+    this.watchdogTimeout = null;
     // Rolling window of recent currentTime samples used by the watchdog.
     this.timeQueue = [];
     // Whether playback is intentionally paused.
@@ -457,6 +537,25 @@ class WpstreamPlayback {
     this.runWatchdog();
     // QoE collector; reports via the LiveConnect WebSocket.
     this.qoe = new Qoe(master.liveConnect.sendQoeData, master.liveConnect);
+    // When Video.js disposes the player (DOM teardown), take the whole
+    // controller down with it so no timer keeps driving a dead instance.
+    this.player.on("dispose", () => this.master.dispose());
+  }
+
+  /**
+   * Stop everything this engine owns that outlives a disposed player: the
+   * stall watchdog and the QoE report interval. Idempotent.
+   */
+  dispose() {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    // Cancel the pending watchdog tick; the disposed flag stops re-arming.
+    clearTimeout(this.watchdogTimeout);
+    this.watchdogTimeout = null;
+    // Stop the periodic QoE reporter.
+    this.qoe.dispose();
   }
 
   /**
@@ -467,12 +566,12 @@ class WpstreamPlayback {
    * @param {boolean} autoplay Whether to autoplay.
    */
   setupBasePlayer(id, autoplay) {
-    console.log("setupBasePlayer: ", id, autoplay);
+    wpstream_player_log("setupBasePlayer: ", id, autoplay);
     // Resolve the live content URL and detect low-latency HLS.
     let contentUrl = this.master.contentUrl;
-    console.log("contentUrl: ", contentUrl);
+    wpstream_player_log("contentUrl: ", contentUrl);
     let llhls = isLlHls(contentUrl);
-    console.log("llhls: ", llhls);
+    wpstream_player_log("llhls: ", llhls);
     // Instantiate Video.js with HTTP Streaming (VHS) tuning options.
     this.player = videojs("wpstream-video" + id, {
       html5: {
@@ -543,15 +642,11 @@ class WpstreamPlayback {
           );
         }
         handleClick() {
-          // Swap the two buttons, then run the site-supplied enter callback.
+          // Swap the two buttons and announce the change to site code (no eval, #114).
           owner.theaterModeEnterButton.hide();
           owner.theaterModeLeaveButton.show();
-          console.log("entering Theater Mode...");
-          // NOTE: eval() of a settings-provided callback string (see report).
-          eval(
-            owner.master.settings.theaterModeButtons.enterTheaterModeButton
-              .callback
-          );
+          wpstream_player_log("entering Theater Mode...");
+          wpstream_dispatch_theater_mode("enter", owner.master.id);
         }
       }
       // Control-bar button that switches OUT of theater mode.
@@ -565,15 +660,11 @@ class WpstreamPlayback {
           );
         }
         handleClick() {
-          // Swap the two buttons, then run the site-supplied leave callback.
+          // Swap the two buttons and announce the change to site code (no eval, #114).
           owner.theaterModeEnterButton.show();
           owner.theaterModeLeaveButton.hide();
-          console.log("leaving Theater Mode...");
-          // NOTE: eval() of a settings-provided callback string (see report).
-          eval(
-            owner.master.settings.theaterModeButtons.leaveTheaterModeButton
-              .callback
-          );
+          wpstream_player_log("leaving Theater Mode...");
+          wpstream_dispatch_theater_mode("leave", owner.master.id);
         }
       }
 
@@ -616,7 +707,7 @@ class WpstreamPlayback {
 
     // "play": toggle title overlay, mark played, and update trailer/content UI.
     this.player.on("play", function (event) {
-      console.log("Play");
+      wpstream_player_log("Play");
 
       // If the user was active when play fired, reveal the title overlay.
       if (this.userActive()) {
@@ -625,11 +716,11 @@ class WpstreamPlayback {
 
       // Record that playback has started at least once.
       owner.played = true;
-      console.log("src: ", owner.player.currentSrc());
-      console.log("playingTrailer: ", owner.playingTrailer);
+      wpstream_player_log("src: ", owner.player.currentSrc());
+      wpstream_player_log("playingTrailer: ", owner.playingTrailer);
       if (owner.playingTrailer) {
         // A trailer just began: advance its state and move the message to the bottom.
-        console.log("trailerState: ", owner.trailerState);
+        wpstream_player_log("trailerState: ", owner.trailerState);
         if (owner.trailerState == "attempted") {
           owner.trailerState = "playing";
           owner.master.liveMessage.showAtBottom(true);
@@ -646,19 +737,19 @@ class WpstreamPlayback {
     });
     // "pause": logging only.
     this.player.on("pause", function (event) {
-      console.log("Pause");
+      wpstream_player_log("Pause");
     });
     // "ended": handle trailer end (return to idle) vs. content end (reset controls).
     this.player.on("ended", () => {
-      console.log("Ended");
-      console.log("playingTrailer: ", this.playingTrailer);
+      wpstream_player_log("Ended");
+      wpstream_player_log("playingTrailer: ", this.playingTrailer);
       if (this.playingTrailer) {
         // Trailer finished: restore idle layout and stop the trailer.
         showDomElements('idle', owner.player.el());
         owner.stopTrailer();
       } else {
         // Content finished: hide controls and reset the started flag.
-        console.log("content ended");
+        wpstream_player_log("content ended");
         this.player.controls(false);
         this.player.hasStarted(false);
       }
@@ -668,22 +759,22 @@ class WpstreamPlayback {
     // "durationchange": for finite (VOD-like) durations, hide the live controls.
     this.player.on("durationchange", () => {
       const duration = this.player.duration();
-      console.log("durationchange: ", duration);
+      wpstream_player_log("durationchange: ", duration);
       if (duration > 0 && duration < Infinity) {
         this.player.controls(false);
       }
     });
     // "error": logging only (recovery is handled elsewhere / by the watchdog).
     this.player.on("error", (error) => {
-      console.log("error: ", error);
+      wpstream_player_log("error: ", error);
     });
     // "volumechange": reconcile the trailer mute/unmute buttons.
     this.player.on("volumechange", () => {
-      console.log("muted: ", this.player.muted());
+      wpstream_player_log("muted: ", this.player.muted());
       this.master.showHideMuteTrailerButtons();
     });
 
-    console.log("src: ", this.player.currentSrc());
+    wpstream_player_log("src: ", this.player.currentSrc());
     // setTimeout(() => {
     //     this.player.bigPlayButton.show();
     // }, 2000);
@@ -739,23 +830,14 @@ class WpstreamPlayback {
   }
 
   /**
-   * Placeholder for a theme selector control (currently unimplemented).
-   */
-  initThemeSelector() {
-    const Button = videojs.getComponent('Button');
-    const owner = this;
-
-  }
-
-  /**
    * Start (or arm) trailer playback.
    *
    * @param {string}  src   Trailer source URL.
    * @param {boolean} click True when initiated by an explicit user click.
    */
   playTrailer(src, click) {
-    console.log("### playTrailer: ", src, click);
-    console.log("trailerState: ", this.trailerState);
+    wpstream_player_log("### playTrailer: ", src, click);
+    wpstream_player_log("trailerState: ", this.trailerState);
     // if (this.trailerState == 'notstarted' || this.trailerState == 'attempted'){
 
     // Not yet started and not a click → just reveal the play-trailer button.
@@ -784,11 +866,11 @@ class WpstreamPlayback {
    * Stop the trailer and (if it was playing) reset overlay/started state.
    */
   stopTrailer() {
-    console.log("stopTrailer()");
-    console.log("trailerState: ", this.trailerState);
+    wpstream_player_log("stopTrailer()");
+    wpstream_player_log("trailerState: ", this.trailerState);
     // Only transition if the trailer was actually playing.
     if (this.trailerState == "playing") {
-      console.log("trailer has ended");
+      wpstream_player_log("trailer has ended");
       this.trailerState = "ended";
       // Move the message overlay back up and reset the started flag.
       this.master.liveMessage.showAtBottom(false);
@@ -799,45 +881,19 @@ class WpstreamPlayback {
   }
 
   /**
-   * Record the live content source (and enable controls). The actual src load
-   * is deferred via a timeout; the load body is currently commented out.
+   * Record the live content source and enable controls. The actual src load
+   * happens in playContent(), driven by the player state machine.
    *
-   * @param {string}  src   HLS content URL.
-   * @param {boolean} force When true, use a near-immediate timeout.
+   * @param {string} src HLS content URL.
    */
-  setContentSrc(src, force) {
-    console.log("### setContentSrc: ", src, force);
-    console.log("currentSrc: ", this.player.currentSrc());
-    console.log("paused: ", this.player.paused());
-    console.log("currentTime: ", this.player.currentTime());
+  setContentSrc(src) {
+    wpstream_player_log("### setContentSrc: ", src);
     // Content (not trailer) is now the active source; remember the URL.
     this.playingTrailer = false;
     this.contentSrc = src;
 
-    // Debounce: cancel any pending deferred src set, then re-arm it.
-    const owner = this;
-    clearTimeout(this.setSrcTimeout);
-    this.setSrcTimeout = setTimeout(
-      () => {
-        console.log("setting src...");
-        // src = src != null ? src : owner.player.currentSrc()
-        // owner.player.src({
-        //     src,
-        //     type: "application/x-mpegURL",
-        //     llhls: isLlHls(src)
-        // });
-        // owner.playContent(force);
-      },
-      // force → ~1ms; otherwise wait 2s to coalesce rapid updates.
-      force ? 1 : 2000
-    );
-
-    // this.player.controlBar.show();
-    // this.player.loadingSpinner.show();
     // Enable the control bar for content.
     this.player.controls(true);
-    // this.player.muted(true);
-    // this.player.play();
   }
 
   /**
@@ -847,18 +903,17 @@ class WpstreamPlayback {
    * @param {boolean} forced Force a fresh src load + play attempt.
    */
   playContent(forced) {
-    console.log("playContent() ", forced);
+    wpstream_player_log("playContent() ", forced);
     // Clear paused/trailer flags and hide the trailer button.
     this.paused = false;
     this.stopTrailer();
     this.playingTrailer = false;
     this.master.playTrailerButton.hide();
-    // Show the big play button and cancel any pending deferred src set.
+    // Show the big play button.
     this.player.bigPlayButton.show();
-    clearTimeout(this.setSrcTimeout);
-    console.log("player.paused: ", this.player.paused());
-    console.log("currentTime: ", this.player.currentTime());
-    console.log("objectivelyPlayingContent: ", this.objectivelyPlayingContent);
+    wpstream_player_log("player.paused: ", this.player.paused());
+    wpstream_player_log("currentTime: ", this.player.currentTime());
+    wpstream_player_log("objectivelyPlayingContent: ", this.objectivelyPlayingContent);
 
     // if (this.player.paused() || forced || this.player.currentTime() === 0){
     // Only (re)load the source if content isn't already visibly advancing, or if forced.
@@ -869,25 +924,25 @@ class WpstreamPlayback {
         type: "application/x-mpegURL",
         llhls: isLlHls(this.contentSrc),
       });
-      console.log("autoplay: ", this.player.autoplay());
+      wpstream_player_log("autoplay: ", this.player.autoplay());
       // this.player.currentTime(0);
-      console.log("played: ", this.played);
+      wpstream_player_log("played: ", this.played);
       // Only auto-resume if the user has already started playback once.
       if (this.played) {
         var promise = this.player.play();
-        // console.log("promise: ", promise);
+        // wpstream_player_log("promise: ", promise);
         let player = this.player;
         // Handle the play() promise to log autoplay success/failure.
         if (promise !== undefined) {
           promise
             .then(function () {
-              console.log("Autoplay started ;)");
+              wpstream_player_log("Autoplay started ;)");
             })
             .catch(function (error) {
-              console.log("Autoplay did not work ", error);
+              wpstream_player_log("Autoplay did not work ", error);
             });
         }
-        console.log("no promise");
+        wpstream_player_log("no promise");
       }
     }
     // Reveal the control bar, spinner, and enable controls.
@@ -903,17 +958,16 @@ class WpstreamPlayback {
    * @param {boolean} [stop] True to also reset hasStarted().
    */
   pauseContent(stop) {
-    console.log("pauseContent()");
-    // Mark as intentionally paused and cancel any pending deferred src set.
+    wpstream_player_log("pauseContent()");
+    // Mark as intentionally paused.
     this.paused = true;
-    clearTimeout(this.setSrcTimeout);
-    console.log("playingTrailer: ", this.playingTrailer);
+    wpstream_player_log("playingTrailer: ", this.playingTrailer);
     // Never pause when a trailer is playing.
     if (!this.playingTrailer) {
-      console.log("paused: ", this.player.paused());
+      wpstream_player_log("paused: ", this.player.paused());
       // Pause and hide the control bar / spinner / controls.
       this.player.pause();
-      console.log("currentTime: ", this.player.currentTime());
+      wpstream_player_log("currentTime: ", this.player.currentTime());
       this.player.controlBar.hide();
       this.player.loadingSpinner.hide();
       this.player.controls(false);
@@ -930,7 +984,11 @@ class WpstreamPlayback {
    * samples) while it should be live, it forces a fresh content load.
    */
   runWatchdog() {
-    //console.log("runWatchdog()");
+    //wpstream_player_log("runWatchdog()");
+    // Player gone: stop sampling and never re-arm.
+    if (this.disposed) {
+      return;
+    }
     // Sample the current playback position and push it onto the rolling queue.
     const currentTime = this.player.currentTime();
     this.timeQueue.push(currentTime);
@@ -954,16 +1012,16 @@ class WpstreamPlayback {
       this.timeQueue.shift();
       // If the oldest and newest samples match, currentTime has not advanced → stalled.
       if (this.timeQueue[0] === this.timeQueue[this.timeQueue.length - 1]) {
-        console.log(
+        wpstream_player_log(
           "queue: ",
           this.timeQueue[0],
           this.timeQueue[this.timeQueue.length - 1]
         );
-        console.log("paused: ", this.paused);
-        console.log("ruler: ", this.master.ruler);
-        console.log("state: ", this.master.state);
-        console.log("player paused: ", this.player.paused());
-        console.log("currentTime: ", this.player.currentTime());
+        wpstream_player_log("paused: ", this.paused);
+        wpstream_player_log("ruler: ", this.master.ruler);
+        wpstream_player_log("state: ", this.master.state);
+        wpstream_player_log("player paused: ", this.player.paused());
+        wpstream_player_log("currentTime: ", this.player.currentTime());
 
         // Ruler 2 (WebSocket live): force a reload if the player isn't paused.
         if (this.master.ruler == 2) {
@@ -980,9 +1038,10 @@ class WpstreamPlayback {
         this.timeQueue = [];
       }
     }
-    // Re-arm the watchdog to run again in ~1 second.
+    // Re-arm the watchdog to run again in ~1 second, keeping the handle so
+    // dispose() can cancel the pending tick.
     let self = this;
-    setTimeout(() => self.runWatchdog(), 1 * 1000);
+    this.watchdogTimeout = setTimeout(() => self.runWatchdog(), 1 * 1000);
   }
 }
 
@@ -995,7 +1054,7 @@ class WpstreamPlayback {
  * @param {HTMLElement} target The player element used as the DOM anchor.
  */
 function showDomElements(state, target){
-  console.log("showDomElements: ", state, target);
+  wpstream_player_log("showDomElements: ", state, target);
   switch (state){
     case 'idle':
       // Idle layout: reveal titles/descriptions/trailer button, drop the trailer class.
@@ -1119,7 +1178,7 @@ class Qoe {
    * @param {Object}   callbackScope `this` binding for the callback.
    */
   constructor(callback, callbackScope) {
-    // console.log("Qoe: ", callback, callbackScope);
+    // wpstream_player_log("Qoe: ", callback, callbackScope);
     // Store the report callback and the scope it should be called with.
     this.callback = callback;
     this.callbackScope = callbackScope;
@@ -1130,7 +1189,7 @@ class Qoe {
    * all counters, mint a session id, and start the 60s periodic reporter.
    */
   play() {
-    // console.log("----qoe play");
+    // wpstream_player_log("----qoe play");
     // Flush any data from the previous session first.
     this.reportCurrentSession();
     // Restart the periodic reporter (clear any existing interval).
@@ -1153,10 +1212,22 @@ class Qoe {
   }
 
   /**
+   * Stop the periodic reporter for good (player disposed). The interval was
+   * previously only cleared by the next play(), which never comes after
+   * teardown.
+   */
+  dispose() {
+    if (this.reportInterval) {
+      clearInterval(this.reportInterval);
+      this.reportInterval = null;
+    }
+  }
+
+  /**
    * On "pause": treat as an interruption (delegates to waiting()).
    */
   pause(){
-    // console.log("----qoe pause");
+    // wpstream_player_log("----qoe pause");
     this.waiting();
   }
 
@@ -1164,7 +1235,7 @@ class Qoe {
    * On "ended": treat as an interruption (delegates to waiting()).
    */
   ended(){
-    // console.log("----qoe ended");
+    // wpstream_player_log("----qoe ended");
     this.waiting();
   }
 
@@ -1173,19 +1244,19 @@ class Qoe {
    * current rebuffer interval, updating counters, then mark playback resumed.
    */
   playing(){
-    // console.log("----qoe playing ", document.hidden);
-    // console.log("playTimestamp: ", this.playTimestamp);
-    // console.log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
+    // wpstream_player_log("----qoe playing ", document.hidden);
+    // wpstream_player_log("playTimestamp: ", this.playTimestamp);
+    // wpstream_player_log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
     // First "playing" after play() → measure startup latency.
     if (this.playTimestamp){
       this.startupTime = performance.now() - this.playTimestamp;
-      // console.log("startupTime: ", this.startupTime / 1000);
+      // wpstream_player_log("startupTime: ", this.startupTime / 1000);
       this.playTimestamp = null;
     }
     // If we were rebuffering, close that interval and fold it into the totals.
     if (this.lastRebufferStartTimestamp) {
       let rebufferTime = performance.now() - this.lastRebufferStartTimestamp;
-      // console.log("    rebufferTime: ", (rebufferTime / 1000).toFixed(2));
+      // wpstream_player_log("    rebufferTime: ", (rebufferTime / 1000).toFixed(2));
       if (rebufferTime < 60 * 1000){  //discard unrealistically long rebuffers
         if (rebufferTime > 500){  //do not count short rebuffers
           this.rebufferCount ++;
@@ -1204,18 +1275,18 @@ class Qoe {
    * or the tab is hidden).
    */
   waiting(){
-    // console.log("----qoe waiting", document.hidden);
-    // console.log("playTimestamp: ", this.playTimestamp);
-    // console.log("lastPlayingTimestamp: ", this.lastPlayingTimestamp);
-    // console.log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
+    // wpstream_player_log("----qoe waiting", document.hidden);
+    // wpstream_player_log("playTimestamp: ", this.playTimestamp);
+    // wpstream_player_log("lastPlayingTimestamp: ", this.lastPlayingTimestamp);
+    // wpstream_player_log("lastRebufferStartTimestamp: ", this.lastRebufferStartTimestamp);
 
     // Close the current playing interval and add it to total playback time.
     if (this.lastPlayingTimestamp){
       let playingTime = performance.now() - this.lastPlayingTimestamp;
       this.lastPlayingTimestamp = null;
-      // console.log("    playingTime: ", (playingTime / 1000).toFixed(2));
+      // wpstream_player_log("    playingTime: ", (playingTime / 1000).toFixed(2));
       this.totalPlaybackTime += playingTime;
-      // console.log("totalPlaybackTime: ", this.totalPlaybackTime);
+      // wpstream_player_log("totalPlaybackTime: ", this.totalPlaybackTime);
     }
 
     if (this.playTimestamp){  //it's the first time it buffers
@@ -1223,7 +1294,7 @@ class Qoe {
     }
     // Otherwise start a rebuffer timer, but only if not already rebuffering and the tab is visible.
     else if (!this.lastRebufferStartTimestamp && !document.hidden) {
-      // console.log("rebufferCount: ", this.rebufferCount);
+      // wpstream_player_log("rebufferCount: ", this.rebufferCount);
       this.lastRebufferStartTimestamp = performance.now();
     }
   }
@@ -1232,21 +1303,21 @@ class Qoe {
    * On "loadeddata": no-op hook (reserved for future metrics).
    */
   loadeddata(){
-    // console.log("qoe loadeddata")
+    // wpstream_player_log("qoe loadeddata")
   }
 
   /**
    * On "resolutionchange": no-op hook (reserved for future metrics).
    */
   resolutionchange(){
-    // console.log("qoe resolutionchange")
+    // wpstream_player_log("qoe resolutionchange")
   }
 
   /**
    * On "error": no-op hook (reserved for future metrics).
    */
   error(){
-    // console.log("qoe error")
+    // wpstream_player_log("qoe error")
   }
 
   /**
@@ -1254,18 +1325,18 @@ class Qoe {
    * when there is playback to report and the totals changed since last report.
    */
   reportCurrentSession(){
-    // console.log("----reportCurrentSession: ");
-    // console.log("totalPlaybackTime: ", this.totalPlaybackTime);
-    // console.log("lastPlayingTimestamp: ", this.lastPlayingTimestamp);
+    // wpstream_player_log("----reportCurrentSession: ");
+    // wpstream_player_log("totalPlaybackTime: ", this.totalPlaybackTime);
+    // wpstream_player_log("lastPlayingTimestamp: ", this.lastPlayingTimestamp);
     // Only report if some playback has accrued (finished or in-progress).
     if (this.totalPlaybackTime > 0 || this.lastPlayingTimestamp){
       let totalPlaybackTime = this.totalPlaybackTime;
-      // console.log("totalPlaybackTime: ", totalPlaybackTime);
+      // wpstream_player_log("totalPlaybackTime: ", totalPlaybackTime);
       // Include the still-running playing interval, if any.
       if (this.lastPlayingTimestamp){
         totalPlaybackTime += performance.now() - this.lastPlayingTimestamp;
       }
-      // console.log("totalPlaybackTime: ", totalPlaybackTime);
+      // wpstream_player_log("totalPlaybackTime: ", totalPlaybackTime);
       
       // Skip duplicate reports where the playback time hasn't advanced.
       if (!this.lastReportedPlaybackTime || this.lastReportedPlaybackTime != totalPlaybackTime){
@@ -1277,8 +1348,8 @@ class Qoe {
           totalRebufferTime: this.totalRebufferTime,
           session: this.currentSession,
         }
-        console.log("report: ", report);
-        // console.log("callback: ", this.callback)
+        wpstream_player_log("report: ", report);
+        // wpstream_player_log("callback: ", this.callback)
         // Send via the configured callback bound to its scope.
         this.callback.call(this.callbackScope, report);
         // Remember what we last reported to dedupe the next call.
@@ -1365,7 +1436,7 @@ class WpstreamLiveMessage {
     this.msg = wrapper.find(".wpstream_not_live_mess_mess");
     // Preserve the original message markup to restore later.
     this.originalMessage = this.msg.html();
-    console.log("originalMessage: ", this.originalMessage);
+    wpstream_player_log("originalMessage: ", this.originalMessage);
     // Move the overlay inside the video element so it renders on top.
     var playerElement = jQuery("#wpstream-video" + id);
     this.element.appendTo(playerElement);
@@ -1392,7 +1463,7 @@ class WpstreamLiveMessage {
    * @param {string} state State whose localized message to display.
    */
   showMessage(state) {
-    // console.log("showMessage: ", state);
+    // wpstream_player_log("showMessage: ", state);
     var label;
     // Use the custom message for eligible states; otherwise the localized default.
     if (
@@ -1429,7 +1500,7 @@ class WpstreamLiveMessage {
    * @param {boolean} show True to pin to the bottom.
    */
   showAtBottom(show) {
-    console.log("showAtBottom: ", show);
+    wpstream_player_log("showAtBottom: ", show);
     // Track position and move the overlay via inline top offset.
     this.bottom = show;
     this.element[0].style.top = this.bottom ? "80%" : "31%";
@@ -1445,7 +1516,7 @@ class WpstreamLiveMessage {
    * markup message (default position).
    */
   showStoppedMessage() {
-    console.log("element: ", this.element);
+    wpstream_player_log("element: ", this.element);
     if (this.bottom) {
       this.showMessage("stopped");
     } else {
@@ -1485,23 +1556,23 @@ class LiveCounter {
    * @param {string} id      Video element id suffix.
    */
   constructor(wrapper, id) {
-    console.log("[]LiveCounter: ", wrapper, id);
+    wpstream_player_log("[]LiveCounter: ", wrapper, id);
     // Badge element + its translucent red background.
     this.element = wrapper.find(".wpestream_live_counting");
     this.element.css("background-color", "rgb(174 69 69 / 90%)");
 
     // Read the data-* attributes; decide whether the counter should ever show.
     const data = this.element?.data?.() || {};
-    console.log("showviewercount:", data.showviewercount);
+    wpstream_player_log("showviewercount:", data.showviewercount);
     this.showCounter = (data.showviewercount !== undefined && data.showviewercount !== null)
         ? data.showviewercount.toString() === "1"
         : false;
-    console.log("showCounter:", this.showCounter);
+    wpstream_player_log("showCounter:", this.showCounter);
 
     //var playerElement = wrapper.find('.wpstream-video' + id);
     // Move the badge inside the video element and hide it initially.
     var playerElement = jQuery("#wpstream-video" + id);
-    console.log("playerElement: ", playerElement);
+    wpstream_player_log("playerElement: ", playerElement);
     this.element.appendTo(playerElement);
     this.hide();
   }
@@ -1578,7 +1649,7 @@ class LiveConnect {
    * @param {string} wsUri WebSocket endpoint.
    */
   setup(wsUri) {
-    console.log("setup: ", wsUri);
+    wpstream_player_log("setup: ", wsUri);
     // Tear down any existing socket, store the new URI, then connect.
     this.close();
     this.wsUri = wsUri;
@@ -1603,7 +1674,7 @@ class LiveConnect {
    * @param {Object} data QoE payload.
    */
   sendQoeData(data){
-    // console.log("sendQoeData: ", data);
+    // wpstream_player_log("sendQoeData: ", data);
     // Only send when the socket exists and is open.
     if (this.ws && this.ws.readyState === WebSocket.OPEN){
       const message = {type:'qoe', data}
@@ -1617,7 +1688,7 @@ class LiveConnect {
   connect() {
     // Tag this attempt for correlating log output.
     let connectAttempt = ++this.connectCount;
-    console.log("connect() ", connectAttempt);
+    wpstream_player_log("connect() ", connectAttempt);
     this.pendingConnect = true;
     try {
       // Open the socket and capture `this` for the handlers.
@@ -1625,30 +1696,30 @@ class LiveConnect {
       let owner = this;
       // Open → mark connected and switch the controller to ruler 2.
       this.ws.onopen = function () {
-        console.log("connected. ", connectAttempt);
+        wpstream_player_log("connected. ", connectAttempt);
         owner.pendingConnect = false;
         owner.master.onLiveConnectActive(true);
         //socket_connection.send(`{"type":"register","data":"${now}"}`);
       };
       // Close → notify the controller (falls back to AJAX polling).
       this.ws.onclose = function () {
-        console.log("onclose.. ", connectAttempt);
+        wpstream_player_log("onclose.. ", connectAttempt);
         owner.master.onLiveConnectActive(false);
       };
       // Error → same as close: deactivate LiveConnect.
       this.ws.onerror = function (error) {
-        console.log("onerror: ", connectAttempt, error);
+        wpstream_player_log("onerror: ", connectAttempt, error);
         owner.master.onLiveConnectActive(false);
       };
       // Message → clear the spinner and dispatch to processMessage.
       this.ws.onmessage = function (message) {
         removeSpinner( 2);
-        console.log("onmessage: ", connectAttempt, message.data);
+        wpstream_player_log("onmessage: ", connectAttempt, message.data);
         owner.processMessage(message.data);
       };
     } catch (error) {
       // Construction failed → deactivate LiveConnect.
-      console.log(error);
+      wpstream_player_log(error);
       this.master.onLiveConnectActive(false);
     }
   }
@@ -1659,13 +1730,13 @@ class LiveConnect {
    * @param {string} msg Raw JSON message text.
    */
   processMessage(msg) {
-    console.log("processMessage: ", msg);
+    wpstream_player_log("processMessage: ", msg);
     var json;
     // Guard against malformed messages.
     try {
       json = JSON.parse(msg);
     } catch (e) {
-      console.log("Invalid JSON: ", msg);
+      wpstream_player_log("Invalid JSON: ", msg);
       return;
     }
     if (json.type) {
@@ -1694,150 +1765,10 @@ class LiveConnect {
           break;
         default:
           // Unknown message type.
-          console.log("invalid type: ", json.type);
+          wpstream_player_log("invalid type: ", json.type);
       }
     }
   }
-}
-
-/**
- * Legacy helper: when an SLDP player exists, open a chat connection using the
- * live-connect views URI.
- *
- * @param {*}      event_id                          Event identifier.
- * @param {*}      player                            Player reference.
- * @param {*}      player_wrapper                    Wrapper reference.
- * @param {string} socket_wss_live_conect_views_uri  WebSocket views/chat URI.
- * @param {*}      event_uri                         Event content URI.
- */
-function wpstream_read_websocket_info(
-  event_id,
-  player,
-  player_wrapper,
-  socket_wss_live_conect_views_uri,
-  event_uri
-) {
-  console.log(
-    "wpstream_read_websocket_info: ",
-    event_id,
-    player,
-    player_wrapper,
-    socket_wss_live_conect_views_uri,
-    event_uri
-  );
-  console.log("sldpPlayer: ", sldpPlayer);
-  // Only connect chat when an SLDP player instance is present.
-  if (sldpPlayer != null) {
-    var chat = new WpstreamChat();
-    chat.connect(socket_wss_live_conect_views_uri);
-  }
-}
-
-// Module-level reference to the (legacy) SLDP/OvenPlayer instance.
-var sldpPlayer;
-
-/**
- * Initialise a low-latency WebRTC player via OvenPlayer, lazy-loading the
- * OvenPlayer script from CDN first.
- *
- * @param {string} playerID        DOM id of the player container.
- * @param {string} low_latency_uri WebRTC source URI.
- * @param {string} muted           "muted" to start muted.
- * @param {string} autoplay        "autoplay" to auto-start.
- */
-function initPlayer(playerID, low_latency_uri, muted, autoplay) {
-  console.log("initPlayer: ", low_latency_uri);
-  // Translate the string flags into booleans (default: unmuted, autoplay on).
-  var is_muted = false;
-  var is_autoplay = true;
-  if (muted === "muted") {
-    is_muted = true;
-  }
-
-  if (autoplay !== "autoplay") {
-    is_autoplay = false;
-  }
-
-  console.log("is_muted " + is_muted + "/ " + is_autoplay);
-
-  // Load OvenPlayer on demand, then create the WebRTC player once available.
-  loadScriptIfNeeded('https://cdn.jsdelivr.net/npm/ovenplayer/dist/ovenplayer.js')
-    .then(() => {
-        let player = OvenPlayer.create(playerID, {
-        autoStart: is_autoplay,
-        autoFallback: false,
-        mute: is_muted,
-        // Primary source is WebRTC (low latency).
-        sources: [
-          {
-            type: "webrtc",
-            file: low_latency_uri,
-          },
-        ],
-        // HLS fallback tuning for low-latency live sync.
-        hlsConfig: {
-          liveSyncDuration: 1.5,
-          liveMaxLatencyDuration: 3,
-          maxLiveSyncPlaybackRate: 1.5,
-        },
-        // WebRTC retry/timeout tuning.
-        webrtcConfig: {
-          timeoutMaxRetry: 100,
-          connectionTimeout: 10000,
-        },
-      });
-    })
-    .catch((error) => {
-        // Script failed to load → log and abort init.
-        console.error('Error loading the script:', error);
-    });
-
-  
-}
-
-/**
- * Destroy the current SLDP/OvenPlayer instance.
- */
-function removePlayer() {
-  sldpPlayer.destroy();
-}
-
-/**
- * Load an external script once, resolving immediately if already present.
- *
- * @param {string} scriptUrl Script URL to load.
- * @return {Promise<void>} Resolves when the script is available.
- */
-function loadScriptIfNeeded(scriptUrl) {
-    return new Promise((resolve, reject) => {
-        // Check if the script is already loaded
-        if (document.querySelector(`script[src="${scriptUrl}"]`)) {
-            console.log(`Script already loaded: ${scriptUrl}`);
-            resolve(); // Resolve immediately if the script is already loaded
-            return;
-        }
-
-        // Create and append the script if not loaded
-        const script = document.createElement('script');
-        script.src = scriptUrl;
-        script.type = 'text/javascript';
-        script.async = true;
-
-        // Resolve the promise once the script finishes loading.
-        script.onload = () => {
-            console.log(`Script loaded: ${scriptUrl}`);
-            resolve();
-        };
-
-        // Reject the promise if the script fails to load.
-        script.onerror = () => {
-            console.error(`Failed to load script: ${scriptUrl}`);
-            reject(new Error(`Failed to load script: ${scriptUrl}`));
-        };
-
-        // Kick off the load by appending to <head>.
-        document.head.appendChild(script);
-    });
 }
 
 // Expected shape of the VOD settings object:
@@ -1859,7 +1790,7 @@ function loadScriptIfNeeded(scriptUrl) {
  * @param {Object} settings VOD configuration (element ids, URLs, flags).
  */
 function wpstream_player_initialize_vod(settings) {
-  console.log("wpstream_player_initialize_vod: ", settings);
+  wpstream_player_log("wpstream_player_initialize_vod: ", settings);
   // Start in "trailer" mode when a trailer URL exists, otherwise "content".
   var playing = settings.trailerUrl ? "trailer" : "content";
 
@@ -1889,7 +1820,7 @@ function wpstream_player_initialize_vod(settings) {
   const initialSrc = settings.trailerUrl
     ? getSrc(settings.trailerUrl)
     : getSrc(settings.videoUrl);
-  console.log("initialSrc: ", initialSrc);
+  wpstream_player_log("initialSrc: ", initialSrc);
 
   // Create the Video.js player and apply base configuration.
   const player = videojs(settings.videoElementId);
@@ -2001,12 +1932,11 @@ function wpstream_player_initialize_vod(settings) {
         this.addClass(settings.theaterModeButtons.enterTheaterModeButton.skin);
       }
       handleClick() {
-        // Swap buttons and run the site-supplied enter callback.
+        // Swap buttons and announce the change to site code (no eval, #114).
         owner.theaterModeEnterButton.hide();
         owner.theaterModeLeaveButton.show();
-        console.log("entering Theater Mode...");
-        // NOTE: eval() of a settings-provided callback string (see report).
-        eval(settings.theaterModeButtons.enterTheaterModeButton.callback);
+        wpstream_player_log("entering Theater Mode...");
+        wpstream_dispatch_theater_mode("enter", settings.videoElementId);
       }
     }
     // Button that switches OUT of theater mode.
@@ -2017,12 +1947,11 @@ function wpstream_player_initialize_vod(settings) {
         this.addClass(settings.theaterModeButtons.leaveTheaterModeButton.skin);
       }
       handleClick() {
-        // Swap buttons and run the site-supplied leave callback.
+        // Swap buttons and announce the change to site code (no eval, #114).
         owner.theaterModeEnterButton.show();
         owner.theaterModeLeaveButton.hide();
-        console.log("leaving Theater Mode...");
-        // NOTE: eval() of a settings-provided callback string (see report).
-        eval(settings.theaterModeButtons.leaveTheaterModeButton.callback);
+        wpstream_player_log("leaving Theater Mode...");
+        wpstream_dispatch_theater_mode("leave", settings.videoElementId);
       }
     }
 
@@ -2041,13 +1970,13 @@ function wpstream_player_initialize_vod(settings) {
 
   // "play": update UI depending on whether the trailer or the content is playing.
   player.on("play", () => {
-    console.log("play()");
+    wpstream_player_log("play()");
     playTrailerButton.hide();
     // Reveal the title overlay if the user is currently active.
     if (player.userActive()) {
       showTitleOverlay();
     }
-    console.log("playing: ", playing);
+    wpstream_player_log("playing: ", playing);
     if (playing == "trailer") {
       // Trailer: clear the poster, hide controls, apply trailer layout.
       player.poster(null);
@@ -2065,9 +1994,9 @@ function wpstream_player_initialize_vod(settings) {
 
   // "ended": when the trailer ends, switch to the main video (or reset).
   player.on("ended", () => {
-    console.log("ended");
+    wpstream_player_log("ended");
     if (playing == "trailer") {
-      console.log("trailer has ended");
+      wpstream_player_log("trailer has ended");
       if (settings.videoUrl) {
         // Transition to the main content: enable controls/audio, restore poster, set src.
         playing = "content";
@@ -2087,14 +2016,14 @@ function wpstream_player_initialize_vod(settings) {
       showDomElements('idle', player.el())
     } else {
       // Main content finished.
-      console.log("video has ended");
+      wpstream_player_log("video has ended");
     }
   });
 
   // "volumechange": reconcile mute buttons while playing.
   player.on("volumechange", () => {
-    console.log("muted: ", player.muted());
-    // console.log("paused: ", player.paused());
+    wpstream_player_log("muted: ", player.muted());
+    // wpstream_player_log("paused: ", player.paused());
     if (!player.paused()) {
       showHideMuteButtons();
     }
@@ -2104,7 +2033,7 @@ function wpstream_player_initialize_vod(settings) {
    * Show/hide the trailer mute+unmute buttons based on trailer state and mute.
    */
   function showHideMuteButtons() {
-    console.log("showHideMuteButtons()");
+    wpstream_player_log("showHideMuteButtons()");
     // Only relevant while the trailer is the active source.
     if (playing == "trailer") {
       if (player.muted()) {
@@ -2136,13 +2065,13 @@ function wpstream_player_initialize_vod(settings) {
 
   // "error": hide the spinner; if a trailer failed, fall back to the main video.
   player.on("error", () => {
-    console.log("error()");
+    wpstream_player_log("error()");
 	wpstreamHideVodSpinner();
     if (playing == "trailer") {
-      console.log("trailer failed");
+      wpstream_player_log("trailer failed");
       playTrailerButton.hide();
-      // NOTE: references bare `videoUrl` (not settings.videoUrl) — see report.
-      if (videoUrl) {
+      // Fall back to the main video when one is configured.
+      if (settings.videoUrl) {
         playing = "content";
         player.controls(true);
         player.src(getSrc(settings.videoUrl));
@@ -2162,7 +2091,7 @@ function wpstream_player_initialize_vod(settings) {
 
   // Play-trailer button: switch to the trailer source (if needed) and play.
   playTrailerButton.on("click", function () {
-    console.log("playTrailer()");
+    wpstream_player_log("playTrailer()");
 
     if (playing != "trailer") {
       playing = "trailer";
@@ -2174,7 +2103,7 @@ function wpstream_player_initialize_vod(settings) {
   // Mute button: mute only while a trailer is playing.
   muteTrailerButton.on("click", function () {
     if (playing == "trailer") {
-      console.log("muteTrailer()");
+      wpstream_player_log("muteTrailer()");
       player.muted(true);
     }
   });
@@ -2182,7 +2111,7 @@ function wpstream_player_initialize_vod(settings) {
   // Unmute button: unmute only while a trailer is playing.
   unmuteTrailerButton.on("click", function () {
     if (playing == "trailer") {
-      console.log("unmuteTrailer()");
+      wpstream_player_log("unmuteTrailer()");
       player.muted(false);
     }
   });
@@ -2199,7 +2128,7 @@ function wpstream_player_initialize_vod(settings) {
     if (wpstreamPlayVideoInFlight) return;
     wpstreamPlayVideoInFlight = true;
 
-    console.log("playVideo");
+    wpstream_player_log("playVideo");
     // No video configured → release the lock and stop.
     if (!settings.videoUrl) {
       wpstreamPlayVideoInFlight = false;

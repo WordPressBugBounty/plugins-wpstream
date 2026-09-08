@@ -10,8 +10,15 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Register the authenticated AJAX handler that toggles Watch Later membership.
 add_action( 'wp_ajax_wpstream_handle_watch_later_item_ajax', 'wpstream_handle_watch_later_item_ajax' );
+if ( ! function_exists( 'wpstream_handle_watch_later_item_ajax' ) ) :
 /**
  * Watch later item ajax
  *
@@ -19,9 +26,8 @@ add_action( 'wp_ajax_wpstream_handle_watch_later_item_ajax', 'wpstream_handle_wa
  * removes a post from the current user's Watch Later list and returns the
  * refreshed toggle markup.
  *
- * Reads from $_POST: `security` (presence checked only), `postID` (the item
- * to toggle). Requires the user to be logged in. Note: only the presence of
- * `security` is checked — the nonce value itself is never verified (see report).
+ * Reads from $_POST: `security` (nonce, verified against `wpstream_watch_later`),
+ * `postID` (the item to toggle). Requires the user to be logged in.
  *
  * @return void Emits a JSON response and terminates.
  */
@@ -33,8 +39,8 @@ function wpstream_handle_watch_later_item_ajax() {
 		die();
 	}
 
-	// Gate on the presence of the security token (value is not validated here).
-	if ( isset( $_POST['security'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Missing
+	// Verify the watch-later nonce localized to the plugin script.
+	if ( wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['security'] ?? '' ) ), 'wpstream_watch_later' ) ) {
 		// Require a target post ID before doing any work.
 		if ( isset( $_POST['postID'] ) ) { //phpcs:ignore WordPress.Security.NonceVerification.Missing
 			// Sanitize the incoming post ID to an integer.
@@ -79,8 +85,7 @@ function wpstream_handle_watch_later_item_ajax() {
 			);
 		}
 	} else {
-		// Nonce verification failed, handle the error or exit.
-		// (Reached when the `security` field is absent from the POST.)
+		// Reached when the `security` nonce is absent or does not verify.
 		$response = array(
 			'success' => false,
 			'message' => 'Nonce verification failed.',
@@ -90,6 +95,7 @@ function wpstream_handle_watch_later_item_ajax() {
 	wp_send_json( $response );
 	wp_die(); // Always include this at the end of an AJAX callback.
 }
+endif;
 
 if ( ! function_exists( 'wpstream_theme_create_channel' ) ) {
 	/**

@@ -12,6 +12,12 @@
  * @var string $price
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 ?>
 <!-- Edit Channel modal (Bootstrap, hidden until opened by the edit button). -->
 <div class="modal fade wpstream-modal" id="wpstream_edit_channel_modal" tabindex="-1" aria-labelledby="wpstream_edit_channel_modal_label" aria-hidden="true">

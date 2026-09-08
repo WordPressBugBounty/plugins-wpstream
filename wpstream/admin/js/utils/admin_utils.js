@@ -39,6 +39,7 @@ WpStreamUtils.generate_download_link = function(){
             data: {
                 'action': 'wpstream_get_download_link',
                 'video_name': video_name,
+                'security': wpstream_admin_control_vars.recordings_nonce
             },
             success: function (data) {
                 // Server returned a usable URL: turn the element into a real download link.
@@ -80,6 +81,13 @@ WpStreamUtils.generate_delete_link = function() {
         // Cache the parent element so we can remove the whole row on success.
         var parent              =   jQuery(this).parent();
 
+        // Keep filenames as inert DOM data and let this one shared action own
+        // confirmation. Browser attribute decoding restores names such as
+        // O'Reilly.mp4 before the prompt and request are built.
+        if ( ! window.confirm('Are you sure you wish to delete ' + video_name + '?') ) {
+            return;
+        }
+
         // Ask the server to delete this recording file.
         jQuery.ajax({
             type: 'POST',
@@ -87,7 +95,8 @@ WpStreamUtils.generate_delete_link = function() {
             dataType: 'json',
             data: {
                 'action': 'wpstream_get_delete_file',
-                'video_name': video_name
+                'video_name': video_name,
+                'security': wpstream_admin_control_vars.recordings_nonce
 
             },
             success: function (data) {

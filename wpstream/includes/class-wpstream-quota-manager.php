@@ -5,14 +5,24 @@
  *
  * Keeps a short-lived transient cache of the current user's streaming quota
  * ("request pack" data) fresh so the rest of the plugin can read plan limits
- * without hitting the WpStream cloud API on every page load. The cache is
- * refreshed opportunistically on admin page loads, can be force-refreshed when
- * a channel is about to start, and exposes helper predicates that interpret the
- * quota payload (data-vs-hours plans, storage availability, VOD eligibility).
+ * without hitting the WpStream cloud API on every page load. This class is the
+ * single owner of that cache — key, TTL, validation, and invalidation all live
+ * here; the quota service only fetches. The cache is refreshed opportunistically
+ * on admin page loads, can be force-refreshed when a channel is about to start,
+ * and helper predicates interpret the quota payload (data-vs-hours plans,
+ * storage availability, VOD eligibility). A failed fetch starts a short
+ * cool-down during which reads report "no data" instead of retrying the
+ * blocking API call, so a slow or down service cannot stall admin pages.
  *
  * @since 4.9
  * @package WpStream
  */
+
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
  /**
   * Quota cache manager and plan-limit interpreter.
@@ -21,13 +31,30 @@
 	 /** @var Wpstream Main plugin instance, used to reach shared services. */
 	 private $main;
 
-	 /** @var Wpstream_Live_Api_Connection Cloud API client used to fetch quota data. */
-	 private $api_connection;
+	 /** @var Wpstream_User_Quota_Service Fetch-only client for the user/quota endpoint. */
+	 private $quota_service;
 
 	 /*
 	  * Transient key under which the per-user quota payload is cached.
+	  * This class is the only writer/deleter of this transient.
 	  */
 	 const TRANSIENT_KEY = 'wpstream_request_pack_data_per_user_transient';
+
+	 /** @var int Default cache lifetime in seconds; see `wpstream_quota_cache_ttl`. */
+	 const CACHE_TTL = 60;
+
+	 /** @var int Upper bound for either filtered lifetime: stale quota past an hour would hide an empty pack. */
+	 const MAX_TTL = HOUR_IN_SECONDS;
+
+	 /*
+	  * Transient set when a fetch fails, so admin page loads stop retrying the
+	  * blocking API call while the service is down. Cleared by invalidate()
+	  * (and therefore bypassed by force_quota_update()).
+	  */
+	 const FAILURE_KEY = 'wpstream_request_pack_data_fetch_failed';
+
+	 /** @var int Default cool-down after a failed fetch, in seconds; see `wpstream_quota_failure_cooldown`. */
+	 const FAILURE_TTL = 5 * MINUTE_IN_SECONDS;
 
 	 /**
 	  * Wire up dependencies and register hooks.
@@ -37,8 +64,8 @@
 	 public function __construct( $main ) {
 		 // Keep a reference to the main plugin object.
 		 $this->main = $main;
-		 // Grab the live API connection off the main object for later calls.
-		 $this->api_connection = $main->wpstream_live_connection;
+		 // Grab the fetch-only quota service off the main object for later calls.
+		 $this->quota_service = $main->user_quota_service;
 
 		 // Register the WordPress hooks this manager needs.
 		 $this->init_hooks();
@@ -63,30 +90,83 @@
 
 		 // Look for an existing cached payload.
 		 $cached_data = get_transient( self::TRANSIENT_KEY );
-		 // Transient absent/expired: fetch and cache fresh quota data.
-		 if ( $cached_data === false ) {
+		 // Transient absent/expired: fetch and cache fresh quota data — unless a
+		 // recent fetch already failed; then skip the blocking call until the
+		 // cool-down expires so a slow/down API cannot stall every admin page.
+		 if ( $cached_data === false && false === get_transient( self::FAILURE_KEY ) ) {
 			 $this->update_quota_transient();
 		 }
 	 }
 
 	 /*
 	  * Fetch quota data from the API and store it in the transient cache.
+	  *
+	  * @param string $context Label passed to the API to identify the caller.
+	  * @return array|false The freshly cached payload, or false when the fetch failed.
 	  */
-	 public function update_quota_transient() {
-		 // Ask the cloud API for this user's current pack/quota figures.
-		 $quota_data = $this->api_connection->wpstream_request_pack_data_per_user('user_quota_cron_update');
+	 public function update_quota_transient( $context = 'user_quota_cron_update' ) {
+		 // Ask the fetch-only quota service for this user's current pack/quota figures.
+		 $quota_data = $this->quota_service->request_pack_data_per_user( $context );
 
 		 // Only cache a well-formed, successful response.
 		 if ( $this->is_valid_quota_data( $quota_data ) ) {
-			 // Cache the payload for 60 seconds.
-			 set_transient( self::TRANSIENT_KEY, $quota_data, 60 );
+			 /**
+			  * Filter how long a fetched quota snapshot is cached, in seconds.
+			  *
+			  * Clamped to [1, 3600]. The transient name and payload are frozen.
+			  *
+			  * @since 4.14.0
+			  *
+			  * @param int $seconds Lifetime; default 60.
+			  */
+			 $ttl = wpstream_tunable( 'wpstream_quota_cache_ttl', self::CACHE_TTL, self::MAX_TTL );
+			 set_transient( self::TRANSIENT_KEY, $quota_data, $ttl );
+			 // A success ends any failure cool-down immediately.
+			 delete_transient( self::FAILURE_KEY );
 
 			 // Record the successful refresh in the plugin log.
-			 $this->log_quota_update( 'success', 'User quota updated via cron' );
-		 } else {
-			 // Log the failure but leave any prior cache untouched.
-			 $this->log_quota_update( 'error', 'Failed to update user quota via cron' );
+			 $this->log_quota_update( 'success', 'User quota updated (' . $context . ')' );
+
+			 /**
+			  * Fires after fresh quota data was fetched and cached. Listeners
+			  * compare consecutive snapshots to notice a pack running out.
+			  *
+			  * @since 4.14.0
+			  *
+			  * @param array  $quota_data Decoded quota payload as cached.
+			  * @param string $context    Label of the caller that triggered the refresh.
+			  */
+			 do_action( 'wpstream_quota_refreshed', $quota_data, $context );
+
+			 return $quota_data;
 		 }
+
+		 // Remember the failure so admin page loads stop retrying for a while.
+		 /**
+		  * Filter how long admin page loads stop retrying after a failed quota
+		  * fetch, in seconds. Clamped to [1, 3600].
+		  *
+		  * @since 4.14.0
+		  *
+		  * @param int $seconds Cool-down; default 300.
+		  */
+		 $cooldown = wpstream_tunable( 'wpstream_quota_failure_cooldown', self::FAILURE_TTL, self::MAX_TTL );
+		 set_transient( self::FAILURE_KEY, 1, $cooldown );
+
+		 // Log the failure but leave any prior cache untouched.
+		 $this->log_quota_update( 'error', 'Failed to update user quota (' . $context . ')' );
+
+		 /**
+		  * Fires when a quota refresh failed and the retry cool-down started;
+		  * any previously cached payload is kept.
+		  *
+		  * @since 4.14.0
+		  *
+		  * @param string $context Label of the caller that triggered the refresh.
+		  */
+		 do_action( 'wpstream_quota_refresh_failed', $context );
+
+		 return false;
 	 }
 
 	 /**
@@ -123,24 +203,35 @@
 		 }
 	 }
 
+	 /**
+	  * Drop the cached quota payload so the next read fetches fresh data.
+	  * The one sanctioned way to erase the cache from outside this class
+	  * (e.g. when the account credentials change).
+	  */
+	 public function invalidate() {
+		 delete_transient( self::TRANSIENT_KEY );
+		 // Also forget any failure cool-down: an explicit reset means the next
+		 // read (e.g. a channel about to start) must genuinely retry the API.
+		 delete_transient( self::FAILURE_KEY );
+	 }
+
 	 /*
 	  * Force immediate quota update and return fresh data
 	  * needed for example when starting a channel
 	  */
 	 public function force_quota_update() {
 		 // Drop the cache so the next read cannot serve stale data.
-		 delete_transient( self::TRANSIENT_KEY );
-		 // Repopulate the cache from the API.
-		 $this->update_quota_transient();
-		 // Return whatever was just cached (false if the refresh failed).
-		 return get_transient( self::TRANSIENT_KEY );
+		 $this->invalidate();
+		 // Repopulate the cache from the API and return the result
+		 // (false if the refresh failed).
+		 return $this->update_quota_transient();
 	 }
 
 	 /**
 	  * Return quota data, preferring the cache and falling back to a live call.
 	  *
 	  * @param string $context Label passed to the API to identify the caller.
-	  * @return array|mixed Cached payload, or a fresh API response when uncached.
+	  * @return array|false Cached payload, or a freshly fetched-and-cached one; false on failure.
 	  */
 	 public function get_live_quota_data( $context = 'user_quota_on_demand' ) {
 		 // Serve the cached payload when present.
@@ -150,8 +241,15 @@
 			 return $cached_data;
 		 }
 
-		 // If transient is empty, fetch fresh data
-		 return $this->api_connection->wpstream_request_pack_data_per_user( $context );
+		 // Cache miss during a failure cool-down: report "no data" without
+		 // another blocking call. force_quota_update() clears the cool-down
+		 // first, so an explicit refresh still reaches the API.
+		 if ( false !== get_transient( self::FAILURE_KEY ) ) {
+			 return false;
+		 }
+
+		 // Cache miss: fetch, cache, and return through the single refresh path.
+		 return $this->update_quota_transient( $context );
 	 }
 
 	 /**

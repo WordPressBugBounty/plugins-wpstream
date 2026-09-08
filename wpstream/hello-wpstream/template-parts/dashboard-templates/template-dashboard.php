@@ -5,6 +5,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
  // Greeting text, current user's display name, and dashboard subtitle for the welcome header.
  $hello_text        = esc_html__( 'Welcome back, ', 'hello-wpstream' );
  $current_user_name = $current_user->display_name;

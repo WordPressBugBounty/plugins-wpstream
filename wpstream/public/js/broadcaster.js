@@ -31,6 +31,20 @@
  * @property {string} channel_off - Message when channel is off
  */
 /* global wpstream_broadcaster_vars */
+/**
+ * Debug-gated console logger for this file.
+ *
+ * The localized vars carry the WHIP publish URL, the OBS stream key and the
+ * popup session id — none of which may reach a production browser console.
+ * Every diagnostic log in this file routes through here and only prints when
+ * the site opts into script debugging (the SCRIPT_DEBUG constant, surfaced as
+ * wpstream_broadcaster_vars.debug).
+ */
+function wpstream_broadcaster_log() {
+	if (window.wpstream_broadcaster_vars && window.wpstream_broadcaster_vars.debug) {
+		console.log.apply(console, arguments);
+	}
+}
 // Defer all setup until the DOM is ready; everything runs inside this closure.
 document.addEventListener("DOMContentLoaded", function () {
 	// Global (closure-scoped) mutable state shared across the handlers below.
@@ -128,7 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	// Resolve the popup payload/session id once at startup for telemetry correlation.
 	const popupPayload = getPopupPayloadFromWindowName();
 	const popupSessionId = popupPayload && popupPayload.session_id ? popupPayload.session_id : '';
-	console.log('Popup session ID:', popupSessionId);
+	wpstream_broadcaster_log('Popup session ID:', popupSessionId);
 
 	/**
 	 * Fire an onboarding-step telemetry event, but only if the global tracking
@@ -218,7 +232,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		// Sample once per second.
 		frameCalculatorTimer = setInterval(function () {
 			// Log the current decoded video dimensions.
-			console.log(
+			wpstream_broadcaster_log(
 				"Resolution: " +
 				videoElement.videoWidth +
 				"x" +
@@ -234,7 +248,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				let currentTotalFrame =
 					videoElement.getVideoPlaybackQuality().totalVideoFrames;
 				let frameRate = currentTotalFrame - totalVideoFrames;
-				// console.log('Frame rate: ' + frameRate + 'fps');
+				// wpstream_broadcaster_log('Frame rate: ' + frameRate + 'fps');
 				totalVideoFrames = currentTotalFrame;
 			}
 		}, 1000);
@@ -558,7 +572,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					},
 					// Fired when the underlying WebRTC/WHIP connection closes.
 					connectionClosed: function (type, event) {
-						console.log("Connection closed:", type, event);
+						wpstream_broadcaster_log("Connection closed:", type, event);
 						streamingStarted = false;
 						// updateStatus("disconnected");
 
@@ -571,14 +585,12 @@ document.addEventListener("DOMContentLoaded", function () {
 						// }
 
 					// Auto-reconnect if it was an unexpected drop; otherwise treat as a clean stop.
+					// attemptReconnect() drives the live/error badges via updateStatus('reconnecting').
 					if (considerReconnect && !pendingReconnect) {
-						console.log('connection closed, attempting to reconnect');
+						wpstream_broadcaster_log('connection closed, attempting to reconnect');
 						attemptReconnect();
-						liveIndicatorLive.style.display = 'none';
-						liveIndicatorError.style.display = 'inline';
-						liveIndicatorError.innerContent = 'Reconnecting';
 					} else {
-						console.log('connection closed, not reconnecting');
+						wpstream_broadcaster_log('connection closed, not reconnecting');
 						// Report the stop to onboarding telemetry.
 						trackOnboardingStepSafe('broadcaster_streaming_stopped', 'wpstream_broadcaster', 'button', 'streaming_stopped', popupSessionId);
 						// updateInputState(false);
@@ -590,7 +602,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				},
 				// Fired on ICE connection state transitions.
 				iceStateChange: function (state) {
-					console.log("ICE state changed:", state);
+					wpstream_broadcaster_log("ICE state changed:", state);
 					// Reached "connected": mark live and record the streaming-started event.
 					if ( state === 'connected' ) {
 						// showMessage("Broadcast started successfully");
@@ -602,7 +614,7 @@ document.addEventListener("DOMContentLoaded", function () {
 						if (state === "disconnected" && considerReconnect) {
 							streamingStarted = false;
 							if (considerReconnect && !pendingReconnect) {
-								console.log(
+								wpstream_broadcaster_log(
 									"connection closed, attempting to reconnect from ice state change"
 								);
 								updateStatus("reconnecting");
@@ -785,38 +797,24 @@ document.addEventListener("DOMContentLoaded", function () {
 	 * overlapping attempts via pendingReconnect.
 	 */
 	function attemptReconnect() {
-		console.log("attemptReconnect()");
+		wpstream_broadcaster_log("attemptReconnect()");
 		updateStatus('reconnecting');
 
 		// Do not stack reconnect attempts.
 		if ( pendingReconnect ) {
-			console.log('reconnect already in progress');
+			wpstream_broadcaster_log('reconnect already in progress');
 			return;
 		}
 
-		// Clean up existing connection before reconnecting
+		// Tear the dropped capture down through OvenLiveKit's public API (it
+		// releases the connection, tracks and preview without firing callbacks).
+		// A fresh instance is built when the reconnect fires or the user cancels.
 		if (input) {
-			if (input.peerConnection || input.webSocket) {
-				// Force cleanup without triggering callbacks
-				if (input.peerConnection) {
-					input.peerConnection.close();
-					input.peerConnection = null;
-				}
-				if (input.webSocket) {
-					input.webSocket.close();
-					input.webSocket = null;
-				}
-				// Reset streaming mode
-				input.streamingMode = null;
-			}
+			input.remove();
+			input = null;
 		}
 
-		pendingReconnect = true;
-
 		// Show a reconnecting state and allow user to cancel via Stop button
-		// showMessage("Disconnected. Reconnecting in 5 seconds...", "info");
-		// updateInputState(false);
-
 		pendingReconnect = true;
 		// After the delay, verify the channel then rebuild capture (auto-start).
 		pendingReconnectTimeout = setTimeout(function () {
@@ -828,7 +826,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					.then(function(channelActive) {
 						// Channel still live and reconnect still wanted: re-create with auto-start.
 						if (channelActive && considerReconnect) {
-							console.log("Channel is active, proceeding with reconnect...");
+							wpstream_broadcaster_log("Channel is active, proceeding with reconnect...");
 							updateStatus("connecting");
 							// input.stopStreaming();
 							// Small extra delay before rebuilding the capture.
@@ -837,7 +835,7 @@ document.addEventListener("DOMContentLoaded", function () {
 							}, 5000);
 						} else {
 							// Channel ended server-side: give up and reset the UI.
-							console.log("Channel is not active, cannot reconnect.");
+							wpstream_broadcaster_log("Channel is not active, cannot reconnect.");
 							considerReconnect = false;
 							showMessage('Channel is no longer active. Broadcasting stopped');
 							resetStreamingUI();
@@ -852,7 +850,7 @@ document.addEventListener("DOMContentLoaded", function () {
 						}
 					});
 
-				// console.log('Reconnecting...');
+				// wpstream_broadcaster_log('Reconnecting...');
 				// createInput( true );
 				// startStreaming();
 			}
@@ -965,6 +963,9 @@ document.addEventListener("DOMContentLoaded", function () {
 					streamingButton.classList.remove("hidden");
 					streamingButton.disabled = false;
 				}
+				// The dropped capture was removed when the reconnect was scheduled;
+				// rebuild an idle preview so Start can publish again.
+				createInput();
 				return;
 			}
 
@@ -1064,7 +1065,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			let errorMessage = "";
 
 			if (error.message) {
-				console.log(error.message);
+				wpstream_broadcaster_log(error.message);
 				changeErrorMessage(error.message);
 			} else if (error.name) {
 				errorMessage = error.name;
@@ -1082,7 +1083,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	 * @param {string} message The raw error message from OvenLiveKit.
 	 */
 	function changeErrorMessage(message) {
-		console.log(wpstream_broadcaster_vars);
+		wpstream_broadcaster_log(wpstream_broadcaster_vars);
 		switch (message) {
 			// No camera and no microphone available.
 			case "No input devices were found.":
@@ -1156,80 +1157,16 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	/**
-	 * Decide whether the account has quota left to broadcast, from a quota payload.
+	 * Check the account's broadcast quota.
 	 *
-	 * @param {Object} quotaData Parsed quota response.
-	 * @return {boolean} true if quota remains under whichever metering model applies.
-	 */
-	function hasBroadcastQuota(quotaData) {
-		// Missing or explicitly-failed payload: no quota.
-		if (!quotaData || quotaData.success === false) {
-			return false;
-		}
-
-		// Streaming-hours metering: require positive remaining broadcast hours.
-		if (quotaData.use_streaming_hours === true && quotaData.available_broadcast_hours !== undefined) {
-			return parseFloat(quotaData.available_broadcast_hours) > 0;
-		}
-
-		// Data-volume metering: require positive remaining MB.
-		if (quotaData.available_data_mb !== undefined) {
-			return parseFloat(quotaData.available_data_mb) > 0;
-		}
-
-		// No recognisable quota field: treat as no quota.
-		return false;
-	}
-
-	/**
-	 * Check the account's broadcast quota via AJAX.
-	 *
-	 * NOTE: quota enforcement is currently disabled — this always resolves true
-	 * so users can always stream. The AJAX implementation below is intentionally
-	 * retained (but unreachable) in case quota gating is reinstated. Not changed
-	 * in this comments-only pass.
+	 * NOTE: quota enforcement is disabled by design — the pre-flight always
+	 * passes so users can always go live; the server meters usage instead.
 	 *
 	 * @return {Promise<boolean>} Always resolves true (quota check bypassed).
 	 */
 	function checkUserQuota() {
 		// We add this here so that the user can always stream, no matter the quota
 		return Promise.resolve(true);
-
-		// Leaving this here if we want to ever return to
-		// checking the user quota and restrict streaming
-		return new Promise((resolve, reject) => {
-			if (!wpstream_broadcaster_vars.ajax_url) {
-				resolve(true);
-				return;
-			}
-
-			jQuery.ajax({
-				url: wpstream_broadcaster_vars.ajax_url,
-				type: 'POST',
-				data: {
-					action: 'wpstream_check_user_quota',
-				},
-				success: function(response) {
-					try {
-						const parsedResponse = JSON.parse(response);
-						if (hasBroadcastQuota(parsedResponse)) {
-							resolve(true);
-						} else {
-							resolve(false);
-						}
-					} catch (e) {
-						console.error('Error parsing response:', e);
-						showMessage('Error checking quota', 'error');
-						reject(false);
-					}
-				},
-				error: function(xhr, status, error) {
-					console.error('Error checking user quota:', error);
-					showMessage('Error checking user quota: ' + error, 'error');
-					reject(false);
-				}
-			})
-		});
 	}
 
 	/**
@@ -1270,12 +1207,12 @@ document.addEventListener("DOMContentLoaded", function () {
 			// logs here after startStreaming; kept as-is (comments-only pass).
 			if ( input ) {
 				// TODO: check why input is sometimes null here
-				console.log('something was wrong' );
+				wpstream_broadcaster_log('something was wrong' );
 			}
 			// updateStatus("connected");
 			// On a successful reconnect just log (user-facing message is commented out).
 			if ( isReconnect ) {
-				console.log('Reconnected successfully!');
+				wpstream_broadcaster_log('Reconnected successfully!');
 				// showMessage("Reconnected successfully!", "success");
 			}
 			// Lock the device/resolution controls while live.
@@ -1284,7 +1221,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			// No WHIP URL (or no capture): revert UI and surface the error.
 			streamingButton.classList.remove("hidden");
 			stopButton.classList.add("hidden");
-			console.log(whipUrl);
+			wpstream_broadcaster_log(whipUrl);
 			showMessage("Error: No WHIP URL configured", "error");
 			updateStatus("disconnected");
 

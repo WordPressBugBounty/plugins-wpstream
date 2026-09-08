@@ -8,6 +8,12 @@
  *
  * @package wpstream-theme
  */
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Current post ID, reused for the "recorded ... ago" duration lookup.
 $postID= get_the_ID();
 // Allow the caller to override the grid column classes for this card.

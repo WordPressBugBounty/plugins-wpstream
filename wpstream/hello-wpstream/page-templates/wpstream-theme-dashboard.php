@@ -12,6 +12,12 @@
  * @package wpstream-plugin
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Guests may not view the dashboard: bounce anyone not logged in to the home page.
 if ( ! is_user_logged_in() ) {
 	wp_safe_redirect( esc_url( home_url( '/' ) ) );

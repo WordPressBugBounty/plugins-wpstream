@@ -11,6 +11,12 @@
  * @var WP_Query $query Query of broadcast posts to display as cards.
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Track whether this list is being shown on the theme dashboard page template.
 $is_wpstream_theme_dashboard = false;
 

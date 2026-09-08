@@ -7,6 +7,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Normalise the incoming term ID and initialise all display variables to empty defaults.
 $term_id                        =   intval($term_id);
 $category_attach_id             =   '';
@@ -76,7 +82,6 @@ $inline_style       =   " background-image: url(".esc_attr($category_featured_im
 
 // Apply a caller-provided fixed height to the card when supplied.
 if (isset($item_height) && $item_height!='') {
-    $item_height=1?$item_height:400;
     $inline_style.="min-height:100px;height:".floatval($item_height)."px;";
 }
 

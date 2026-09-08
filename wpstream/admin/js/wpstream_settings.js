@@ -27,6 +27,43 @@ jQuery(document).ready(function($) {
 });
 
 /**
+ * Show the encryption / speed-feature exclusion on the settings screen.
+ *
+ * Encrypted delivery cannot run together with low latency or adaptive bitrate,
+ * so enabling either side clears the other. The server applies this rule too;
+ * doing it here is what lets the customer see which setting they gave up
+ * instead of finding out after the save.
+ *
+ * This screen owns its copy deliberately: the equivalent helper lives in
+ * public/js/start_streaming.js, which is only loaded on the channel screens.
+ * Calling across to it left this handler throwing a ReferenceError before it
+ * reached the save, so no default channel setting was ever stored.
+ *
+ * @param {jQuery} clicked The option toggle the user just clicked.
+ * @return {void}
+ */
+function wpstream_settings_apply_exclusion(clicked) {
+    // Which setting was toggled, and the group it belongs to.
+    var setting = clicked.attr('data-attr-ajaxname');
+    var group   = clicked.closest('.theme_options_tab_wpstream');
+    var speed   = group.find('.wpstream-setting-low_latency .wpstream_event_option_item, .wpstream-setting-adaptive_bitrate .wpstream_event_option_item');
+    var encrypt = group.find('.wpstream-setting-encrypt .wpstream_event_option_item');
+
+    // Asking for speed gives up encryption.
+    if (setting === 'low_latency' || setting === 'adaptive_bitrate') {
+        if (clicked.prop('checked')) {
+            encrypt.prop('checked', false);
+        }
+        return;
+    }
+
+    // And asking for encryption gives up both speed features.
+    if (setting === 'encrypt' && clicked.prop('checked')) {
+        speed.prop('checked', false);
+    }
+}
+
+/**
  * Save the changes to the Default Channel Settings tab
  *
  * Binds each option toggle so that, shortly after a click, all toggles in the
@@ -39,7 +76,7 @@ function wpstream_save_default_channel_options() {
     jQuery('.theme_options_tab_wpstream .wpstream_event_option_item').on('click',function() {
 
         // Apply any dependent UI adjustments for the clicked option.
-        wpstream_adjust_settings_general(jQuery(this));
+        wpstream_settings_apply_exclusion(jQuery(this));
 
         // Accumulator for the option name/value pairs to send.
         var optionarray ={};

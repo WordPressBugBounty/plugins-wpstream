@@ -9,6 +9,12 @@
  * @package wpstream-theme
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Read the customizer preference for which side the login/register panel sits on.
 $login_register_settings = get_theme_mod( 'wpstream_theme_login_register_settings', 'position-left' );
 // Bootstrap offcanvas placement class, resolved from the setting below.

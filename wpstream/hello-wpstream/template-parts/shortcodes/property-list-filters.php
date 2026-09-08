@@ -12,6 +12,12 @@
  * @var array $attributes Shortcode attributes controlling which bars/values show.
  */
 
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 ?>
 <div class="wpstream_item_list_filter">
 	<?php

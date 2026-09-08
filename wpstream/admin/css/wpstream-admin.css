@@ -313,6 +313,18 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 }
 
 
+/* Channel editor (block editor): the editor parks classic metaboxes under all of its own
+   document panels. Turn the document tab into a flex column and pull the metabox area
+   (which holds the Live Streaming panel) to the top so the channel controls come first.
+   Scoped to the channel post type; if the editor markup changes, the default order returns. */
+.block-editor-page.post-type-wpstream_product .editor-sidebar__panel > div:has(> .edit-post-meta-boxes-area.is-side){
+    display: flex;
+    flex-direction: column;
+}
+.block-editor-page.post-type-wpstream_product .editor-sidebar__panel .edit-post-meta-boxes-area.is-side{
+    order: -1;
+}
+
 /* Gutenberg sidebar meta panel (#wpstream-sidebar-meta): compact overrides of the event card and its controls. */
 #wpstream-sidebar-meta .event_list_unit{
     padding: 0px;
@@ -356,6 +368,12 @@ div.video-js.vjs-has-started  button.vjs-big-play-button{
 #wpstream-sidebar-meta .start_event{
     width:100%;
     box-sizing: border-box;
+}
+
+/* The icon tooltips open below their button; on the last icon row they extend past
+   the metabox edge, so the box must not clip its overflow. */
+#wpstream-sidebar-meta.postbox{
+    overflow: visible;
 }
 
 #wpstream-sidebar-meta .wpstream_event_streaming_local {
@@ -581,14 +599,10 @@ input[type="checkbox"]:disabled + .wpstream_slider.round {
     padding: 9px 20px;
     width: auto;
     min-width: 130px;
-    color: #7a88a3;
-    border: 1px solid #3dc93d;
     color: #3b3b3b;
-    background-color: #eaf2f7;
     background-color: #e8f7e8;
     border: 1px solid #3dc93d85;
-
-
+    height: auto;
 }
 
 
@@ -612,14 +626,8 @@ input[type="checkbox"]:disabled + .wpstream_slider.round {
     color: #fff;
 }
 
-.stop_server,
-.close_event.wpstream_button{
+.stop_server{
     background: #c33a3a;
-}
-
-stop_server wpstream_button:hover,
-.close_event.wpstream_button:hover{
-    background: #d21009;
 }
 
 .record_wrapper,
@@ -1394,7 +1402,7 @@ input:checked + .wpstream_slider:before {
     padding: 30px;
     border-radius: 5px;
 }
-.wpstream_modal_form.wpestate_settings_modal{
+.wpstream_modal_form.wpstream_settings_modal{
     height: 600px;
     margin-top: -257px;
 }
@@ -1684,7 +1692,7 @@ input:checked + .wpstream_slider:before {
     .event_title{
         width: 100%;
     }
-    .wpstream_modal_form.wpestate_settings_modal,
+    .wpstream_modal_form.wpstream_settings_modal,
     .wpstream_modal_form {
         z-index: 99999;
         margin-top: 0px;
@@ -1713,7 +1721,7 @@ input:checked + .wpstream_slider:before {
         box-sizing: border-box;
     }
 
-    .wpstream_modal_form.wpestate_settings_modal {
+    .wpstream_modal_form.wpstream_settings_modal {
         height: 100%;
         margin-top: 0px;
         overflow-y: auto;
