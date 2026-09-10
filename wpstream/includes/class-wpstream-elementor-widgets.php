@@ -3,10 +3,13 @@
  * Elementor integration for the WpStream plugin.
  *
  * One class owns the whole Elementor layer: it verifies on plugins_loaded that
- * Elementor is active and meets the minimum Elementor/PHP versions, shows an
- * admin notice when a requirement fails, and otherwise loads the plugin's
- * widget classes from widgets/ and registers them with Elementor under the
- * "WpStream Widgets" category.
+ * Elementor is active and meets the minimum Elementor/PHP versions, and then
+ * loads the plugin's widget classes from widgets/ and registers them with
+ * Elementor under the "WpStream Widgets" category.
+ *
+ * Elementor is optional. A site without it stays silent: no widgets, no
+ * notice. Only a site that does run Elementor is warned when its Elementor or
+ * PHP version is too old, because there the warning is actionable.
  *
  * The widget files are required here rather than autoloaded because they
  * extend Elementor\Widget_Base, which only exists once Elementor has loaded.
@@ -54,9 +57,9 @@ final class Wpstream_Elementor_Widgets {
 	 * @return void
 	 */
 	public function init() {
-		// Elementor not active: 'elementor/loaded' never fired.
+		// Elementor not active: 'elementor/loaded' never fired. Elementor is an
+		// optional integration, so a site without it gets no widgets and no notice.
 		if ( ! did_action( 'elementor/loaded' ) ) {
-			add_action( 'admin_notices', array( $this, 'admin_notice_missing_elementor' ) );
 			return;
 		}
 
@@ -111,21 +114,6 @@ final class Wpstream_Elementor_Widgets {
 		$widgets_manager->register( new \ElementorWpStream\Widgets\Wpstream_Start_Streaming_Base() );
 		$widgets_manager->register( new \ElementorWpStream\Widgets\Wpstream_Media_List_Channel() );
 		$widgets_manager->register( new \ElementorWpStream\Widgets\Wpstream_Media_List_Vod() );
-	}
-
-	/**
-	 * Admin notice: Elementor is not installed or not active.
-	 *
-	 * @return void
-	 */
-	public function admin_notice_missing_elementor() {
-		$message = sprintf(
-			/* translators: 1: Plugin name 2: Elementor */
-			esc_html__( '"%1$s" requires "%2$s" to be installed and activated.', 'wpstream' ),
-			'<strong>' . esc_html__( 'WpStream Elementor', 'wpstream' ) . '</strong>',
-			'<strong>' . esc_html__( 'Elementor', 'wpstream' ) . '</strong>'
-		);
-		$this->print_notice( $message );
 	}
 
 	/**

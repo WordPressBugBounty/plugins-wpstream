@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.14.0
+Stable tag: 4.14.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -136,6 +136,9 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.14.1 =
+* Fix - Sites without Elementor no longer see a "WpStream Elementor requires Elementor" warning on every admin page. Elementor is an optional integration; the warning was reinstated by mistake in 4.14.0 and is now removed. Sites that run an outdated Elementor or PHP version still get their version warning
 
 = 4.14.0 =
 * Fix - Tooltips on the last icon row of the Live Streaming sidebar box were cut off on WooCommerce product edit pages; the box no longer clips them

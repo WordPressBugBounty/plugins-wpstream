@@ -2429,12 +2429,6 @@ msgstr ""
 msgid "WpStream Widgets"
 msgstr ""
 
-#. translators: 1: Plugin name 2: Elementor
-#: wpstream-elementor.php:161
-#, php-format
-msgid "\"%1$s\" requires \"%2$s\" to be installed and activated."
-msgstr ""
-
 #: wpstream-elementor.php:163
 #: wpstream-elementor.php:227
 msgid "WpStream Elementor"
