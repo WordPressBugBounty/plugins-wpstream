@@ -246,6 +246,7 @@ class Wpstream_Admin {
                         'loading_url'              => WPSTREAM_PLUGIN_DIR_URL.'/img/loading.gif',
                         'download_mess'            => esc_html__('Click to download!','wpstream'),
                         'uploading'                => esc_html__('We are uploading your file. Do not close this window!','wpstream'),
+                        'queued'                   => esc_html__('Queued','wpstream'),
                         'upload_complete2'         => esc_html__('Upload Complete! You can upload another file!','wpstream'),
                         'not_accepted'             => esc_html__('The file is not an accepted video format','wpstream'),
                         'upload_complete'          => esc_html__('Upload Complete!','wpstream'),
@@ -1809,13 +1810,12 @@ class Wpstream_Admin {
                   
 
                     $to_return.='<div class="wpstream_upload_container">';
-                    $to_return.='<div id="wpstream_uploaded_mes">'.esc_html__('Please select or drop a video file. Do not close this window during the upload!','wpstream').'</div>';
+                    // Several files may be selected or dropped at once; the script
+                    // queues them and sends one at a time.
+                    $to_return.='<div id="wpstream_uploaded_mes">'.esc_html__('Please select or drop one or more video files. Do not close this window during the upload!','wpstream').'</div>';
                     $to_return.='<form action="https://wpstream-video.s3.amazonaws.com/"
                                   method="POST"
                                   enctype="multipart/form-data"
-                                  data-singleFileUploads="true"
-                                  data-limitMultiFileUploads="1"
-                                  data-limitConcurrentUploads="1"
                                   class="direct-upload">';
 
                     $to_return.='<input id="wpstream_upload" type="file" class="inputfile inputfile-1" value="Pick a video file" name="file" multiple>';
@@ -1823,7 +1823,7 @@ class Wpstream_Admin {
 
 
                     $to_return.='<div class="wpstream_file_drop_color">';
-                    $to_return.='<div class="wpstream_form_ex">'.esc_html__('Drop a video file here!','wpstream').'</div>';      
+                    $to_return.='<div class="wpstream_form_ex">'.esc_html__('Drop video files here!','wpstream').'</div>';      
                     $to_return.='<div class="wpstream_form_ex_details">'.__('The Video File must be encoded with the following settings:<br>
 
                     Container: <strong>MP4</strong>,<br>
@@ -2723,16 +2723,18 @@ class Wpstream_Admin {
                     )
                 );
 
-            // Collect each subscription's id => title.
+            // Collect each subscription's id => title straight from the result
+            // set. This runs while the product editor is rendering, and a
+            // the_post() loop would leave the global $post on the last
+            // subscription: wp_reset_postdata() cannot restore it in wp-admin,
+            // where no main query post exists. Every field another plugin
+            // renders later in the editor would then read that subscription's
+            // meta instead of the edited product's.
             $subscriptions = new WP_Query($args);
-            if($subscriptions->have_posts()):
-                while ($subscriptions->have_posts()): $subscriptions->the_post();
-                    $return[ get_the_ID() ] = get_the_title();
-                endwhile;
-            endif;
+            foreach ( $subscriptions->posts as $subscription ) {
+                $return[ $subscription->ID ] = $subscription->post_title;
+            }
 
-            // Restore the main query and return the map.
-            wp_reset_postdata();
             return $return;
 
         }

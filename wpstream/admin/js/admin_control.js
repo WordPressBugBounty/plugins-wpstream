@@ -5,8 +5,10 @@
  * Loaded on the WooCommerce product edit and WpStream storage admin screens.
  * Responsibilities:
  *  - Dismissing WpStream admin notices via AJAX.
- *  - The direct-to-cloud file upload flow, including chunked S3-style multipart
- *    upload with retry for files over the 5GB standard-upload limit.
+ *  - The direct-to-cloud file upload flow: selected or dropped files queue up
+ *    and are sent one at a time, each on its own progress row, including
+ *    chunked S3-style multipart upload with retry for files over the 5GB
+ *    standard-upload limit.
  *  - Toggling product-type-specific metabox fields (live stream / VOD / bundle).
  *  - WordPress media-library pickers for category images, external/recorded VOD
  *    sources, VTT captions, and the player logo.
@@ -146,8 +148,14 @@ jQuery(document).ready(function ($) {
     var handle = null;
     // Accumulates the parts that have been uploaded successfully.
     var currentUploadedParts = [];
+    // Files accepted but not yet sent, in the order they were added. Only one
+    // file is ever in flight: the next starts when the current one ends.
+    var uploadQueue = [];
+    // The file being sent right now ({ file, data, row }), null when idle.
+    var activeUpload = null;
 
     // Configure the jQuery File Upload plugin on the direct-upload form.
+    // The library enters `add` once per selected or dropped file.
     form.fileupload({
         url: form.attr('action'),
         type: form.attr('method'),
@@ -189,61 +197,30 @@ jQuery(document).ready(function ($) {
 					}
 				}
 
-                // Update UI
-                // Switch the label to the "uploading" state and disable the button.
-                $('#wpstream_label_action').text(wpstream_admin_control_vars.uploading);
-                $('#wpstream_upload').prop('disabled', true);
-                $('label[for="wpstream_upload"]')
-                    .css('cursor','not-allowed')
-                    .css('background-color','#8c8f94');
+                // Give the file its own row (name, status, bar) and queue it.
+                var row = $('<div class="progress"></div>');
+                row.append($('<span class="wpstream_upload_file_name"></span>').text(file.name));
+                row.append($('<span class="wpstream_upload_status"></span>').text(wpstream_admin_control_vars.queued));
+                row.append($('<div class="bar"></div>').css('width', '0%'));
+                $('.progress-bar-area').append(row);
+                row.slideDown('fast');
+                uploadQueue.push({ file: file, data: data, row: row });
 
-                // Clear any previous status message.
-                jQuery('#wpstream_uploaded_mes').empty();
-
-                // Show warning message if leaving page during upload
-                window.onbeforeunload = function () {
-                    return 'You have unsaved changes.';
-                };
-
-                // Set content headers
-                // Populate the form's content-type/length fields for the upload.
-                form.find('input[name="Content-Type"]').val(file.type);
-                form.find('input[name="Content-Length"]').val(file.size);
-
-                // Show the progress bar
-                // Build a progress bar keyed by file size so progress handlers can find it.
-                var bar = $('<div class="progress" data-mod="'+file.size+'"><div class="bar"></div></div>');
-                $('.progress-bar-area').append(bar);
-                bar.slideDown('fast');
-
-                // Check if file size exceeds 5GB and requires multipart upload
-                if (fileSizeInBytes > MAX_STANDARD_UPLOAD_SIZE) {
-                    // Show multipart upload message
-                    jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.exceeding_limit);
-                    // Initiate multipart upload
-                    initiateMultipartUpload(file, data);
-                } else {
-                    // Standard upload for files under 5GB
-                    data.submit();
-                }
+                // Send it now when nothing is in flight; otherwise it waits its turn.
+                startNextUpload();
             },
             // Progress callback: updates the bar during a standard (non-multipart) upload.
             progress: function (e, data) {
-                // Standard upload progress
+                // Multipart reports its own progress per chunk.
                 if (!multipartUploadData) {
-                    // Compute and render the percentage complete.
-                    var percent = Math.round((data.loaded / data.total) * 100);
-                    $('.progress[data-mod="'+data.files[0].size+'"] .bar').css('width', percent + '%').html(percent+'%');
+                    showUploadProgress(Math.round((data.loaded / data.total) * 100));
                 }
             },
 
-            // Upload failure callback.
+            // Upload failure callback. Only `fail` is used: an `error` option
+            // here would reach jQuery.ajax as well and fire a second time for
+            // the same file, which would close out the next queued upload.
             fail: function () {
-                handleUploadFailure();
-            },
-
-            // Upload error callback.
-            error: function () {
                 handleUploadFailure();
             },
             // Upload done callback: finalize a completed standard upload.
@@ -254,6 +231,76 @@ jQuery(document).ready(function ($) {
                 }
             }
     });
+
+    /**
+     * Send the next queued file when nothing is in flight.
+     *
+     * Takes the oldest queued file, prepares the form for it and routes it to
+     * the standard or multipart path by size. Called whenever a file is
+     * queued and whenever an upload ends, so the queue drains one by one.
+     *
+     * @return {void}
+     */
+    function startNextUpload() {
+        // One file at a time: wait for the current one, or stop when nothing is queued.
+        if (activeUpload || uploadQueue.length === 0) {
+            return;
+        }
+        activeUpload = uploadQueue.shift();
+        var file = activeUpload.file;
+
+        // Show the uploading state. The picker stays open so more files can be queued.
+        activeUpload.row.find('.wpstream_upload_status').empty();
+        $('#wpstream_label_action').text(wpstream_admin_control_vars.uploading);
+        jQuery('#wpstream_uploaded_mes').empty();
+
+        // Warn before leaving the page while files are still being sent.
+        window.onbeforeunload = function () {
+            return 'You have unsaved changes.';
+        };
+
+        // Populate the form's content-type/length fields for this file.
+        form.find('input[name="Content-Type"]').val(file.type);
+        form.find('input[name="Content-Length"]').val(file.size);
+
+        // Files over the standard limit go through the multipart path.
+        if (file.size > MAX_STANDARD_UPLOAD_SIZE) {
+            jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.exceeding_limit);
+            initiateMultipartUpload(file, activeUpload.data);
+        } else {
+            activeUpload.data.submit();
+        }
+    }
+
+    /**
+     * Render progress on the active upload's row.
+     *
+     * @param {number} percent - Whole-number percentage complete.
+     * @return {void}
+     */
+    function showUploadProgress(percent) {
+        if (activeUpload) {
+            activeUpload.row.find('.bar').css('width', percent + '%').html(percent + '%');
+        }
+    }
+
+    /**
+     * Close out the active upload and move on: send the next queued file, or
+     * show the end-of-queue picker label when nothing is left.
+     *
+     * @param {string} label - Picker label to show once the queue is empty.
+     * @return {void}
+     */
+    function endActiveUpload(label) {
+        activeUpload = null;
+        if (uploadQueue.length > 0) {
+            startNextUpload();
+            return;
+        }
+        // Queue drained: nothing left to protect from navigation.
+        window.onbeforeunload = null;
+        jQuery('#wpstream_label_action').text(label);
+    }
 
     /**
      * Initiate a multipart (chunked) upload for a large file.
@@ -369,8 +416,7 @@ jQuery(document).ready(function ($) {
         jQuery('#wpstream_uploaded_mes').html(wpstream_admin_control_vars.uploading_part.replace('{part}', partNumber).replace('{total}', totalParts));
 
         // Update progress bar to show overall progress
-        var overallProgress = Math.round((partIndex / totalParts) * 100);
-        jQuery('.progress[data-mod="'+file.size+'"] .bar').css('width', overallProgress + '%').html(overallProgress+'%');
+        showUploadProgress(Math.round((partIndex / totalParts) * 100));
 
         // Upload the chunk
         // PUT the chunk directly to its presigned part URL.
@@ -416,8 +462,7 @@ jQuery(document).ready(function ($) {
             if (e.lengthComputable) {
                 // Calculate chunk progress and overall progress
                 var chunkProgress = (e.loaded / e.total) * 100;
-                var overallProgress = Math.round((partIndex / totalParts * 100) + (chunkProgress / totalParts));
-                jQuery('.progress[data-mod="'+file.size+'"] .bar').css('width', overallProgress + '%').html(overallProgress+'%');
+                showUploadProgress(Math.round((partIndex / totalParts * 100) + (chunkProgress / totalParts)));
             }
         };
 
@@ -507,7 +552,10 @@ jQuery(document).ready(function ($) {
     }
 
     /**
-     * Reset the UI and upload state after any upload failure.
+     * Record a failed upload and carry on with the rest of the queue.
+     *
+     * The failed file keeps its row with the reason beside its name, so a
+     * failure in the middle of a batch stays visible after later files run.
      *
      * @param {string} [message] - Server-supplied reason; shown as plain text
      *                             in place of the generic failure message.
@@ -515,10 +563,11 @@ jQuery(document).ready(function ($) {
      */
     // Handle upload failure
     function handleUploadFailure(message) {
-        // Remove the unsaved-changes guard and the progress bar.
-        window.onbeforeunload = null;
-        jQuery('.bar').remove();
-        // Show the failure messages. A server reason is inserted as text so
+        // Reset multipart upload data so the next file starts clean.
+        multipartUploadData = null;
+        currentUploadedParts = [];
+        handle = null;
+        // Show the failure message. A server reason is inserted as text so
         // nothing from the response is ever interpreted as HTML.
         var messageBox = jQuery('#wpstream_uploaded_mes').empty();
         if (message) {
@@ -526,16 +575,12 @@ jQuery(document).ready(function ($) {
         } else {
             messageBox.html(wpstream_admin_control_vars.upload_failed);
         }
-        jQuery('#wpstream_label_action').empty().html(wpstream_admin_control_vars.upload_failed2);
-        // Re-enable the upload button and restore its default styling.
-        jQuery('#wpstream_upload').prop('disabled', false);
-        jQuery('label[for="wpstream_upload"]')
-            .css('cursor','')
-            .css('background-color','');
-
-        // Reset multipart upload data
-        multipartUploadData = null;
-        currentUploadedParts = [];
+        // The row loses its bar and keeps the reason.
+        if (activeUpload) {
+            activeUpload.row.find('.bar').remove();
+            activeUpload.row.find('.wpstream_upload_status').text(messageBox.text());
+        }
+        endActiveUpload(wpstream_admin_control_vars.upload_failed2);
     }
 
     /**
@@ -549,17 +594,11 @@ jQuery(document).ready(function ($) {
      */
     // Handle upload success
     function handleUploadSuccess(file) {
-        // Remove the unsaved-changes guard and the progress bar.
-        window.onbeforeunload = null;
-        jQuery('.bar').remove();
-        // Show the completion messages.
+        // The finished file leaves the list; its video entry below replaces it.
+        if (activeUpload) {
+            activeUpload.row.remove();
+        }
         jQuery('#wpstream_uploaded_mes').empty().html(wpstream_admin_control_vars.upload_complete);
-        jQuery('#wpstream_label_action').text(wpstream_admin_control_vars.upload_complete2);
-        // Re-enable the upload button and restore its default styling.
-        jQuery('#wpstream_upload').prop('disabled', false);
-        jQuery('label[for="wpstream_upload"]')
-            .css('cursor','')
-            .css('background-color','');
 
         // Capture the original name and size (in MB) of the file.
         var new_file_name = file.name;
@@ -582,6 +621,9 @@ jQuery(document).ready(function ($) {
 
         // Begin polling so the pending entry updates once processing completes.
         WpStreamUtils.checkPendingVideos();
+
+        // Continue with the next queued file, if any.
+        endActiveUpload(wpstream_admin_control_vars.upload_complete2);
     }
 
     // When the WooCommerce product type changes, reveal the "sold individually"

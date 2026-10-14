@@ -1,6 +1,6 @@
 <?php
 /**
- * HTTP client for the WPStream cloud backend (baker.wpstream.net / rest-baker.wpstream.net).
+ * HTTP client for the WPStream cloud backend (baker.wpstream.net).
  *
  * This class is the single funnel through which the plugin talks to the remote
  * streaming API. It:
@@ -427,66 +427,6 @@ class Wpstream_Live_Api_Connection  {
         return $access_token;
     }
 
-    /**
-     * Resolve which streaming server hosts a given show, cached in a transient.
-     *
-     * Calls the legacy REST endpoint `rest-baker.wpstream.net?apiFunctionName=server_id_by_show_id`.
-     *
-     * @param int|string $show_id Local show/channel post ID.
-     * @return string Server id on success, or '' when unavailable/failed.
-     * @since 3.0.1
-    */
-
-    function wpstream_retrieve_server_id_based_on_show_id($show_id){
-
-            // Per-show cache key so repeat lookups avoid a network round-trip.
-            $transient_name      = 'server_id_to_return_' . $show_id;
-            $server_id_to_return = get_transient( $transient_name );
-
-            // Cache hit: return the stored server id.
-            if ( false !== $server_id_to_return ) {
-                return $server_id_to_return;
-            }
-
-            // Cache miss: query the legacy REST endpoint (it only accepts its
-            // parameters, token included, as GET query args).
-            $token = $this->wpstream_get_token();
-            $url   = WPSTREAM_REST_API . '/?apiFunctionName=server_id_by_show_id&show_id=' . intval( $show_id ) . '&access_token=' . $token;
-
-            $response = $this->get( $url, 45 );
-
-            // Accept only a success flag with a non-empty result.
-            if ( ! is_wp_error( $response ) && isset( $response['success'], $response['result'] ) && $response['success'] === true && $response['result'] != '' ) {
-                $server_id_to_return = $response['result'];
-                /**
-                 * Filter how long a show's server id is cached, in seconds.
-                 *
-                 * Clamped to [1, 3600]. The transient name and value are frozen.
-                 *
-                 * @since 4.14.0
-                 *
-                 * @param int $seconds Lifetime; default 60.
-                 */
-                $ttl = wpstream_tunable( 'wpstream_server_id_cache_ttl', 60, HOUR_IN_SECONDS );
-                // Cache the result briefly and return it.
-                set_transient( $transient_name, $server_id_to_return, $ttl );
-                return $server_id_to_return;
-            }
-
-            // Any failure yields an empty string (not cached).
-            return '';
-    }
-
-    /**
-    * Deprecated misspelled alias of wpstream_retrieve_server_id_based_on_show_id().
-    *
-    * Kept because the method is public and may be called by external code.
-    *
-    * @deprecated 4.13.4 Use wpstream_retrieve_server_id_based_on_show_id() instead.
-    */
-    function retrive_server_id_based_on_show_id($show_id){
-            return $this->wpstream_retrieve_server_id_based_on_show_id( $show_id );
-    }
     
     
     
@@ -609,10 +549,6 @@ class Wpstream_Live_Api_Connection  {
                     update_post_meta($channel_id,'obs_uri',$obs_uri);
                     update_post_meta($channel_id,'obs_stream',$obs_stream);
                     update_post_meta($channel_id,'broadcast_url',$response['broadcast_url']);
-					// Store the embed key when the API supplied one.
-					if ( isset( $response['embedKey'] ) && $response['embedKey'] != '' ) {
-						update_post_meta( $channel_id,'embedKey',$response['embedKey'] );
-					}
 
                 }
 

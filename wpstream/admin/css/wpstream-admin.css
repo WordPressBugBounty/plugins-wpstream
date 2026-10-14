@@ -1023,6 +1023,16 @@ input[type="checkbox"]:disabled + .wpstream_slider.round {
     border-radius: 5px;
 }
 
+/* One row per queued or sending file: name, status text, then the bar. */
+.progress .wpstream_upload_file_name {
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.progress .wpstream_upload_status {
+    color: #555;
+}
+
 .bar {
     background-color: #28de23;
     border-right-color: #99d;

@@ -5,6 +5,10 @@
  * Owns source resolution, engine selection, required assets, and the trusted
  * viewer-facing HTML for already-approved Streaming Content.
  *
+ * Hosted-player embed keys are issued by Baker (channel/info, video/info)
+ * for the exact media and restrictions the iframe carries and cached per
+ * content, keyed on every input the key depends on; the plugin never signs one.
+ *
  * @package Wpstream
  */
 
@@ -287,52 +291,166 @@ class Wpstream_Playback_Presentation {
 			return $scheme . $host . $port;
 		}
 
-	private function wpstream_get_player_embed_key_salt() {
-			// Hardcoded fallback salt; must match the player's env.js fallback.
-			$default_salt = 'EYjb84vNTXE85TfR';
-			// A site can override the salt via option.
-			$configured   = trim( (string) get_option( 'wpstream_player_embed_key_salt', '' ) );
-			// Prefer the configured salt when present, else the default.
-			$base_salt    = '' !== $configured ? $configured : $default_salt;
-
-			// Let integrators filter the final salt.
-			return (string) apply_filters( 'wpstream_player_embed_key_salt', $base_salt );
+	/**
+	 * Ask Baker for the hosted-player embed key of one piece of Streaming Content.
+	 *
+	 * The key is signed by Baker over the media id, the frame-ancestor origin
+	 * and the playback-session validation URL, so the exact values the iframe
+	 * URL will carry are sent. The plugin never computes a key itself.
+	 *
+	 * @param int    $content_id     Streaming Content post ID.
+	 * @param string $intent         live or vod.
+	 * @param string $media          Baker channel id (live) or storage video name (vod).
+	 * @param string $validate_url   Playback-session validation URL, or ''.
+	 * @param string $embed_ancestor Allowed frame-ancestor origin, or ''.
+	 * @return array { key: string ('' when Baker issued none), encrypt: bool }
+	 */
+	private function hosted_embed_key( $content_id, $intent, $media, $validate_url, $embed_ancestor ) {
+		$none = array( 'key' => '', 'encrypt' => false );
+		// No media id means there is nothing Baker could sign.
+		if ( '' === trim( (string) $media ) ) {
+			return $none;
 		}
 
-	private function wpstream_generate_player_embed_key( $video, $validate_playback_session_url = '', $embed_ancestor = '', $encrypt_raw = '' ) {
-			// An empty media path produces no key.
-			$video = trim( (string) $video );
-			if ( '' === $video ) {
-				return '';
-			}
-
-			// Base input: "<video> <salt>". Optional parts are prepended in a fixed order.
-			$hash_input = $video . ' ' . $this->wpstream_get_player_embed_key_salt();
-			// Prepend the session-validation URL when supplied.
-			$validate_playback_session_url = trim( (string) $validate_playback_session_url );
-			if ( '' !== $validate_playback_session_url ) {
-				$hash_input = $validate_playback_session_url . ' ' . $hash_input;
-			}
-
-			// Prepend the allowed frame-ancestor origin when supplied.
-			$embed_ancestor = trim( (string) $embed_ancestor );
-			if ( '' !== $embed_ancestor ) {
-				$hash_input = $embed_ancestor . ' ' . $hash_input;
-			}
-
-			// Prepend the "crypt" marker when encryption is requested.
-			$encrypt_raw = strtolower( trim( (string) $encrypt_raw ) );
-			if ( in_array( $encrypt_raw, array( 'yes', 'true', '1' ), true ) ) {
-				$hash_input = 'crypt ' . $hash_input;
-			}
-
-			// MD5 the assembled input, then base64url-encode it (matching embed-key.js).
-			$binary_hash = md5( $hash_input, true );
-			$base64      = base64_encode( $binary_hash );
-
-			// URL-safe base64 without padding.
-			return rtrim( strtr( $base64, '+/', '-_' ), '=' );
+		// One cache slot per content; the slot remembers which inputs its key
+		// was issued for, so any changed input (restriction, video, encryption)
+		// is a miss. A live channel's encryption setting is not sent (Baker
+		// signs with the flag it stores) but a change to it must still miss,
+		// so it joins the hash.
+		$request   = $this->embed_key_request( $content_id, $intent, $media, $validate_url, $embed_ancestor );
+		$transient = 'wpstream_embed_key_' . (int) $content_id;
+		$local     = 'live' === $intent ? '|encrypt=' . (int) ( $this->wpstream_return_event_settings( $content_id )['encrypt'] ?? 0 ) : '';
+		$hash      = md5( $request['endpoint'] . wp_json_encode( $request['fields'] ) . $local );
+		$cached    = get_transient( $transient );
+		// Cache hit for these exact inputs: answer without asking Baker.
+		if ( is_array( $cached ) && ( $cached['hash'] ?? '' ) === $hash ) {
+			return array( 'key' => (string) $cached['key'], 'encrypt' => ! empty( $cached['encrypt'] ) );
 		}
+
+		// Cache miss: ask Baker, then remember the answer (or the failure) for these inputs.
+		$issued = $this->fetch_embed_key( $request );
+
+		/**
+		 * Filter how long a Baker-issued embed key is cached, in seconds.
+		 *
+		 * Clamped to [1, 86400]. A key only changes when the inputs it was
+		 * issued for change, and every such input is part of the cache hash,
+		 * so a long lifetime is safe. A failed request is remembered for
+		 * 60 seconds so an outage does not cost one Baker call per page view.
+		 *
+		 * @since 4.14.2
+		 *
+		 * @param int $seconds    Lifetime; default 43200 (12 hours).
+		 * @param int $content_id Streaming Content post ID.
+		 */
+		$ttl = '' === $issued['key'] ? MINUTE_IN_SECONDS : wpstream_tunable( 'wpstream_embed_key_ttl', 12 * HOUR_IN_SECONDS, DAY_IN_SECONDS, array( (int) $content_id ) );
+		set_transient( $transient, array( 'hash' => $hash, 'key' => $issued['key'], 'encrypt' => $issued['encrypt'] ), $ttl );
+		return $issued;
+	}
+
+	/**
+	 * The Baker request that issues the embed key for one hosted player.
+	 *
+	 * Live keys come from channel/info, VOD keys from video/info; both take the
+	 * frame-ancestor origin and the playback-session validation URL so the
+	 * key is signed over the values the iframe URL carries.
+	 *
+	 * @param int    $content_id     Streaming Content post ID.
+	 * @param string $intent         live or vod.
+	 * @param string $media          Baker channel id (live) or storage video name (vod).
+	 * @param string $validate_url   Playback-session validation URL, or ''.
+	 * @param string $embed_ancestor Allowed frame-ancestor origin, or ''.
+	 * @return array { endpoint: string, fields: array }
+	 */
+	private function embed_key_request( $content_id, $intent, $media, $validate_url, $embed_ancestor ) {
+		// The restrictions Baker signs into the key; shared by both endpoints.
+		$restrictions = array(
+			'embedAncestor'              => (string) $embed_ancestor,
+			'validatePlaybackSessionUrl' => (string) $validate_url,
+		);
+		// VOD: the same video/info body the HLS resolver sends, plus the restrictions.
+		if ( 'vod' === $intent ) {
+			return array(
+				'endpoint' => 'video/info',
+				'fields'   => array_merge( $this->vod_info_request_fields( $media ), $restrictions ),
+			);
+		}
+		// Live: channel/info with embed=true, scoped to this site's host.
+		$domain = wp_parse_url( get_site_url() );
+		return array(
+			'endpoint' => 'channel/info',
+			'fields'   => array_merge(
+				array(
+					'channel_id' => (int) $content_id,
+					'domain'     => $domain['host'] ?? '',
+					'embed'      => true,
+					'notes'      => 'wpstream_embed_key',
+				),
+				$restrictions
+			),
+		);
+	}
+
+	/**
+	 * Cache miss: ask Baker to issue the embed key (see hosted_embed_key()).
+	 *
+	 * @param array $request { endpoint: string, fields: array } from embed_key_request().
+	 * @return array { key: string ('' when Baker issued none), encrypt: bool }
+	 */
+	private function fetch_embed_key( $request ) {
+		$none     = array( 'key' => '', 'encrypt' => false );
+		$response = $this->main->wpstream_live_connection->authorized_request( $request['endpoint'], $request['fields'] );
+		// Transport failure or a refusal: no key.
+		if ( is_wp_error( $response ) || empty( $response['success'] ) ) {
+			return $none;
+		}
+
+		// video/info answers embedKey; the encryption it signed is the one the
+		// request asked for. channel/info answers embed_key plus the channel's
+		// encryption flag as Baker knows it (yes/true/1, string or bool).
+		if ( 'video/info' === $request['endpoint'] ) {
+			$key     = (string) ( $response['embedKey'] ?? '' );
+			$encrypt = 'true' === $request['fields']['encryptHls'];
+		} else {
+			$key     = (string) ( $response['embed_key'] ?? '' );
+			$encrypt = in_array( strtolower( (string) ( $response['encrypt'] ?? '' ) ), array( 'yes', 'true', '1' ), true );
+		}
+		return '' === $key ? $none : array( 'key' => $key, 'encrypt' => $encrypt );
+	}
+
+	/**
+	 * Body of a Baker video/info request for one stored video: CORS origin,
+	 * HLS encryption and key-delivery prefix follow the site-wide VOD settings.
+	 *
+	 * @param string $video_name Storage name of the video.
+	 * @return array POST fields (without access_token).
+	 */
+	private function vod_info_request_fields( $video_name ) {
+		// Resolve the canonical site origin. Request context is not
+		// authoritative here: wp-cli, cron and TLS-terminating proxies
+		// can make is_ssl() false for a site configured as HTTPS.
+		$domain        = wp_parse_url( get_site_url() );
+		$domain_scheme = isset( $domain['scheme'] ) ? $domain['scheme'] : 'http';
+
+		// With VOD domain-lock on, restrict CORS to this site's origin; otherwise allow any.
+		$corsorigin = '*';
+		if ( 0 !== intval( get_option( 'wpstream_vod_domain_lock', '' ) ) ) {
+			$corsorigin = $domain_scheme . '://' . $domain['host'];
+		}
+
+		// Request HLS encryption when the VOD encrypt option is enabled.
+		$encrypt = 1 === intval( get_option( 'wpstream_vod_encrypt', '' ) ) ? 'true' : 'false';
+
+		return array(
+			'name'             => $video_name,
+			'corsOrigin'       => $corsorigin,
+			'encryptHls'       => $encrypt,
+			// Encryption-key requests route back through this site (?wpstream_voddrm=).
+			'hlsKeysUrlPrefix' => get_site_url() . '?wpstream_voddrm=',
+			'debugDrm'         => false,
+			'embed'            => true,
+		);
+	}
 
 	public function wpstream_return_event_settings($product_id){
 			// Compatibility delegate: storage keys, legacy mode interpretation and
@@ -629,24 +747,19 @@ class Wpstream_Playback_Presentation {
 					);
 				}
 
-				// Mint the embed key for the live channel from the same inputs as the iframe URL.
-				$wpstream_live_channel_embed_key = $this->wpstream_generate_player_embed_key(
-					$live_channel_id,
-					$wpstream_live_channel_validate_url,
-					$live_channel_embed_ancestor,
-					$wpstream_live_channel_encrypt ? 'yes' : ''
-				);
-				// Fall back to a stored embed_key if the generated one is empty.
+				// Baker issues the embed key for exactly the media and restrictions the
+				// iframe URL carries. The encryption flag comes from the same answer, so
+				// the key and the URL can never disagree about it.
+				$live_embed                      = $this->hosted_embed_key( $channel_id, 'live', $live_channel_id, $wpstream_live_channel_validate_url, $live_channel_embed_ancestor );
+				$wpstream_live_channel_embed_key = $live_embed['key'];
+				$wpstream_live_channel_encrypt   = $live_embed['encrypt'] ? 1 : 0;
+
+				// Without a Baker-issued key the hosted player cannot start: say so
+				// instead of emitting a keyless iframe.
 				if ( '' === $wpstream_live_channel_embed_key ) {
-					$wpstream_live_channel_embed_key = (string) get_post_meta( $channel_id, 'embed_key', true );
+					echo $this->player_unavailable_notice();
+					return;
 				}
-				// Separate embed key for the trailer iframe.
-				$wpstream_live_channel_trailer_embed_key = $this->wpstream_generate_player_embed_key(
-					$video_trailer,
-					$wpstream_live_channel_validate_url,
-					$live_channel_embed_ancestor,
-					$wpstream_live_channel_encrypt ? 'yes' : ''
-				);
 
 				// Map the Video.js theme name to a bare skin slug the iframe player understands.
 				$wpstream_player_iframe_skin_slug = '';
@@ -695,7 +808,6 @@ class Wpstream_Playback_Presentation {
 				$live_channel_trailer_iframe_query_args = array_filter(
 					array(
 						'video'                      => $video_trailer,
-						'embedKey'                   => $wpstream_live_channel_trailer_embed_key,
 						'skin'                       => $wpstream_player_iframe_skin_slug,
 						'startMuted'                 => (bool) $wpstream_live_channel_muted,
 						'encrypt'                    => $wpstream_live_channel_encrypt ? true : '',
@@ -738,6 +850,17 @@ class Wpstream_Playback_Presentation {
 	    }
 
 	/**
+	 * Markup shown in place of the hosted player when Baker issued no embed key.
+	 *
+	 * @return string Trusted notice markup.
+	 */
+	private function player_unavailable_notice() {
+		return '<div class="wpstream_vod_notice wpstream_player_unavailable">'
+			. esc_html__( 'The player is temporarily unavailable. Please try again in a moment.', 'wpstream' )
+			. '</div>';
+	}
+
+	/**
 	 * Resolve the HLS manifest URL for a VOD file.
 	 *
 	 * Baker's video/info answer is cached per video name for 5 minutes; hit or
@@ -760,44 +883,8 @@ class Wpstream_Playback_Presentation {
 
 	            if ( ! is_array( $curl_response_decoded ) ) {
 	                // Endpoint for video info; the auth token is injected by the transport.
-	                $url            =   'video/info';
-
-	                // Resolve the canonical site origin. Request context is not
-	                // authoritative here: wp-cli, cron and TLS-terminating proxies
-	                // can make is_ssl() false for a site configured as HTTPS.
-	                $local_event_options    =   get_option('wpstream_user_streaming_global_channel_options') ;
-	                $domain                 =   parse_url ( get_site_url() );
-	                $domain_scheme          =   isset( $domain['scheme'] ) ? $domain['scheme'] : 'http';
-
-	                // With VOD domain-lock on, restrict CORS to this site's origin; otherwise allow any.
-	                $wpstream_vod_domain_lock = intval( get_option('wpstream_vod_domain_lock','') ) ;
-	                $corsorigin='*';
-	                if($wpstream_vod_domain_lock !== 0 ){
-	                    $corsorigin=$domain_scheme.'://'.$domain['host'];
-	                }
-
-	                // Request HLS encryption when the VOD encrypt option is enabled.
-	                $is_encrypt="false";
-	                $wpstream_vod_encrypt = intval( get_option('wpstream_vod_encrypt','') ) ;
-	                if( intval( $wpstream_vod_encrypt ) ==1 ){
-	                    $is_encrypt="true";
-	                }
-
-	                // Prefix the encryption-key requests route back through this site (?wpstream_voddrm=).
-	                $hlsKeysUrlPrefix    =  get_site_url().'?wpstream_voddrm=';
-	                $encrypt             =  $is_encrypt;
-	                $debugDrm            =  false;
-
-	                // Body of the API request.
-	                $curl_post_fields=array(
-	                    'name'              =>  $video_name,
-	                    'corsOrigin'        =>  $corsorigin,
-	                    'encryptHls'        =>  $encrypt,
-	                    'hlsKeysUrlPrefix'  =>  $hlsKeysUrlPrefix,
-	                    'debugDrm'          =>  $debugDrm,
-		                'embed'             => true,
-	                );
-
+	                $url              = 'video/info';
+	                $curl_post_fields = $this->vod_info_request_fields( $video_name );
 
 	                // Perform the API call; a WP_Error (not-connected included) means no playable URL.
 	                $curl_response_decoded = $this->main->wpstream_live_connection->authorized_request( $url, $curl_post_fields );
@@ -833,13 +920,15 @@ class Wpstream_Playback_Presentation {
 	                delete_post_meta($product_id,'hlsDecryptionKeyIndex');
 	            }
 
-	            // When the API returns new-player embed data, persist it as post meta.
+	            // When the API returns new-player embed data, persist the video name and
+	            // embed URL (the engine selector) as post meta. The embed key itself is
+	            // not stored: the hosted player asks Baker for one signed over the exact
+	            // restrictions it renders with (see hosted_embed_key()).
 	            if ( isset( $curl_response_decoded['video'] ) &&
 	                isset( $curl_response_decoded['embedKey'] ) &&
 	                isset( $curl_response_decoded['embedUrl'] )
 	            ) {
 	                update_post_meta( $product_id, 'wpstream_vod_video_data', trim( (string) $curl_response_decoded['video'] ) );
-	                update_post_meta( $product_id, 'wpstream_vod_embed_key', trim( (string) $curl_response_decoded['embedKey'] ) );
 	                update_post_meta( $product_id, 'wpstream_vod_embed_url', trim( (string) $curl_response_decoded['embedUrl'] ) );
 	            }
 
@@ -1144,24 +1233,10 @@ class Wpstream_Playback_Presentation {
 							$vod_iframe_video = substr( $vod_iframe_video, 1, -1 );
 						}
 					}
-					// Mint the VOD embed key from the same inputs used in the iframe URL.
-		            $vod_iframe_embed_key = $this->wpstream_generate_player_embed_key(
-						$vod_iframe_video,
-						$vod_validate_url,
-						$vod_embed_ancestor,
-						$wpstream_vod_encrypt ? 'yes' : ''
-					);
-					// Fall back to a stored embed key when the generated one is empty.
-					if ( '' === $vod_iframe_embed_key ) {
-						$vod_iframe_embed_key = (string) get_post_meta( $product_id, 'wpstream_vod_embed_key', true );
-					}
-					// Separate embed key for the trailer iframe.
-					$vod_iframe_trailer_embed_key = $this->wpstream_generate_player_embed_key(
-						$video_trailer,
-						$vod_validate_url,
-						$vod_embed_ancestor,
-						$wpstream_vod_encrypt ? 'yes' : ''
-					);
+					// Baker issues the embed key for exactly the video and restrictions
+					// the iframe URL carries; the plugin never computes one itself.
+					$vod_embed            = $this->hosted_embed_key( $product_id, 'vod', $vod_iframe_video, $vod_validate_url, $vod_embed_ancestor );
+					$vod_iframe_embed_key = $vod_embed['key'];
 
 					// Poster image and active theme (used for the isThemeActive flag).
 					$vod_poster_image = $this->poster_url( $product_id, 'full' );
@@ -1202,7 +1277,6 @@ class Wpstream_Playback_Presentation {
 					$vod_trailer_iframe_query_args = array_filter(
 						array(
 							'video'                      => $video_trailer,
-							'embedKey'                   => $vod_iframe_trailer_embed_key,
 							'skin'                       => $vod_iframe_skin_slug,
 							'startMuted'                 => $muted ? '1' : '',
 							'encrypt'                    => $wpstream_vod_encrypt ? 'yes' : '',
@@ -1215,7 +1289,11 @@ class Wpstream_Playback_Presentation {
 					);
 
 					// New iframe player when an embed URL exists; otherwise the legacy Video.js element.
-					if ( $wpstream_vod_embed_url ) {
+					if ( $wpstream_vod_embed_url && '' === $vod_iframe_embed_key ) {
+						// Without a Baker-issued key the hosted player cannot start: say so
+						// instead of emitting a keyless iframe.
+						echo $this->player_unavailable_notice();
+					} elseif ( $wpstream_vod_embed_url ) {
 						// Emit the content iframe pointing at /player/vod with the assembled query.
 						echo '<div class="wpstream_player_iframe_wrap">';
 						echo '<iframe id="playerFrame"

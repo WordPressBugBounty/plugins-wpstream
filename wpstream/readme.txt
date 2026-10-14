@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.14.1
+Stable tag: 4.14.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -136,6 +136,15 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.14.2 =
+* Security - The hosted player's embed keys are now issued by the WpStream service instead of being computed inside the plugin. The plugin previously shipped the signing secret, which let anyone build a key that bypassed a channel's domain lock and session validation. Keys are cached per channel and video and refreshed whenever the channel settings change
+* Fix - The live player's encryption flag now comes from the same service answer as its embed key, so a channel whose settings failed to sync no longer gets a key and player URL that disagree
+* Fix - When the WpStream service cannot issue an embed key the page shows a "player temporarily unavailable" notice instead of a player that cannot start
+* Removed - The unused lookup against the retired rest-baker.wpstream.net host, its WPSTREAM_REST_API constant and the wpstream_server_id_cache_ttl filter. Nothing in the plugin called it and the host no longer exists
+* Fix - A subscription plan can be bought again after the customer's subscription was cancelled or expired. Add to Cart is now hidden only while the customer holds an active subscription to that plan; one-off purchases (paid videos, channels, bundles) keep hiding it once bought
+* Fix - The Recordings uploader accepts several video files at once, selected or dropped, and sends them one after another. Each file has its own progress row; a failed file keeps its row with the reason while the rest continue. Previously a second file dropped during an upload started in parallel and the two uploads shared one progress state
+* Fix - Compatibility with Paid Memberships Pro and other plugins that add fields to the product editor. While rendering its own fields the plugin left WordPress pointing at the last subscription product, so fields rendered after them (for example the PMPro "Membership Product" dropdown) showed and then saved that subscription's value instead of the edited product's
 
 = 4.14.1 =
 * Fix - Sites without Elementor no longer see a "WpStream Elementor requires Elementor" warning on every admin page. Elementor is an optional integration; the warning was reinstated by mistake in 4.14.0 and is now removed. Sites that run an outdated Elementor or PHP version still get their version warning

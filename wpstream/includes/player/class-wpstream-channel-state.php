@@ -57,7 +57,6 @@ class Wpstream_Channel_State {
 		'chat_url',
 		'whipUrl',
 		'broadcast_url',
-		'embedKey',
 	);
 
 	/** @var int Channel/post id this state describes. */

@@ -91,7 +91,16 @@ add_action( 'woocommerce_save_account_details', 'wpstream_save_extra_fields_on_a
 
 if ( ! function_exists( 'wpstream_hide_add_to_cart_if_purchased' ) ) :
 /**
- * Remove "Add to Cart" button if product has already been purchased by the customer.
+ * Remove "Add to Cart" button if the product is not (re)purchasable by the customer.
+ *
+ * Two different rules apply depending on product type:
+ * - One-off ownership types (video_on_demand, live_stream, wpstream_bundle): these are
+ *   bought once and never expire, so "ever bought" is enough to hide Add to Cart —
+ *   re-buying the same VOD/channel/bundle is never a legitimate action.
+ * - Recurring subscription type: "ever bought" is NOT enough, because a subscription
+ *   can be cancelled/expired and legitimately re-purchased (renew, re-subscribe, upgrade
+ *   cycles). Only block it while the customer holds a currently ACTIVE subscription to
+ *   this exact product; a cancelled or on-hold subscription must remain purchasable.
  *
  * @param bool       $purchasable Whether the product is purchasable.
  * @param WC_Product $product The product object.
@@ -101,18 +110,28 @@ function wpstream_hide_add_to_cart_if_purchased( $purchasable, $product ) {
 	// Check if the product is already purchased by the current customer.
 	$product_type = $product->get_type();
 
-	// Only guard the streaming/subscription product types (one-off ownership).
+	// Nothing to do for a logged-out visitor — there is no purchase history to check.
+	if ( ! is_user_logged_in() ) {
+		return $purchasable;
+	}
+
+	// Identify the logged-in customer.
+	$current_user = wp_get_current_user();
+
 	if (
 		'video_on_demand' === $product_type ||   // paid VOD
 		'live_stream' === $product_type ||       // paid live channel
-		'wpstream_bundle' === $product_type ||   // video collection bundle
-		'subscription' === $product_type         // recurring subscription
+		'wpstream_bundle' === $product_type      // video collection bundle
 	) {
-		// Identify the logged-in customer.
-		$current_user = wp_get_current_user();
-
-		// If they already bought this product, mark it non-purchasable (hides Add to Cart).
-		if ( is_user_logged_in() && wc_customer_bought_product( $current_user->user_email, get_current_user_id(), $product->get_id() ) ) {
+		// One-off ownership: if they ever bought this product, hide Add to Cart.
+		if ( wc_customer_bought_product( $current_user->user_email, get_current_user_id(), $product->get_id() ) ) {
+			$purchasable = false;
+		}
+	} elseif ( 'subscription' === $product_type ) {
+		// Recurring subscription: only block while a currently active subscription to
+		// this product exists. If WooCommerce Subscriptions is not loaded, skip the
+		// check rather than blocking (fail open, not closed).
+		if ( function_exists( 'wcs_user_has_subscription' ) && wcs_user_has_subscription( get_current_user_id(), $product->get_id(), 'active' ) ) {
 			$purchasable = false;
 		}
 	}
