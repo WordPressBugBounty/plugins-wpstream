@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, live video, broadcast, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.14.2
+Stable tag: 4.14.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -136,6 +136,9 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.14.3 =
+* Fix - Paid videos and encrypted free videos play again in the hosted player. Since 4.14.2 the plugin asked the WpStream service for the player's embed key with the storage-prefixed video path instead of the file name, so no key was issued and every such video showed "The player is temporarily unavailable"
 
 = 4.14.2 =
 * Security - The hosted player's embed keys are now issued by the WpStream service instead of being computed inside the plugin. The plugin previously shipped the signing secret, which let anyone build a key that bypassed a channel's domain lock and session validation. Keys are cached per channel and video and refreshed whenever the channel settings change

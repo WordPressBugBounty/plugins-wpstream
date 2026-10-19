@@ -1023,6 +1023,8 @@ class Wpstream_Playback_Presentation {
 	                $free_video_type        =   intval( get_post_meta($product_id, 'wpstream_product_type', true));
 	                $video_path_final       =   '';
 	                $video_type             =   '';
+	                // Bare storage name of the recording (no bucket prefix); set only for cloud-hosted VOD.
+	                $video_path             =   '';
 	                if( (  $post_type  =='wpstream_product_vod' && $free_video_type==2 ) || get_post_type($product_id)=='product' ){
 
 	                    /*
@@ -1054,6 +1056,8 @@ class Wpstream_Playback_Presentation {
 	            // Package the resolved source details for the caller.
 	            $return_array                       =   array();
 	            $return_array['video_path_final']   =   $video_path_final;
+	            // The name Baker knows the recording by; the hosted player's embed key is requested with it.
+	            $return_array['video_name']         =   $video_path;
 	            $return_array['wpstream_data_setup']=   $wpstream_data_setup;
 	            $return_array['video_type']         =   $video_type;
 	            $return_array['free_video_type']    =   $free_video_type;
@@ -1233,9 +1237,13 @@ class Wpstream_Playback_Presentation {
 							$vod_iframe_video = substr( $vod_iframe_video, 1, -1 );
 						}
 					}
-					// Baker issues the embed key for exactly the video and restrictions
-					// the iframe URL carries; the plugin never computes one itself.
-					$vod_embed            = $this->hosted_embed_key( $product_id, 'vod', $vod_iframe_video, $vod_validate_url, $vod_embed_ancestor );
+					// Baker issues the embed key for exactly the restrictions the iframe
+					// URL carries; the plugin never computes one itself. The key is
+					// requested with the bare recording name (the same name the HLS
+					// manifest was resolved with): Baker's storage lookup does not accept
+					// the bucket-prefixed form stored above, which the iframe `video`
+					// argument still carries.
+					$vod_embed            = $this->hosted_embed_key( $product_id, 'vod', $uri_details['video_name'], $vod_validate_url, $vod_embed_ancestor );
 					$vod_iframe_embed_key = $vod_embed['key'];
 
 					// Poster image and active theme (used for the isThemeActive flag).
