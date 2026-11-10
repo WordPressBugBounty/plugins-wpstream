@@ -12,8 +12,7 @@
  *  - the publish lifecycle: pre-flight channel-status + quota AJAX checks, then
  *    startStreaming(), ICE/connection state handling, and status UI updates;
  *  - automatic reconnect with a fixed delay after an unexpected disconnect;
- *  - video/audio mute toggles and onboarding-step telemetry;
- *  - resolving the onboarding popup session id from window.name / a cookie.
+ *  - video/audio mute toggles.
  *
  * Config is injected from PHP via the global `wpstream_broadcaster_vars`.
  *
@@ -34,8 +33,8 @@
 /**
  * Debug-gated console logger for this file.
  *
- * The localized vars carry the WHIP publish URL, the OBS stream key and the
- * popup session id — none of which may reach a production browser console.
+ * The localized vars carry the WHIP publish URL and the OBS stream key —
+ * neither of which may reach a production browser console.
  * Every diagnostic log in this file routes through here and only prints when
  * the site opts into script debugging (the SCRIPT_DEBUG constant, surfaced as
  * wpstream_broadcaster_vars.debug).
@@ -61,106 +60,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	let pendingReconnect = false; // true while waiting to reconnect
 	let pendingReconnectTimeout = null; // timeout handle for scheduled reconnect
 	const reconnectDelayMs = 10000; // 10s delay before attempting to reconnect
-	const BROADCASTER_SESSION_COOKIE = 'broadcasterSessionId'; // cookie name persisting the onboarding popup session id
-
-	/**
-	 * Write a session-scoped cookie (path=/, no explicit expiry) with a
-	 * URL-encoded value.
-	 *
-	 * @param {string} name  Cookie name.
-	 * @param {string} value Raw value; encoded before storage.
-	 */
-	function setSessionCookie(name, value) {
-		// Persist for the whole site path; value is percent-encoded to stay cookie-safe.
-		document.cookie = name + '=' + encodeURIComponent(value) + '; path=/';
-	}
-
-	/**
-	 * Read a cookie value by name from document.cookie.
-	 *
-	 * @param {string} name Cookie name to look up.
-	 * @return {string} Decoded value, or '' when the cookie is absent.
-	 */
-	function getCookie(name) {
-		// Prefix with "; " so every cookie (including the first) is delimited uniformly.
-		const value = `; ${document.cookie}`;
-		// Split on "; name=" — a match yields exactly two parts around the target value.
-		const parts = value.split(`; ${name}=`);
-		if (parts.length === 2) {
-			// Take the tail, cut at the next ";", and decode the stored value.
-			return decodeURIComponent(parts.pop().split(';').shift());
-		}
-		// Cookie not present.
-		return '';
-	}
-
-	/**
-	 * Recover the onboarding popup payload handed to this window.
-	 *
-	 * When the go-live page is opened as an onboarding popup, the opener stashes
-	 * a JSON blob in `window.name`; this parses it, persists the session id to a
-	 * cookie, and falls back to that cookie on subsequent (reloaded) visits.
-	 * `window.name` is cleared afterwards so the payload is consumed only once.
-	 *
-	 * @return {{session_id?: string}} The payload object (possibly empty).
-	 */
-	function getPopupPayloadFromWindowName() {
-		let payload = {};
-		try {
-			// window.name may carry a JSON payload from the onboarding opener.
-			if (window.name) {
-				const parsed = JSON.parse(window.name);
-				// Only accept our namespaced key to avoid consuming unrelated window.name data.
-				if (parsed && parsed.wpstream_onboarding_popup_payload) {
-					payload = parsed.wpstream_onboarding_popup_payload;
-					// Persist the session id so a page reload can recover it from the cookie.
-					if (payload.session_id) {
-						setSessionCookie(BROADCASTER_SESSION_COOKIE, payload.session_id);
-					}
-				}
-			}
-		} catch (e) {
-			// Malformed / non-JSON window.name: ignore and treat as no payload.
-			payload = {};
-		}
-
-		// No payload this load: try to restore the session id from the cookie.
-		if (!payload.session_id) {
-			const cookieSessionId = getCookie(BROADCASTER_SESSION_COOKIE);
-			if (cookieSessionId) {
-				payload = {
-					session_id: cookieSessionId,
-				};
-			}
-		}
-
-		// Consume window.name so the payload is not re-read on later navigations.
-		window.name = '';
-		return payload;
-	}
-
-	// Resolve the popup payload/session id once at startup for telemetry correlation.
-	const popupPayload = getPopupPayloadFromWindowName();
-	const popupSessionId = popupPayload && popupPayload.session_id ? popupPayload.session_id : '';
-	wpstream_broadcaster_log('Popup session ID:', popupSessionId);
-
-	/**
-	 * Fire an onboarding-step telemetry event, but only if the global tracking
-	 * helper is present (it is a no-op outside the onboarding flow).
-	 *
-	 * @param {string} action       Event/action name.
-	 * @param {string} step         Step identifier.
-	 * @param {string} [elementType] Optional UI element type.
-	 * @param {string} [elementName] Optional UI element name.
-	 * @param {string} [trackingSessionId] Optional session id for correlation.
-	 */
-	function trackOnboardingStepSafe(action, step, elementType = '', elementName = '', trackingSessionId = '') {
-		// Guard: the tracker is defined only when the onboarding script is loaded.
-		if (typeof wpstream_track_onboarding_step === 'function') {
-			wpstream_track_onboarding_step(action, step, elementType, elementName, trackingSessionId);
-		}
-	}
-
 	// Get WHIP URL from config (injected by PHP); leaves whipUrl null if unset.
 	if (wpstream_broadcaster_vars && wpstream_broadcaster_vars.whip_url) {
 		whipUrl = wpstream_broadcaster_vars.whip_url;
@@ -591,8 +490,6 @@ document.addEventListener("DOMContentLoaded", function () {
 						attemptReconnect();
 					} else {
 						wpstream_broadcaster_log('connection closed, not reconnecting');
-						// Report the stop to onboarding telemetry.
-						trackOnboardingStepSafe('broadcaster_streaming_stopped', 'wpstream_broadcaster', 'button', 'streaming_stopped', popupSessionId);
 						// updateInputState(false);
 					}
 					// Hide the spinner regardless of outcome.
@@ -603,11 +500,10 @@ document.addEventListener("DOMContentLoaded", function () {
 				// Fired on ICE connection state transitions.
 				iceStateChange: function (state) {
 					wpstream_broadcaster_log("ICE state changed:", state);
-					// Reached "connected": mark live and record the streaming-started event.
+					// Reached "connected": mark live.
 					if ( state === 'connected' ) {
 						// showMessage("Broadcast started successfully");
 						updateStatus('connected');
-						trackOnboardingStepSafe('broadcaster_streaming_started', 'wpstream_broadcaster', 'button', 'streaming_started', popupSessionId);
 					}
 
 						// Dropped while we still intend to stream: kick off a reconnect.

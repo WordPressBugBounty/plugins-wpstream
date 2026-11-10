@@ -161,6 +161,11 @@ function wpstream_edit_channel_function() {
 var popover;
 function wpstream_dashboard_user_menu() {
     var profileImage = document.getElementById('dashboard-header_profile-image');
+    // Account pages can use a custom header without this optional menu. Passing
+    // null to Popover throws and prevents the save handlers below from binding.
+    if (!profileImage) {
+        return;
+    }
     // Tear down a prior popover to avoid duplicates.
     if(typeof popover !== 'undefined' ){
         popover.dispose();

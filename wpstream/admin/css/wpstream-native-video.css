@@ -1,0 +1,66 @@
+/* The video source component used by New Video and the editors, the editors' video panel, and the block editor Broadcast tool. */
+.editor-video-panel{max-width:1280px;margin:24px auto 32px;border:1px solid var(--wpstream-brand-border);border-radius:20px;overflow:hidden;background:#fff;min-width:0;color:var(--wpstream-brand-text);font:15px/1.55 var(--wpstream-brand-font)}
+.editor-video-panel [hidden],.editor-video-panel[hidden]{display:none!important}
+.editor-video-panel *{box-sizing:border-box}
+.editor-video-panel :is(button,a,input,select,summary):focus-visible{outline:2px solid var(--wpstream-brand-accent);outline-offset:3px;box-shadow:0 0 0 3px rgba(78,46,229,.12)}
+.editor-video-panel .button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:10px 24px;border:1px solid var(--wpstream-brand-border);border-radius:980px;background:#fff;color:var(--wpstream-brand-text);font:600 15px/1 var(--wpstream-brand-font);box-shadow:none;text-decoration:none}
+.editor-video-panel .button:hover{background:#F2F2F4}
+.editor-video-panel .button-primary{background:var(--wpstream-brand-accent);border-color:transparent;color:#fff}
+.editor-video-panel .button-primary:hover{background:var(--wpstream-brand-accent-hover);color:#fff}
+.editor-video-panel :is(button,.button):disabled{opacity:.4;cursor:not-allowed}
+.editor-video-toolbar{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--wpstream-brand-border);min-width:0}
+.editor-video-toolbar strong{font-size:13px;overflow-wrap:anywhere;min-width:0}
+.editor-video-picker{padding:24px;border-bottom:1px solid var(--wpstream-brand-border)}
+.editor-video-panel label{display:block;font-size:13px}.editor-video-panel select,.editor-video-panel input[type=url]{display:block;width:100%;max-width:none;margin:6px 0 0;padding:7px 10px;border:1px solid var(--wpstream-brand-border);border-radius:8px;min-height:44px;background:#fff;color:var(--wpstream-brand-text);font:inherit;box-sizing:border-box}
+.wpstream-native-video-block,.wpstream-channel-broadcast-block{max-width:calc(100% - 48px)!important;width:calc(100% - 48px)!important;margin:24px auto 32px!important}
+.wpstream-broadcast-host{position:relative}.wpstream-broadcast-loading{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:16px;box-sizing:border-box;padding-top:96px;min-height:350px;background:#fff;color:#1d1d1f;font-size:16px;font-weight:600}.wpstream-broadcast-loading[hidden]{display:none}.wpstream-broadcast-loading::before{content:"";width:40px;height:40px;box-sizing:border-box;border:4px solid #E2DEF9;border-top-color:#4E2EE5;border-radius:50%;animation:wpstream-broadcast-loading-spin .9s linear infinite}@keyframes wpstream-broadcast-loading-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.wpstream-broadcast-loading::before{animation:none}}.wpstream-channel-broadcast-block .wpstream-broadcast-frame{display:block;width:100%;height:820px;border:0}.wpstream-native-video-block .editor-video-panel{margin:0 auto}
+@media(max-width:600px){.editor-video-picker{padding:14px}.wpstream-native-video-block,.wpstream-channel-broadcast-block{width:calc(100% - 24px)!important;max-width:calc(100% - 24px)!important}}
+
+.editor-video-panel .library-upload-requirements{margin:16px 0 0;padding:14px 0 0;border-top:1px solid var(--wpstream-brand-border);color:var(--wpstream-brand-muted);font-size:13px;text-align:left}
+/* The video source component: one look on every screen that prints it. */
+.wpstream-video-source *{box-sizing:border-box}
+.wpstream-video-source [hidden]{display:none!important}
+.wpstream-video-source label{display:block;margin:14px 0 6px;font-size:14px;font-weight:600}
+.wpstream-video-source>label:first-child{margin-top:0}
+.wpstream-video-source select,.wpstream-video-source input[type=url]{display:block;width:100%;max-width:100%;min-height:44px;margin:0}
+/* The component draws its own dropdown arrow, because each screen would otherwise show a different one or none. */
+div.wpstream-video-source select{appearance:none;-webkit-appearance:none;padding:7px 40px 7px 12px;border:1px solid var(--wpstream-brand-border);border-radius:8px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230A0A0B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center;color:var(--wpstream-brand-text);font:inherit}
+.wpstream-video-source #video-source-mode{margin:0 0 30px}
+.wpstream-video-source #wpstream_media_upload{float:none;width:100%;margin:0;padding:0;border:1px dashed var(--wpstream-brand-border);border-radius:20px;background:var(--wpstream-brand-surface);text-align:center}
+.wpstream-video-source #wpstream_media_upload>p{margin:0;padding:16px 16px 12px;font-size:14px}
+.wpstream-video-source .wpstream_upload_container{float:none;width:100%;margin:0;padding:0 16px 16px;background:transparent;border:0;box-shadow:none}
+.wpstream-video-source .direct-upload{margin:0}
+.wpstream-video-source #wpstream_uploaded_mes:empty{display:none}
+.wpstream-video-source .inputfile{position:absolute;width:1px;height:1px;padding:0;opacity:0;overflow:hidden}
+.wpstream-video-source .direct-upload .inputfile+label{display:inline-flex;align-items:center;gap:6px;width:auto;min-height:40px;margin:0 0 10px;padding:9px 18px;border-radius:8px;background:var(--wpstream-brand-accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.wpstream-video-source .direct-upload .inputfile+label svg{fill:currentColor}
+.wpstream-video-source .inputfile:focus-visible+label{outline:2px solid var(--wpstream-brand-accent);outline-offset:3px}
+.wpstream-video-source .wpstream_file_drop_color{min-height:0;margin:0;padding:0;border:0;background:transparent}
+.wpstream-video-source .description{margin:8px 0 0;color:var(--wpstream-brand-muted);font-size:13px}
+.wpstream-video-source .library-video-stage{display:grid;place-items:center;width:100%;aspect-ratio:16/9;max-height:540px;margin:20px 0 0;border-radius:12px;overflow:hidden;background:#141416;color:#fff;text-align:center}
+.wpstream-video-source .library-video-stage h2{color:inherit}
+.wpstream-video-source .library-video-stage p{color:#C4C4CB}
+/* The loading message pulses until the preview is ready; a still message is enough when motion is reduced. */
+.wpstream-video-source .library-video-stage .wpstream-video-source-loading{margin:0;color:#fff;font-size:15px;font-weight:600;animation:wpstream-video-source-pulse 1s ease-in-out infinite alternate}
+@keyframes wpstream-video-source-pulse{from{opacity:1}to{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.wpstream-video-source .library-video-stage .wpstream-video-source-loading{animation:none}}
+.wpstream-video-source .library-video-stage video{display:block;width:100%;height:100%;max-height:540px;object-fit:contain;background:#000}
+.wpstream-video-source .wpstream-video-source-notice{margin:12px 0 0;font-size:13px}
+.wpstream-video-source .wpstream-video-source-notice:empty{display:none}
+.wpstream-video-source #wpstream_file_management{float:none;width:100%;margin:0;padding:0}
+.wpstream-video-source .wpstream_video_wrapper{float:none;width:100%;margin:12px 0 0;padding:12px 16px;overflow-wrap:anywhere}
+/* Upload progress rows follow the requirements list instead of the old screen's fixed overlay position. */
+.wpstream-video-source .direct-upload .progress-bar-area{position:static;width:auto;margin:12px 0 0;text-align:left}
+/* Captions sit last in the component, on every source. */
+.wpstream-video-source .wpstream-video-source-captions{margin:20px 0 0;padding:20px 0 0;border-top:1px solid var(--wpstream-brand-border)}
+.wpstream-video-source .wpstream-video-source-captions label{margin-top:0}
+.wpstream-video-source .wpstream-video-source-captions-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.wpstream-video-source .wpstream-video-source-captions-actions .button{display:inline-flex;align-items:center;min-height:40px;margin:0;padding:0 18px;border:1px solid var(--wpstream-brand-border);border-radius:8px;background:#fff;color:var(--wpstream-brand-text);font:600 14px/1 var(--wpstream-brand-font);box-shadow:none}
+.wpstream-video-source .wpstream-video-source-captions-actions .button:hover{background:#F2F2F4}
+/* What a file must be, always visible under the file picker. */
+.wpstream-video-source .library-upload-requirements{margin:16px 0 0;padding:14px 0 0;border-top:1px solid var(--wpstream-brand-border);color:var(--wpstream-brand-muted);font-size:13px;text-align:left}
+.wpstream-video-source #wpstream_media_upload .library-upload-requirements h3{margin:0 0 10px;padding:0;color:inherit;font-size:13px;font-weight:600;text-align:left}
+.wpstream-video-source .library-upload-requirements dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px 16px;margin:0}
+.wpstream-video-source .library-upload-requirements dt{font-size:12px}
+.wpstream-video-source .library-upload-requirements dd{margin:2px 0 0;color:var(--wpstream-brand-text,#141416);font-weight:600}
+.wpstream-video-source .library-upload-requirements p{margin:12px 0 0;font-size:12px;line-height:1.5}

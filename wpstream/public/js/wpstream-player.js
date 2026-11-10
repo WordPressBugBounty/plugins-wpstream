@@ -1811,6 +1811,10 @@ function wpstream_player_initialize_vod(settings) {
   // Hide the trailer / video buttons when their respective URLs are absent.
   if (!settings.trailerUrl) {
     playTrailerButton.hide();
+  } else {
+    // Shared CSS starts trailer controls hidden; reveal the configured action.
+    // The play/ended handlers own its visibility once playback starts.
+    playTrailerButton.show();
   }
   if (!settings.videoUrl) {
     playVideoButton.hide();

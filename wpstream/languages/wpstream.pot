@@ -1318,21 +1318,6 @@ msgstr ""
 msgid "Create a Video-On-Demand (VOD)"
 msgstr ""
 
-#: admin/class-wpstream-admin.php:4454
-#: admin/class-wpstream-admin.php:4593
-msgid "Do you want to charge a fee for watching?"
-msgstr ""
-
-#: admin/class-wpstream-admin.php:4456
-#: admin/class-wpstream-admin.php:4595
-msgid "No - Free-To-View (FTV)"
-msgstr ""
-
-#: admin/class-wpstream-admin.php:4458
-#: admin/class-wpstream-admin.php:4598
-msgid "Yes - Pay-Per-View (PPV)"
-msgstr ""
-
 #: admin/class-wpstream-admin.php:4461
 #: admin/class-wpstream-admin.php:4498
 #: admin/class-wpstream-admin.php:4546

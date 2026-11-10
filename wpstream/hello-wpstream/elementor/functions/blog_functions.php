@@ -33,8 +33,8 @@ if ( ! function_exists( 'wpstream_blog_list_shortcodes' ) ) {
 
 		// This list always queries standard blog posts.
 		$item_post_type = 'post';
-		// Number of posts per page from the widget settings.
-		$posts_per_page = intval( $attributes['number'] );
+		// Number of posts per page, capped so a request cannot force an unbounded query.
+		$posts_per_page = wpstream_item_list_page_size( $attributes['number'] );
 
 		// Base pagination query-var; suffixed with the widget uid so multiple lists don't clash.
 		$query_var_name = 'paged';

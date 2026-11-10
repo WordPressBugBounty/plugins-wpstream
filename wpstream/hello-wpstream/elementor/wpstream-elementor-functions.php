@@ -225,10 +225,10 @@ if ( ! function_exists( 'wpstream_theme_recent_items_top_bar' ) ) :
 		// Print the top filter bar above the list.
 		print wpstream_theme_recent_items_top_bar_with_filters( $attributes );
 
-		// Post type to query.
-		$item_post_type = sanitize_text_field( $attributes['type'] );
-		// Items per page.
-		$posts_per_page = intval( $attributes['number'] );
+		// Post type to query, limited to the types the item-list widgets offer.
+		$item_post_type = wpstream_item_list_allowed_post_type( sanitize_text_field( $attributes['type'] ) );
+		// Items per page, capped so a request cannot force an unbounded query.
+		$posts_per_page = wpstream_item_list_page_size( $attributes['number'] );
 		// Current page from the main query, defaulting to 1.
 		$paged          = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
 

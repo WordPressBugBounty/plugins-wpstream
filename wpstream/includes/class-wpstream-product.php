@@ -32,6 +32,26 @@ class Wpstream_Product {
         add_action( 'delete_term', array($this,'wpstream_redo_transient') );
         // Hide the WpStream taxonomy columns from the WooCommerce products table.
         add_filter('manage_edit-product_columns', array($this,'remove_wpstream_category_column') ) ;
+        add_filter( 'template_include', array( $this, 'media_taxonomy_template' ), 11 );
+    }
+
+    /**
+     * Media terms contain free posts as well as products. WooCommerce's fallback
+     * product loop silently omits those posts. Keep explicit theme templates,
+     * but use the native archive hierarchy instead of that product-only fallback.
+     *
+     * @param string $template Selected template path.
+     * @return string
+     */
+    public function media_taxonomy_template( $template ) {
+        if ( ! is_tax( array( 'wpstream_category', 'wpstream_actors', 'wpstream_movie_rating' ) ) || ! function_exists( 'WC' ) ) {
+            return $template;
+        }
+        $product_archive = WC()->plugin_path() . '/templates/archive-product.php';
+        if ( wp_normalize_path( $template ) !== wp_normalize_path( $product_archive ) ) {
+            return $template;
+        }
+        return get_taxonomy_template() ?: ( get_archive_template() ?: get_index_template() );
     }
 
 

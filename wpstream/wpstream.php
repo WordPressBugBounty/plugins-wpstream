@@ -3,7 +3,7 @@
  * Plugin Name:       WpStream - Live Streaming, Video on Demand, Pay Per View
  * Plugin URI:        http://wpstream.net
  * Description:       WpStream is a platform that allows you to live stream, create Video-on-Demand, and offer Pay-Per-View videos. We provide an affordable and user-friendly way for businesses, non-profits, and public institutions to broadcast their content and monetize their work. 
- * Version:           4.14.3
+ * Version:           4.15
  * Author:            wpstream
  * Author URI:        http://wpstream.net
  * Text Domain:       wpstream
@@ -34,7 +34,7 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 // Current plugin version (kept in sync with the header "Version" field above).
-define('WPSTREAM_PLUGIN_VERSION', '4.14.3');
+define('WPSTREAM_PLUGIN_VERSION', '4.15');
 // Base host for WpStream account/club links.
 define('WPSTREAM_CLUBLINK', 'wpstream.net');
 // Scheme used when building club links.
@@ -51,11 +51,6 @@ define('WPSTREAM_PLUGIN_BASE',  plugin_basename(__FILE__) );
 if( !defined('WPSTREAM_API' ) ) {
     // Default API host.
     define('WPSTREAM_API', 'https://baker.wpstream.net');
-}
-// Telemetry/click-tracking host; guarded so it can be overridden.
-if ( !defined( 'WPSTREAM_CLICK' ) ) {
-	// Default click-tracking host.
-	define( 'WPSTREAM_CLICK', 'https://click.wpstream.net' );
 }
 // Player host; guarded so it can be overridden.
 if ( !defined( 'WPSTREAM_PLAYER') ) {
@@ -76,6 +71,11 @@ define('WPSTREAM_TIMEOUT_CONST', 20); // in seconds
 // so activation hooks, cron callbacks, and the bootstrap below all resolve.
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-wpstream-autoloader.php';
 Wpstream_Autoloader::register();
+
+// Plugin-owned copy: PHP symbols and asset handles are distinct from the portal theme.
+require_once WPSTREAM_PLUGIN_PATH . 'broadcaster/broadcaster.php';
+require_once WPSTREAM_PLUGIN_PATH . 'broadcaster/broadcaster-ajax.php';
+require_once WPSTREAM_PLUGIN_PATH . 'includes/class-wpstream-broadcaster-host.php';
 
 /**
  * Declare WooCommerce High-Performance Order Storage (HPOS) compatibility.
@@ -505,8 +505,6 @@ if ( get_template() === 'hello-wpstream' ) {
 	add_action( 'pt-ocdi/after_import', 'wpstream_ocdi_after_import_setup' );
 	// Customize the intro text shown on the OCDI import screen.
 	add_filter( 'pt-ocdi/plugin_intro_text', 'wpstream_ocdi_plugin_intro_text' );
-	// Send telemetry when a demo content import is attempted.
-	add_action( 'ocdi/before_content_import', 'wpstream_track_ocdi_import_attempt', 10, 1 );
 }
 
 

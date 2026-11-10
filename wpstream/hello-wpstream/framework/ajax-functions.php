@@ -134,7 +134,7 @@ if ( ! function_exists( 'wpstream_theme_create_channel' ) ) {
 				</div>
 
 				<!-- Offer a paid-channel button only when permitted (or admin). -->
-				<?php if ( $allow_user_paid_channels || current_user_can( 'manage_options' ) ) : ?>
+				<?php if ( class_exists( 'WooCommerce' ) && ( $allow_user_paid_channels || current_user_can( 'manage_options' ) ) ) : ?>
 					<!-- Paid channel creation button -->
 					<div class="wpstream_theme_button_dashboard wpstream_user_create_new_paid_channel">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -147,6 +147,10 @@ if ( ! function_exists( 'wpstream_theme_create_channel' ) ) {
 				<?php endif; ?>
 			</div>
 			<?php
+			// Explain the missing dependency where an authorized author would create paid content.
+			if ( $allow_user_paid_channels || current_user_can( 'manage_options' ) ) {
+				echo Wpstream_Commerce_Requirements::render( 'paid' );
+			}
 			// For non-admins, print how many of their allowed channels are used.
 			if ( ! current_user_can( 'manage_options' ) ) {
 				/* translators: %1$s - number of channels, %2$s - maximum number of channels */

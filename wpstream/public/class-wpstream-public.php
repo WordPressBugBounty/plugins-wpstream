@@ -99,8 +99,10 @@ class Wpstream_Public {
      */
     public function enqueue_styles() {
 
+            // Shared locally hosted brand tokens load before plugin components.
+            wp_enqueue_style( 'wpstream-brand', plugin_dir_url( __FILE__ ) . 'css/wpstream-brand.css', array(), filemtime( plugin_dir_path( __FILE__ ) . 'css/wpstream-brand.css' ) );
             // Core plugin front-end styles (cards, lists, notices — can appear on any page).
-            wp_enqueue_style('wpstream-style',          plugin_dir_url( __FILE__ ) .'/css/wpstream_style.css',array(), WPSTREAM_PLUGIN_VERSION, 'all' );
+            wp_enqueue_style('wpstream-style',          plugin_dir_url( __FILE__ ) .'/css/wpstream_style.css',array('wpstream-brand'), filemtime( plugin_dir_path( __FILE__ ) . 'css/wpstream_style.css' ), 'all' );
             // Base Video.js player CSS — registered only; player render sites enqueue it.
             wp_register_style('video-js.min',           plugin_dir_url( __FILE__ ).'css/video-js.css', array(), WPSTREAM_PLUGIN_VERSION, 'all');
             // WpStream player skin on top of Video.js; registered only, filemtime cache-buster.

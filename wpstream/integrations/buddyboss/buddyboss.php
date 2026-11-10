@@ -455,10 +455,9 @@ function wpstream_bb_post_live_activity( $channel_id ) {
         return;
     }
 
-    // Build the player embed markup for this channel.
-    $attributes['id']      = $channel_id;
-    $attributes['user_id'] = '';
-    $content = $wpstream_plugin->wpstream_insert_player_elementor( $attributes );
+    // Activity content is sanitized on save and display. Store a harmless slot;
+    // render the authorized player after KSES instead of allowing user iframes.
+    $content = '<div class="wpstream-bb-activity-player"></div>';
 
     // Link back to the owner's profile "Live Video" tab.
     $profile_link = bp_core_get_user_domain( $owner_id ) . 'wpstream';
@@ -497,6 +496,33 @@ function wpstream_bb_post_live_activity( $channel_id ) {
 
     // The LIVE card badge reads a site-wide cache: drop it so the badge is right now.
     delete_transient( 'wpstream_bb_get_live_event_for_user' );
+}
+
+add_filter( 'bp_get_activity_content_body', 'wpstream_bb_render_activity_player', 20, 2 );
+
+/** Render only the player belonging to a server-tagged, owner-authored activity. */
+function wpstream_bb_render_activity_player( $content, $activity ) {
+    global $wpstream_plugin;
+
+    $slot = '<div class="wpstream-bb-activity-player"></div>';
+    if ( false === strpos( $content, $slot ) || ! is_object( $activity ) || empty( $activity->id ) ) {
+        return $content;
+    }
+    if ( 'yes' !== bp_activity_get_meta( $activity->id, 'is_wpstream_bb_show_id', true ) ) {
+        return $content;
+    }
+    $channel_id = intval( bp_activity_get_meta( $activity->id, 'wpstream_bb_show_id', true ) );
+    $channel = $channel_id > 0 ? get_post( $channel_id ) : null;
+    if ( ! $channel || intval( $channel->post_author ) !== intval( $activity->user_id ?? 0 )
+        || intval( get_post_meta( $channel_id, '_wpstream_bb_activity_id', true ) ) !== intval( $activity->id )
+        || 'live' !== $wpstream_plugin->main->playback_presentation->classify( $channel_id ) ) {
+        return $content;
+    }
+
+    // The normal renderer applies publication/entitlement rules for this viewer
+    // and obtains a fresh hosted-player key. Ended content contains no slot.
+    $player = $wpstream_plugin->wpstream_insert_player_elementor( array( 'id' => $channel_id ) );
+    return str_replace( $slot, $player, $content );
 }
 
 // Close the session's activity when the channel stops, instead of waiting for a timeline scroll.

@@ -50,6 +50,11 @@ final class Wpstream_Autoloader {
 		'wpstream_deactivator'           => 'includes/class-wpstream-deactivator.php',
 		'wpstream_admin'                 => 'admin/class-wpstream-admin.php',
 		'wpstream_onboarding'            => 'admin/class-wpstream-onboarding.php',
+		'wpstream_content_library'       => 'admin/class-wpstream-content-library.php',
+		'wpstream_media_thumbs'          => 'includes/class-wpstream-media-thumbs.php',
+		'wpstream_video_source_panel'    => 'admin/class-wpstream-video-source-panel.php',
+		'wpstream_permalink_redirects'   => 'includes/class-wpstream-permalink-redirects.php',
+		'wpstream_commerce_requirements' => 'includes/class-wpstream-commerce-requirements.php',
 		'wpstream_live_channel_presentation' => 'includes/class-wpstream-live-channel-presentation.php',
 		'wpstream_public'                => 'public/class-wpstream-public.php',
 		// Feature services.
@@ -65,6 +70,7 @@ final class Wpstream_Autoloader {
 		// Player helpers.
 		'wpstream_playback_session'      => 'includes/player/class-wpstream-playback-session.php',
 		'wpstream_channel_state'         => 'includes/player/class-wpstream-channel-state.php',
+		'wpstream_captions_endpoint'     => 'includes/player/class-wpstream-captions-endpoint.php',
 		// Baker API services.
 		'wpstream_user_quota_service'    => 'includes/api/class-wpstream-user-quota-service.php',
 		'wpstream_channel_service'       => 'includes/api/class-wpstream-channel-service.php',

@@ -111,8 +111,11 @@ class WpStream_Template_Loader {
 	 * Enqueue the dashboard JS (and its localized strings) on the Dashboard page.
 	 */
 	public function maybe_enqueue_dashboard_scripts() {
-		// Only run on the Dashboard template under the companion theme.
-		if ( 'wpstream-theme-dashboard.php' === get_page_template_slug() && get_template() === 'hello-wpstream' ) {
+		// The companion dashboard also renders through WooCommerce My Account,
+		// where the page has no standalone Dashboard template assigned.
+		$is_dashboard = 'wpstream-theme-dashboard.php' === get_page_template_slug()
+			|| ( function_exists( 'wpstream_is_dashboard_page' ) && wpstream_is_dashboard_page() );
+		if ( $is_dashboard && get_template() === 'hello-wpstream' ) {
 			// Cache-busting version derived from the JS file's modified time.
 			$modified_theme_js = gmdate( 'YmdHi', filemtime( WPSTREAM_PLUGIN_PATH . 'hello-wpstream/js/theme-dashboard.js' ) );
 			// The dashboard reorders items via jQuery UI sortable.

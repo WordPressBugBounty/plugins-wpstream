@@ -97,6 +97,45 @@ function wpstream_fetch_and_update_quota() {
 		success: function (data) {
 			// Only update the UI when the server reports success.
 			if (data.success === true) {
+				// Compact library headers share this poll with the legacy quota notice.
+				jQuery('[data-library-quota]').each(function () {
+					var field = this.getAttribute('data-library-quota');
+					if (data.data[field] === undefined) return;
+					var value = Number(data.data[field]);
+					if (!Number.isFinite(value)) return;
+					if (field.endsWith('_mb')) value /= 1024;
+					jQuery(this).text(wpstream_format_hours(value).toFixed(2));
+				});
+				// Pill balances follow the portal's rule: two decimals below 10, one from 10 upwards.
+				jQuery('[data-library-pill-quota]').each(function () {
+					var field = this.getAttribute('data-library-pill-quota');
+					if (data.data[field] === undefined) return;
+					var value = Number(data.data[field]);
+					if (!Number.isFinite(value)) return;
+					value = Math.max(0, field.endsWith('_mb') ? value / 1024 : value);
+					jQuery(this).text(value.toFixed(value < 10 ? 2 : 1));
+				});
+				// Usage pills and popups: recalculate percent, meters and used/left from the fresh balance and cap.
+				jQuery('[data-library-usage]').each(function () {
+					var divisor = this.dataset.unit === 'GB' ? 1024 : 1;
+					var left = Math.max(0, Number(data.data[this.dataset.available])) / divisor;
+					var total = Number(data.data[this.dataset.total]) / divisor;
+					if (!Number.isFinite(left) || !(total > 0)) return;
+					var used = Math.max(0, total - left);
+					var percent = Math.min(100, Math.round(used / total * 100));
+					var replaceNumber = function (element, value) { element.textContent = element.textContent.replace(/^[\d.]+/, value); };
+					replaceNumber(this.querySelector('[data-usage-percent]'), percent);
+					replaceNumber(this.querySelector('[data-usage-used]'), used.toFixed(2));
+					replaceNumber(this.querySelector('[data-usage-left]'), left.toFixed(2));
+					this.querySelectorAll('[role=progressbar]').forEach(function (meter) {
+						meter.setAttribute('aria-valuenow', percent);
+						meter.firstElementChild.style.width = percent + '%';
+					});
+					// The pill meter turns amber from 80% used and red from 95%.
+					var pillFill = this.querySelector('.library-usage-mini-fill');
+					pillFill.classList.toggle('is-warn', percent >= 80 && percent < 95);
+					pillFill.classList.toggle('is-danger', percent >= 95);
+				});
 				// Hours-based plans: show remaining viewer / broadcast / storage hours.
 				if ( data.data.use_streaming_hours === true ) {
 					// Remaining viewer hours (only if provided).

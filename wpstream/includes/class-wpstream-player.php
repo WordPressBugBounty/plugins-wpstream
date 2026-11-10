@@ -228,10 +228,23 @@ class Wpstream_Player{
      * @param int    $product_id    Product the notice is about.
      * @param string $message       Configured wording for the reason.
      * @param string $wrapper_class Extra class on the outer wrapper (shortcode placement).
-     * @param string $notice_style  Inline style kept by the shortcode placement.
      * @return string Notice markup.
      */
-    private function not_entitled_notice( $reason, $product_id, $message, $wrapper_class = '', $notice_style = '' ) {
+    private function not_entitled_notice( $reason, $product_id, $message, $wrapper_class = '' ) {
+        // A video attached to a plan has no purchase price of its own. Offer the
+        // published subscription products that actually unlock it in either mode.
+        $subscription_links = array();
+        if ( 'sub_active' !== $reason && function_exists( 'wc_get_product' ) && function_exists( 'wcs_user_has_subscription' ) ) {
+            $parent_ids = array_unique( array_filter( array_map( 'absint', (array) get_post_meta( $product_id, '_wpstream_parent_sub', true ) ) ) );
+            foreach ( $parent_ids as $parent_id ) {
+                $plan = wc_get_product( $parent_id );
+                if ( ! $plan || ! $plan->is_type( 'subscription' ) || 'publish' !== $plan->get_status() ) { continue; }
+                $subscription_links[] = '<a class="wpstream-subscription-link" href="' . esc_url( get_permalink( $parent_id ) ) . '">' . esc_html( sprintf( __( 'Subscribe to %s', 'wpstream' ), $plan->get_name() ) ) . '</a>';
+            }
+            if ( $subscription_links && 'nobuy' === $reason ) {
+                $message = (string) get_option( 'wpstream_product_not_subscribe', 'You did not yet subscribe to this item.' );
+            }
+        }
         /**
          * Filter the wording of the access notice shown in place of the player.
          *
@@ -245,10 +258,10 @@ class Wpstream_Player{
          */
         $message = (string) apply_filters( 'wpstream_player_not_entitled_message', $message, $product_id, $reason );
 
-        // Assemble the block with the message escaped; the style is a plugin constant.
-        $style = '' !== $notice_style ? ' style="' . esc_attr( $notice_style ) . '"' : '';
+        // Shared notice classes keep access messages consistent with the brand.
         $html  = '<div class="wpstream_player_wrapper ' . esc_attr( trim( $wrapper_class . ' no_buy' ) ) . '"><div class="wpstream_player_container">'
-            . '<div class="wpstream_notice"' . $style . '>' . esc_html( $message ) . '</div>'
+            . '<div class="wpstream_notice">' . esc_html( $message )
+            . ( $subscription_links ? '<p class="wpstream-subscription-options">' . implode( ' ', $subscription_links ) . '</p>' : '' ) . '</div>'
             . '</div></div>';
 
         /**
@@ -352,7 +365,7 @@ class Wpstream_Player{
                 // Logged in but not entitled: show a "not purchased" notice for paid products.
                 if( get_post_type($product_id) == 'product' ){
                     $message = (string) get_option( 'wpstream_product_not_bought', 'You did not yet purchase this item.' );
-                    echo $this->not_entitled_notice( 'nobuy', $product_id, $message, 'wpstream_player_shortcode', 'background:#e16767;' );
+                    echo $this->not_entitled_notice( 'nobuy', $product_id, $message, 'wpstream_player_shortcode' );
                 }
             }
 
@@ -364,7 +377,7 @@ class Wpstream_Player{
             if( get_post_type($product_id) == 'product' && ($product_type_slug=='live_stream' || $product_type_slug=='video_on_demand') ){
                 // Paid live/VOD product requires login: show a "must log in" notice.
                 $message = (string) get_option( 'wpstream_product_not_login', 'You must be logged in to watch this video.' );
-                echo $this->not_entitled_notice( 'nolog', $product_id, $message, 'wpstream_player_shortcode', 'background:#e16767;' );
+                echo $this->not_entitled_notice( 'nolog', $product_id, $message, 'wpstream_player_shortcode' );
             }elseif( get_post_type($product_id) == 'wpstream_product' ){
                 // Free live product is watchable without login.
                 echo '<div class="wpstream_player_wrapper wpstream_player_shortcode"><div class="wpstream_player_container">';

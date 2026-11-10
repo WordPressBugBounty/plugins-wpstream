@@ -16,15 +16,15 @@ html {
 
 /* Page background. */
 body {
-    background: #F8F8F8;
+    background: var(--wpstream-brand-surface);
 }
 
 /* Broadcaster page body: system font stack, neutral background, side padding. */
 body.wpstream-broadcaster-page {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-    background-color: #F8F8F8;
+    font-family: var(--wpstream-brand-font, "Manrope", sans-serif);
+    background-color: var(--wpstream-brand-surface);
     margin: 0;
-    color: #333;
+    color: var(--wpstream-brand-text);
     padding: 0 15px;
 }
 
@@ -36,7 +36,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 /* Style for the header */
 /* Sticky-style page header bar with a subtle drop shadow. */
 .broadcaster-header {
-    background-color: #f8f9fa!important;
+    background-color: var(--wpstream-brand-surface)!important;
     box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.05);
     padding: 10px 0;
     top: 0;
@@ -74,7 +74,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 .nav-item {
     font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: var(--wpstream-brand-text);
 }
 
 /* Centred container for status/notice messages under the header. */
@@ -130,7 +130,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 /* Danger (live) badge: red. */
 .broadcaster-container .video-live-indicator .badge.badge-danger {
     color: #fff;
-    background-color: #d63638;
+    background-color: #E23A2E;
 }
 
 /* Warning (connecting) badge: amber. */
@@ -179,7 +179,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Base button styling. */
 .button {
-    background-color: #2271b1;
+    background-color: var(--wpstream-brand-accent);
     border: none;
     color: white;
     padding: 10px 20px;
@@ -195,12 +195,12 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Button hover: darker blue. */
 .button:hover {
-    background-color: #135e96;
+    background-color: var(--wpstream-brand-accent-hover);
 }
 
 /* Full-width "Start broadcast" primary button. */
 .button.start-broadcast {
-    background-color: #066AA6;
+    background-color: var(--wpstream-brand-accent-hover);
     width: 100%;
 }
 
@@ -245,12 +245,12 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Connected: green dot. */
 .status-indicator.connected {
-    background-color: #00a32a;
+    background-color: #0FA968;
 }
 
 /* Disconnected: red dot. */
 .status-indicator.disconnected {
-    background-color: #d63638;
+    background-color: #E23A2E;
 }
 
 /* Connecting: amber dot. */
@@ -306,7 +306,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 .settings-row .settings-group .input-group .input-suffix {
     background-color: #e9ecef;
     padding: .375rem .75rem;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--wpstream-brand-border);
     border-radius: .25rem;
     font-size: 1rem;
     border-top-left-radius: 0;
@@ -337,7 +337,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 /* Those small control buttons: light, bordered, rounded. */
 .settings-group .controls-group button {
     background: #FFFFFF;
-    border: 1px solid #B2B3B5;
+    border: 1px solid var(--wpstream-brand-border);
     box-sizing: border-box;
     border-radius: 6px;
 }
@@ -349,19 +349,19 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Info banner: blue, left-accented. */
 .info-message {
-    color: #0056b3;
+    color: var(--wpstream-brand-accent);
     background-color: #e9f5ff;
     padding: 10px;
-    border-left: 4px solid #0056b3;
+    border-left: 4px solid var(--wpstream-brand-accent);
     margin-bottom: 15px;
 }
 
 /* Error banner: red, left-accented, constrained width. */
 .error-message {
-    color: #d63638;
+    color: #E23A2E;
     background-color: #fcf0f1;
     padding: 10px;
-    border-left: 4px solid #d63638;
+    border-left: 4px solid #E23A2E;
     margin-bottom: 15px;
     max-width: 83.33%;
     flex: 0 0 83.333333%;
@@ -369,7 +369,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Links inside an error banner keep the red tone, underlined. */
 .error-message a {
-    color: #d63638;
+    color: #E23A2E;
     text-decoration: underline;
 }
 
@@ -405,10 +405,10 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Success banner: green, left-accented. */
 .success-message {
-    color: #00a32a;
+    color: #0FA968;
     background-color: #edfaef;
     padding: 10px;
-    border-left: 4px solid #00a32a;
+    border-left: 4px solid #0FA968;
     margin-bottom: 15px;
 }
 
@@ -429,7 +429,7 @@ body.wpstream-broadcaster-page #wpadminbar {
 
 /* Device/quality <select> dropdowns in the settings panel. */
 .settings-group select {
-    color: #495057;
+    color: var(--wpstream-brand-muted);
     width: 100%;
     padding: 8px 12px;
     border-radius: 4px;
@@ -444,8 +444,8 @@ body.wpstream-broadcaster-page #wpadminbar {
 /* Focused select: blue outline ring. */
 .settings-group select:focus {
     outline: none;
-    border-color: #2271b1;
-    box-shadow: 0 0 0 1px #2271b1;
+    border-color: var(--wpstream-brand-accent);
+    box-shadow: 0 0 0 1px var(--wpstream-brand-accent);
 }
 
 /* Code to expand portrait video on mobile */

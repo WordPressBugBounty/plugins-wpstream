@@ -177,6 +177,32 @@ class Wpstream_Admin {
     }
 
     /**
+     * Decide whether an admin list or editor screen is about WpStream content.
+     *
+     * The plugin's own post types always are. WooCommerce products are shared
+     * with the rest of the store, so only the editor of a WpStream product counts.
+     *
+     * @param WP_Screen $screen The current admin screen.
+     * @return bool True when the screen should carry the WpStream header.
+     */
+    private function screen_is_wpstream_content( $screen ) {
+        if ( in_array( $screen->post_type, array( 'wpstream_product', 'wpstream_product_vod', 'wpstream_bundles' ), true ) ) {
+            return true;
+        }
+        if ( 'product' !== $screen->post_type || 'post' !== $screen->base ) {
+            return false;
+        }
+        // A new video product is requested by URL before it has a saved type.
+        if ( 'video_on_demand' === ( $_GET['product_type'] ?? '' ) || ! empty( $_GET['new_video_name'] ) ) {
+            return true;
+        }
+        $id   = isset( $_GET['post'] ) && is_scalar( $_GET['post'] ) ? absint( $_GET['post'] ) : 0;
+        $type = $id ? wpstream_get_product_type_slug( $id ) : '';
+        // A WpStream subscription records whether it sells a live channel or a video; a store subscription has no such value.
+        return in_array( $type, array( 'live_stream', 'video_on_demand' ), true ) || ( 'subscription' === $type && '' !== (string) get_post_meta( $id, '_subscript_live_event', true ) );
+    }
+
+    /**
      * Register and enqueue the plugin's admin-area stylesheets.
      *
      * Hooked (via Wpstream_Loader) to admin_enqueue_scripts.
@@ -185,6 +211,44 @@ class Wpstream_Admin {
      * @return void
      */
     public function enqueue_styles() {
+        // Share the local brand font and tokens with every plugin-owned surface.
+        wp_enqueue_style( 'wpstream-brand', plugin_dir_url( dirname( __FILE__ ) ) . 'public/css/wpstream-brand.css', array(), filemtime( dirname( __DIR__ ) . '/public/css/wpstream-brand.css' ) );
+        $screen = get_current_screen();
+        // The block editor is a full-screen tool without this header; lists and the classic editor show it.
+        if ( $screen && ( 'edit' === $screen->base || ( 'post' === $screen->base && ! $screen->is_block_editor() ) ) && $this->screen_is_wpstream_content( $screen ) ) {
+            wp_enqueue_style( 'wpstream-content-library', plugin_dir_url( __FILE__ ) . 'css/wpstream-content-library.css', array( $this->plugin_name ), filemtime( __DIR__ . '/css/wpstream-content-library.css' ) );
+            // WooCommerce collects admin notices into a hidden panel on the product editor, so it uses the form hook.
+            add_action( 'edit' === $screen->base ? 'admin_notices' : 'edit_form_top', function () {
+                require_once __DIR__ . '/class-wpstream-admin-header.php';
+                Wpstream_Admin_Header::render( $this->main, true );
+            }, 100 );
+            // WordPress moves notices under the list heading once the page loads; bring them back above the header.
+            if ( 'edit' === $screen->base ) {
+                wp_add_inline_script( 'common', "jQuery(function($){ $('.wrap div.updated, .wrap div.error, .wrap div.notice').not('.inline, .below-h2, .library-header *').insertBefore($('.library-header').closest('.wrap')); });" );
+            }
+        }
+		$page = isset( $_GET['page'] ) && is_scalar( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
+		if ( in_array( $page, array( 'wpstream_live_channels', 'wpstream_recordings', 'wpstream_all_recordings', 'wpstream_onboard', 'wpstream_settings', 'wpstream-onboarding' ), true ) ) {
+			wp_enqueue_style( 'wpstream-content-library', plugin_dir_url( __FILE__ ) . 'css/wpstream-content-library.css', array( $this->plugin_name ), filemtime( __DIR__ . '/css/wpstream-content-library.css' ) );
+			wp_enqueue_script( 'wpstream-content-library', plugin_dir_url( __FILE__ ) . 'js/wpstream-content-library.js', array( 'jquery' ), filemtime( __DIR__ . '/js/wpstream-content-library.js' ), true );
+			if ( ( 'wpstream_recordings' === $page && isset( $_GET['library_upload'] ) ) || ( 'wpstream_live_channels' === $page && isset( $_GET['library_new'] ) ) ) {
+				// New Video prints the same video source component as the editors, so it loads the same files.
+				wp_enqueue_style( 'wpstream-native-video', plugin_dir_url( __FILE__ ) . 'css/wpstream-native-video.css', array( 'dashicons', 'wpstream-brand' ), filemtime( __DIR__ . '/css/wpstream-native-video.css' ) );
+				wp_enqueue_media();
+				wp_enqueue_script( 'wpstream-video-source', plugin_dir_url( __FILE__ ) . 'js/wpstream-video-source.js', array( 'jquery' ), filemtime( __DIR__ . '/js/wpstream-video-source.js' ), true );
+				wp_enqueue_script( 'wpstream-video-creator', plugin_dir_url( __FILE__ ) . 'js/wpstream-video-creator.js', array( 'wpstream-content-library', 'wpstream-video-source' ), filemtime( __DIR__ . '/js/wpstream-video-creator.js' ), true );
+			}
+			wp_localize_script( 'wpstream-content-library', 'wpstream_library_vars', array(
+				'loading' => __( 'Loading preview…', 'wpstream' ),
+				'saving' => __( 'Saving…', 'wpstream' ),
+				'previewError' => __( 'This video cannot be previewed. Please try downloading it.', 'wpstream' ),
+				'linkCopied' => __( 'Link copied.', 'wpstream' ),
+				'saveError' => __( 'The changes could not be saved. Please try again.', 'wpstream' ),
+				'requireVideoAndName' => __( 'Choose a video and enter a name to continue.', 'wpstream' ),
+				'requireVideo' => __( 'Choose a video to continue.', 'wpstream' ),
+				'requireName' => __( 'Enter a name to continue.', 'wpstream' ),
+			) );
+		}
 
         /**
          * This function is provided for demonstration purposes only.
@@ -197,13 +261,12 @@ class Wpstream_Admin {
          * between the defined hooks and the functions defined in this
          * class.
          */
-        // No external webfont: the admin UI falls back to the system font stack
-        // declared in the stylesheets, so no request leaves the site for fonts.
+        // Manrope is hosted locally by the shared branding stylesheet.
         // Main admin stylesheet; filemtime() is used as the cache-busting version.
         wp_enqueue_style(
                 $this->plugin_name,
                 plugin_dir_url( __FILE__ ) . 'css/wpstream-admin.css',
-                array(),
+                array( 'wpstream-brand' ),
                 filemtime(plugin_dir_path(__FILE__) . 'css/wpstream-admin.css' ),
                 'all'
             );
@@ -245,6 +308,15 @@ class Wpstream_Admin {
                         'recordings_nonce'         => wp_create_nonce( 'wpstream_recordings_nonce' ),
                         'loading_url'              => WPSTREAM_PLUGIN_DIR_URL.'/img/loading.gif',
                         'download_mess'            => esc_html__('Click to download!','wpstream'),
+                        'download_error'           => __( 'We could not prepare this download. Please try again in a few minutes.', 'wpstream' ),
+                        'delete_file'              => __( 'Delete file', 'wpstream' ),
+                        'delete_cancel'            => __( 'Cancel', 'wpstream' ),
+                        /* translators: %s: recording file name */
+                        'delete_question'          => __( 'Delete %s?', 'wpstream' ),
+                        /* translators: %s: names of the videos using the recording */
+                        'delete_affected'          => __( '%s will stay listed but stop playing. This cannot be undone.', 'wpstream' ),
+                        'delete_failed'            => __( 'The recording file could not be deleted.', 'wpstream' ),
+                        'delete_unavailable'       => __( 'File unavailable', 'wpstream' ),
                         'uploading'                => esc_html__('We are uploading your file. Do not close this window!','wpstream'),
                         'queued'                   => esc_html__('Queued','wpstream'),
                         'upload_complete2'         => esc_html__('Upload Complete! You can upload another file!','wpstream'),
@@ -279,6 +351,10 @@ class Wpstream_Admin {
                 wp_localize_script( 'wpstream-recordings-videos-list', 'wpstream_recordings_videos_list_vars',
                     array(
                         'delete_file' => esc_html__('Delete file', 'wpstream'),
+                        'preview' => __( 'Preview', 'wpstream' ),
+                        'ready' => __( 'Ready', 'wpstream' ),
+                        'publish_video' => __( 'Create video', 'wpstream' ),
+                        'pay_per_view' => __( 'Pay per view', 'wpstream' ),
                         'download'           => esc_html__( 'Download', 'wpstream'),
                         'download_available' => esc_html__( 'Click to download! The url will work for the next 20 minutes!', 'wpstream'),
                         'add_free_video_url' => esc_url( admin_url( 'post-new.php?post_type=wpstream_product_vod') . '&new_video_name=' ),
@@ -305,8 +381,8 @@ class Wpstream_Admin {
                     // Identify the current admin screen so screen-specific bundles load only where needed.
                     $current_screen=get_current_screen();
 
-                    // On the credentials/channels/recordings/onboard screens, load the quota widget updater.
-                    if ( in_array( $current_screen->base, ['toplevel_page_wpstream_credentials', 'wpstream_page_wpstream_live_channels', 'wpstream_page_wpstream_recordings', 'wpstream_page_wpstream_onboard'] ) ) {
+                    // On the channels/recordings/onboard screens, load the quota widget updater.
+                    if ( in_array( $current_screen->base, ['toplevel_page_wpstream_onboard', 'wpstream_page_wpstream_live_channels', 'wpstream_page_wpstream_recordings', 'wpstream_page_wpstream_all_recordings', 'wpstream_page_wpstream_onboard'] ) ) {
                         wp_enqueue_script( 'wpstream-user-quota-update', plugin_dir_url( __DIR__  ) . 'admin/js/wpstream-user-quota.js', array(), WPSTREAM_PLUGIN_VERSION, true );
                         wp_localize_script( 'wpstream-user-quota-update', 'wpstream_user_quota_vars', array(
                                 'admin_url' => get_admin_url()
@@ -338,22 +414,12 @@ class Wpstream_Admin {
      */
         public function wpstream_manage_admin_menu() {
 
-            // Top-level menu; its page defaults to the Credentials screen and uses the WpStream icon at position 20.
-            add_menu_page( __('WpStream','wpstream'), __('WpStream ','wpstream'), 'administrator', 'wpstream_credentials', array($this,'wpstream_set_wpstream_credentials'), WPSTREAM_PLUGIN_DIR_URL.'img/wpstream-icon-menu_2.png',20 );
-            // Credentials sub-page (same slug as the parent so it is the default view).
-            add_submenu_page( 'wpstream_credentials', __('WpStream Credentials','wpstream'),          __('Credentials','wpstream'),          'administrator', 'wpstream_credentials',      array($this,'wpstream_set_wpstream_credentials') );
-            // All Channels listing.
-            add_submenu_page( 'wpstream_credentials', __('WpStream Live Channels','wpstream'),         __('All Channels','wpstream'),   'administrator', 'wpstream_live_channels',    array( $this,'wpstream_new_general_set'));
-            // Recordings / media management.
-            add_submenu_page( 'wpstream_credentials', __('WpStream Recordings','wpstream'), __('Recordings','wpstream'),  'administrator', 'wpstream_recordings',   array($this,'wpstream_media_management'));
-            // Global plugin settings.
-            add_submenu_page( 'wpstream_credentials', __('WpStream Settings','wpstream'),         __('Settings','wpstream'),  'administrator', 'wpstream_settings',   array($this,'wpstream_settings'));
-
-            // Quick Start / onboarding entry point.
-            add_submenu_page( 'wpstream_credentials', __('WpStream Quick Start','wpstream'),         __('WpStream Quick Start','wpstream'),  'administrator', 'wpstream_onboard',   array($this,'wpstream_pre_onboard_display'));
-
-
-
+            add_menu_page( __( 'WpStream', 'wpstream' ), __( 'WpStream', 'wpstream' ), 'administrator', 'wpstream_onboard', array( $this, 'wpstream_pre_onboard_display' ), WPSTREAM_PLUGIN_DIR_URL . 'img/wpstream-icon-menu_2.png', 20 );
+            add_submenu_page( 'wpstream_onboard', __( 'WpStream', 'wpstream' ), __( 'WpStream', 'wpstream' ), 'administrator', 'wpstream_onboard', array( $this, 'wpstream_pre_onboard_display' ) );
+            add_submenu_page( 'wpstream_onboard', __( 'All Channels', 'wpstream' ), __( 'All Channels', 'wpstream' ), 'administrator', 'wpstream_live_channels', array( $this, 'wpstream_new_general_set' ) );
+            add_submenu_page( 'wpstream_onboard', __( 'All Videos', 'wpstream' ), __( 'All Videos', 'wpstream' ), 'administrator', 'wpstream_recordings', array( $this, 'wpstream_media_management' ) );
+            add_submenu_page( 'wpstream_onboard', __( 'Unused media files', 'wpstream' ), __( 'Unused media files', 'wpstream' ), 'administrator', 'wpstream_all_recordings', array( $this, 'wpstream_all_recordings' ) );
+            add_submenu_page( 'wpstream_onboard', __( 'Settings', 'wpstream' ), __( 'Settings', 'wpstream' ), 'administrator', 'wpstream_settings', array( $this, 'wpstream_settings' ) );
 
         }
 
@@ -420,25 +486,31 @@ class Wpstream_Admin {
                 1   =>  array(
                             'tab'       =>  'general_options',
                             'label'     =>  esc_html__('Slug for free video/channel pages ','wpstream'),
+                            'section'   =>  esc_html__('Page URLs','wpstream'),
                             'name'      =>  'free_media_slug',
+                            'url_preview' => 'channel-name',
+                            'default'   =>  'wpstream',
                             'type'      =>  'text',
-                            'details'   =>  esc_html__('This will replace the default "wpstream" of all your free video/channel urls. Special characters like "&" are not permitted. To have your new slug show up you need to re-save the "Permalinks Settings" under Settings -> Permalinks, even if not making any changes.','wpstream'),
+                            'details'   =>  esc_html__('Special characters like "&" are not permitted. After changing it, re-save Settings -> Permalinks, even if you make no other changes.','wpstream'),
                         ),
 
                  'free_vod_slug'   =>  array(
                             'tab'       =>  'general_options',
                             'label'     =>  esc_html__('Slug for free VOD pages ','wpstream'),
                             'name'      =>  'free_media_slug_vod',
+                            'url_preview' => 'video-name',
+                            'default'   =>  'wpstream_vod',
                             'type'      =>  'text',
-                            'details'   =>  esc_html__('This will replace the default "wpstream_vod" of all your free VOD urls. Special characters like "&" are not permitted. To have your new slug show up you need to re-save the "Permalinks Settings" under Settings -> Permalinks, even if not making any changes.','wpstream'),
+                            'details'   =>  esc_html__('Special characters like "&" are not permitted. After changing it, re-save Settings -> Permalinks, even if you make no other changes.','wpstream'),
                         ),
                 
                 2 => array(
                             'tab'       =>  'general_options',
                             'label'     =>  esc_html__('Non-Admin User Roles Allowed to Broadcast','wpstream'),
+                            'section'   =>  esc_html__('Broadcasting permissions','wpstream'),
                             'name'      =>  'stream_role',
                             'type'      =>  'user_roles',
-                            'details'   =>  esc_html__('These types of users can stream via frontend shortcodes / blocks. Single individual channels are automaticlally created for streaming by non-admins.','wpstream'),
+                            'details'   =>  esc_html__('Administrators can always broadcast. The roles you choose can stream through frontend shortcodes and blocks, and each person gets their own channel automatically.','wpstream'),
                        
                         ),
                 3  =>  array(
@@ -455,7 +527,7 @@ class Wpstream_Admin {
                 
                 4  =>  array(
                             'tab'       =>  'general_options',
-                            'label'     =>  esc_html__('Default Pay-Per-View Price','wpstream'),
+                            'label'     =>  esc_html__('Default Pay-Per-View Price','wpstream') . ( function_exists( 'get_woocommerce_currency' ) ? ' (' . esc_html( get_woocommerce_currency() ) . ')' : '' ),
                             'name'      =>  'user_streaming_default_price',
                             'type'      =>  'text',
                             'details'   =>  esc_html__('Default price of pay-per-view channels assigned to non-admins.','wpstream'),
@@ -480,50 +552,50 @@ class Wpstream_Admin {
                         ),
                 8  =>  array(
                             'tab'       =>  'messages_options',
-                            'label'     =>  esc_html__('PPV not logged in message','wpstream'),
+                            'label'     =>  esc_html__('Pay-per-view: viewer is not logged in','wpstream'),
                             'name'      =>  'product_not_login',
-                            'type'      =>  'text',
+                            'type'      =>  'textarea',
                             'details'   =>  esc_html__('This message will be displayed on top of the media player for pay-per-view items when user is not logged in.','wpstream'),
                             'default'   =>  esc_html__('You must be logged in to watch this video.','wpstream'),
                         ),
                 9  =>  array(
                             'tab'       =>  'messages_options',
-                            'label'     =>  esc_html__('PPV not purchased message','wpstream'),
+                            'label'     =>  esc_html__('Pay-per-view: access not purchased','wpstream'),
                             'name'      =>  'product_not_bought',
-                            'type'      =>  'text',
+                            'type'      =>  'textarea',
                             'details'   =>  esc_html__('This message will be displayed on top of the media player for common pay-per-view items that have not been purchased.','wpstream'),
                             'default'   =>  esc_html__('You did not yet purchase this item.','wpstream'),
                         ),
                  10  =>  array(
                             'tab'       =>  'messages_options',
-                            'label'     =>  esc_html__('Subscription not purchased message','wpstream'),
+                            'label'     =>  esc_html__('Subscription not purchased','wpstream'),
                             'name'      =>  'product_not_subscribe',
-                            'type'      =>  'text',
+                            'type'      =>  'textarea',
                             'details'   =>  esc_html__('This message will be displayed on top of the media player for subscription-type pay-per-view items that have not been purchased.','wpstream'),
                             'default'   =>  esc_html__(' You did not yet subscribe to this item.','wpstream'),
                         ),
                 11  =>  array(
                             'tab'       =>  'messages_options',
-                            'label'     =>  esc_html__('Thank you message','wpstream'),
+                            'label'     =>  esc_html__('Thank-you message','wpstream'),
                             'name'      =>  'product_thankyou',
-                            'type'      =>  'text',
-                            'details'   =>  esc_html__('This message will be displayed on the thank you page (after purchase) and the confirmation email.','wpstream'),
+                            'type'      =>  'textarea',
+                            'details'   =>  esc_html__('This message will be displayed on the thank you page (after purchase) and the confirmation email.','wpstream') . ' ' . esc_html__('Keep {item_link} to include the purchased item link.','wpstream'),
                             'default'   =>  esc_html__('Thanks for your purchase. You can access your item at any time by visiting the following page: {item_link}','wpstream'),
                         ),
                 
                 12  =>  array(
                             'tab'       =>  'messages_options',
-                            'label'     =>  esc_html__('Subscription Active message','wpstream'),
+                            'label'     =>  esc_html__('Active subscription message','wpstream'),
                             'name'      =>  'subscription_active',
-                            'type'      =>  'text',
+                            'type'      =>  'textarea',
                             'details'   =>  esc_html__('This message will be displayed on subscription product page.','wpstream'),
                             'default'   =>  esc_html__('Your Subscription is Active','wpstream'),
                         ),
                 13  =>  array(
                     'tab'       =>  'messages_options',
-                    'label'     =>  esc_html__('You are not live message','wpstream'),
+                    'label'     =>  esc_html__('Not live message','wpstream'),
                     'name'      =>  'you_are_not_live',
-                    'type'      =>  'text',
+                    'type'      =>  'textarea',
                     'details'   =>  esc_html__('This message will be displayed in player.','wpstream'),
                     'default'   =>  esc_html__('We are not live at this moment','wpstream'),
                 ),
@@ -531,6 +603,7 @@ class Wpstream_Admin {
                 14 =>  array(
                             'tab'       =>  'general_options',
                             'label'     =>  esc_html__('Video player theme','wpstream'),
+                            'section'   =>  esc_html__('Player appearance','wpstream'),
                             'name'      =>  'video_player_theme',
                             'type'      =>  'select',
                             'select_values'=>array(
@@ -666,6 +739,33 @@ class Wpstream_Admin {
          *
          * @return void
          */
+        /**
+         * Check a settings submission before anything is stored.
+         *
+         * @param string $active_tab Tab being saved.
+         * @return string Why the submission is refused, or an empty string when it is valid.
+         */
+        private function wpstream_settings_error( $active_tab ) {
+            if ( 'general_options' === $active_tab ) {
+                // Slugs become URL segments, and only these characters survive in a rewrite rule.
+                foreach ( array( 'free_media_slug', 'free_media_slug_vod' ) as $slug ) {
+                    if ( isset( $_POST[ $slug ] ) && ! preg_match( '/^[a-z0-9_-]+$/i', (string) wp_unslash( $_POST[ $slug ] ) ) ) {
+                        return __( 'Use letters, numbers, hyphens or underscores in page slugs.', 'wpstream' );
+                    }
+                }
+            }
+            // Turning Global Mode on needs its plugin and the plan that grants access.
+            if ( 'subscription_options' === $active_tab && isset( $_POST['global_sub'] ) && '1' === (string) $_POST['global_sub'] ) {
+                if ( ! class_exists( 'WC_Subscriptions' ) ) {
+                    return __( 'WooCommerce Subscriptions is required for Global Subscription Mode.', 'wpstream' );
+                }
+                if ( ! preg_match( '/^\d+$/', (string) wp_unslash( $_POST['global_sub_id'] ?? '' ) ) ) {
+                    return __( 'Enter the subscription product ID for global access.', 'wpstream' );
+                }
+            }
+            return '';
+        }
+
         public function wpstream_settings(){
 
             // Admin-only screen.
@@ -714,17 +814,24 @@ class Wpstream_Admin {
             );
 
             // Handle a settings submission.
-            if($_SERVER['REQUEST_METHOD'] === 'POST'){
+            $settings_error = '';
+            if ( 'POST' === $_SERVER['REQUEST_METHOD'] ) {
                 // CSRF protection.
                 check_admin_referer( 'wpstream-settings-nonce', 'wpstream-settings-nonce' );
+                $settings_error = $this->wpstream_settings_error( $active_tab );
+            }
+            if ( 'POST' === $_SERVER['REQUEST_METHOD'] && '' === $settings_error ) {
 
                 // Only the fields declared for the active tab may be persisted.
                 $allowed = array();
+                $multiline = array();
                 foreach ( $wpstream_settings_array as $field ) {
                     if ( isset( $field['tab'], $field['name'] ) && $field['tab'] === $active_tab ) {
                         $allowed[] = $field['name'];
+                        if ( 'textarea' === ( $field['type'] ?? '' ) ) { $multiline[] = $field['name']; }
                     }
                 }
+                $could_not_save = __( 'Settings could not be saved. Please try again.', 'wpstream' );
 
                 // Option values as they were before this submission, and as written by it
                 // (both keyed by option name) — announced together once the save is complete.
@@ -758,13 +865,18 @@ class Wpstream_Admin {
 
                     $option_name                      = sanitize_key( 'wpstream_' . $variable );
                     $previous_options[ $option_name ] = get_option( $option_name );
-                    $saved_options[ $option_name ]    = sanitize_text_field( $value );
-                    update_option( $option_name, $saved_options[ $option_name ] );
+                    // WordPress slashes every $_POST value, and only text areas may keep line breaks.
+                    $saved_options[ $option_name ]    = in_array( $variable, $multiline, true ) ? sanitize_textarea_field( wp_unslash( $value ) ) : sanitize_text_field( wp_unslash( $value ) );
+                    // update_option() also answers false for an unchanged value, so compare what is stored.
+                    if ( ! update_option( $option_name, $saved_options[ $option_name ] ) && (string) maybe_serialize( get_option( $option_name ) ) !== $saved_options[ $option_name ] ) {
+                        $settings_error = $could_not_save;
+                    }
                 }
 
 
                 // On the "default options" tab, fold the per-option checkboxes into a single 1/0 map.
-                if ( 'default_options' === $active_tab ) {
+                // Basic Streaming disables these switches, so they post nothing and must not be read as "off".
+                if ( 'default_options' === $active_tab && ! $this->wpstream_is_basic_streaming_mode() ) {
                     $event_settings=array();
                     foreach($this->global_event_options as $key=>$option){
                         $event_settings[$key]='';
@@ -774,12 +886,15 @@ class Wpstream_Admin {
                             $event_settings[$key]=0;
                         }
                     }
-					$this->main->channel_settings->apply(
+					$applied = $this->main->channel_settings->apply(
 						array(
 							'type'    => 'save_defaults',
 							'options' => $event_settings,
 						)
 					);
+					if ( empty( $applied['success'] ) ) {
+						$settings_error = $could_not_save;
+					}
                 }
 
 
@@ -804,16 +919,24 @@ class Wpstream_Admin {
                  * @param array  $saved      Option values written, keyed by option name.
                  * @param array  $previous   The values those options held before.
                  */
-                do_action( 'wpstream_settings_saved', $active_tab, $saved_options, $previous_options );
+                if ( '' === $settings_error ) {
+                    do_action( 'wpstream_settings_saved', $active_tab, $saved_options, $previous_options );
+                }
 
             }
 
 
 
 
+                // Notices stay above the WpStream top bar, so the bar sits right above the page title.
+                print '<hr class="wp-header-end">';
+                if ( '' !== $settings_error ) { echo '<div class="notice notice-error inline" role="alert"><p>' . esc_html( $settings_error ) . '</p></div>'; }
+                elseif ( 'POST' === $_SERVER['REQUEST_METHOD'] ) { echo '<div class="notice notice-success inline"><p>' . esc_html__( 'Settings saved.', 'wpstream' ) . '</p></div>'; }
+                require_once __DIR__ . '/class-wpstream-admin-header.php';
+                Wpstream_Admin_Header::render( $this->main, true );
                 // Open the settings panel and the form.
-                print '<div class="theme_options_tab_wpstream" style="display:block;" >
-                    <h1>'.__('WpStream Settings','wpstream').'</h1>
+                print '<div class="theme_options_tab_wpstream is-active wpstream-settings-page" >
+                    <h1>'.esc_html__('Settings','wpstream').'</h1>
                     <form method="post" action="" >';
 
                 // Tab navigation bar; the current tab gets the nav-tab-active class.
@@ -823,6 +946,12 @@ class Wpstream_Admin {
                     print '<a href="' . esc_url( add_query_arg( array( 'page' => 'wpstream_settings', 'tab' => $tab_slug ), admin_url( 'admin.php' ) ) ) . '" class="nav-tab ' . ( $active_tab === $tab_slug ? 'nav-tab-active' : '' ) . '">' . esc_html( $tab_label ) . '</a>';
                 }
                 print '</h2>';
+                // Explain unavailable commerce features beside the settings that enable them.
+                if ( 'general_options' === $active_tab ) {
+                    echo Wpstream_Commerce_Requirements::render( 'paid' );
+                } elseif ( 'subscription_options' === $active_tab ) {
+                    echo Wpstream_Commerce_Requirements::render( 'subscription' );
+                }
                 $help_link='';
 
                 // Basic-stream mode disables/annotates some default-channel controls.
@@ -848,7 +977,12 @@ class Wpstream_Admin {
                                         break;
                                 }
 
-                                print '<div class="options_wrapper">';
+                                // The tab title, with the contextual help link beside it on tabs that have one.
+                                print '<div class="options_wrapper"><div class="wpstream-settings-tab-head"><h2 class="wpstream-settings-section-title">' . esc_html( $tabs[$active_tab] ?? '' ) . '</h2>';
+                                if($help_link!==''){
+                                    print '<div class="wpstream_options_help"><a href="'.esc_url($help_link).'" target="_blank" >'.esc_html__('Video Help','wpstream').'</a></div>';
+                                }
+                                print '</div>';
                                 // Render each field that belongs to the active tab.
                                 foreach ($wpstream_settings_array as $key=>$option){
                                    // Skip fields from other tabs.
@@ -866,7 +1000,11 @@ class Wpstream_Admin {
                                        print '</div>';
 
                                    }
-                                   print '<div class="wpstream_option">';
+                                   // A field can open a new section of the form with a heading.
+                                   if ( ! empty( $option['section'] ) ) {
+                                       print '<h3 class="wpstream-settings-section">' . esc_html( $option['section'] ) . '</h3>';
+                                   }
+                                   print '<div class="wpstream_option wpstream-field-' . esc_attr( $option['type'] ) . ' wpstream-option-' . esc_attr( $option['name'] ) . '">';
                                             // Load this option's stored value.
                                             $options_value =   get_option('wpstream_'.$option['name']) ;
 
@@ -889,6 +1027,12 @@ class Wpstream_Admin {
 													$is_basic_stream_mode
 												);
                                                 break;
+                                            // Multi-line text; falls back to the field's default when unset.
+                                            case 'textarea':
+                                                print '<label for="'.esc_attr( $option['name'] ).'">'.wp_kses_post( $option['label'] ).'</label>';
+                                                print '<textarea class="wpstream-text-input-setting" id="'.esc_attr( $option['name'] ).'" name="'.esc_attr( $option['name'] ).'" rows="2">'.esc_textarea( '' === (string) $options_value ? ( $option['default'] ?? '' ) : $options_value ).'</textarea>';
+                                                print '<div class="settings_details">'.wp_kses_post( $option['details'] ).'</div>';
+                                                break;
                                             // Plain text input; falls back to the field's default when unset.
                                             case 'text':
                                                 if($options_value==''){
@@ -900,6 +1044,10 @@ class Wpstream_Admin {
 
                                                 print '<label for="'.esc_attr( $option['name'] ).'">'.wp_kses_post( $option['label'] ).'</label>';
                                                 print '<input class="wpstream-text-input-setting" id="'.esc_attr( $option['name'] ).'" type="'.$option['type'].'" size="36"  name="'.esc_attr( $option['name'] ).'" value="'.esc_attr($options_value).'" />';
+                                                // Slug fields show the page address they produce; the settings script keeps it current while typing.
+                                                if ( ! empty( $option['url_preview'] ) ) {
+                                                    print '<div class="wpstream-url-preview">' . esc_html( home_url( '/' ) ) . '<strong data-default-slug="' . esc_attr( $option['default'] ?? '' ) . '">' . esc_html( $options_value ) . '</strong>/' . esc_html( $option['url_preview'] ) . '</div>';
+                                                }
                                                 print '<div class="settings_details">'.wp_kses_post( $option['details'] ).'</div>';
                                                 break;
                                             // Dropdown built from the field's select_values map; a hidden mirror marks the field as present.
@@ -921,7 +1069,7 @@ class Wpstream_Admin {
                                             // On/off switch; a hidden 0-valued twin ensures "off" posts a value.
                                             case 'slidertoogle':
                                                 print '<label for="'.esc_attr( $option['name'] ).'">'.wp_kses_post( $option['label'] ).'</label>';
-                                                print '<div style="display: flex; gap: 25px; justify-content: space-between;">';
+                                                print '<div class="wpstream-settings-row">';
                                                 print '<div class="settings_details">'.wp_kses_post( $option['details'] ).'</div>';
                                                 print '<label class="wpstream_switch">
                                                       <input type="hidden" class="wpstream_event_option_itemc" value="0" name="'.esc_attr( $option['name'] ).'" >
@@ -943,14 +1091,14 @@ class Wpstream_Admin {
                                                 print '<input type="hidden" id="' . esc_attr( $option['name'] ) . '" name="' . esc_attr( $option['name'] ) . '" value="' . $image_url . '" />';
 
                                                 // Preview area
-                                                print '<div class="wpstream-image-preview" style="' . (!$has_image ? 'display:none;' : '') . '">';
+                                                print '<div class="wpstream-image-preview' . (!$has_image ? ' wpstream-is-hidden' : '') . '">';
                                                 print '<img src="' . $image_url . '" alt="Preview" />';
                                                 print '</div>';
 
                                                 // Upload/remove buttons
                                                 print '<div class="wpstream-image-upload-buttons">';
                                                 print '<button type="button" class="wpstream-upload-image button">' . esc_html__('Upload Image', 'wpstream') . '</button>';
-                                                print '<button type="button" class="wpstream-remove-image button" style="' . (!$has_image ? 'display:none;' : '') . '">' . esc_html__('Remove Image', 'wpstream') . '</button>';
+                                                print '<button type="button" class="wpstream-remove-image button' . (!$has_image ? ' wpstream-is-hidden' : '') . '">' . esc_html__('Remove Image', 'wpstream') . '</button>';
                                                 print '</div>';
 
                                                 print '</div>';
@@ -983,10 +1131,6 @@ class Wpstream_Admin {
                                  */
                                 do_action( 'wpstream_settings_tab_' . $active_tab, $active_tab );
                                 print '</div>'; // options wrapper
-                                // Contextual help link for tabs that have one.
-                                if($help_link!==''){
-                                    print '<div class="wpstream_options_help"><a href="'.esc_url($help_link).'" target="_blank" >'.esc_html__('Video Help','wpstream').'</a></div>';
-                                }
                            print '</div>';
 
 
@@ -1072,10 +1216,10 @@ class Wpstream_Admin {
                         <td><?php echo esc_html($system_info['php_version']); ?></td>
                         <td>
                             <?php if (version_compare($system_info['php_version'], '7.4', '<')): ?>
-                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <span class="dashicons dashicons-warning wpstream-status-warning"></span>
                                 <?php esc_html_e('We recommend PHP 7.4 or higher', 'wpstream'); ?>
                             <?php else: ?>
-                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                                <span class="dashicons dashicons-yes-alt wpstream-status-success"></span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -1084,10 +1228,10 @@ class Wpstream_Admin {
                         <td><?php echo esc_html($system_info['wp_version']); ?></td>
                         <td>
                             <?php if (version_compare($system_info['wp_version'], '5.6', '<')): ?>
-                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <span class="dashicons dashicons-warning wpstream-status-warning"></span>
                                 <?php esc_html_e('We recommend WordPress 5.6 or higher', 'wpstream'); ?>
                             <?php else: ?>
-                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                                <span class="dashicons dashicons-yes-alt wpstream-status-success"></span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -1096,10 +1240,10 @@ class Wpstream_Admin {
                         <td><?php echo $system_info['site_debug_mode'] ? esc_html__('Enabled', 'wpstream') : esc_html__('Disabled', 'wpstream'); ?></td>
                         <td>
                             <?php if ($system_info['site_debug_mode']): ?>
-                                <span class="dashicons dashicons-info" style="color: #00a0d2;"></span>
+                                <span class="dashicons dashicons-info wpstream-status-info"></span>
                                 <?php esc_html_e('Debug mode should be disabled on production sites', 'wpstream'); ?>
                             <?php else: ?>
-                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                                <span class="dashicons dashicons-yes-alt wpstream-status-success"></span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -1111,19 +1255,19 @@ class Wpstream_Admin {
                             $memory_limit = wp_convert_hr_to_bytes($system_info['wp_memory_limit']);
                             if ($memory_limit < 64 * 1024 * 1024): // 64MB
                             ?>
-                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <span class="dashicons dashicons-warning wpstream-status-warning"></span>
                                 <?php esc_html_e('We recommend at least 64MB', 'wpstream'); ?>
                             <?php else: ?>
-                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                                <span class="dashicons dashicons-yes-alt wpstream-status-success"></span>
                             <?php endif; ?>
                         </td>
                     </tr>
                     <tr>
                         <td><strong><?php esc_html_e('WpStream Version', 'wpstream'); ?></strong></td>
                         <td><?php echo esc_html($system_info['wpstream_version']); ?></td>
-                        <td style="display: flex; align-items: center; gap: 5px;">
+                        <td class="wpstream-status-cell">
                             <?php if ($system_info['wpstream_plugin_outdated']): ?>
-                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <span class="dashicons dashicons-warning wpstream-status-warning"></span>
                                 <?php esc_html_e('Update available', 'wpstream'); ?>
                                 <div class="update-button-wrapper">
                                     <button class="wpstream-update-plugin-button button button-primary" data-plugin="wpstream/wpstream.php">
@@ -1131,7 +1275,7 @@ class Wpstream_Admin {
                                     </button>
                                 </div>
                             <?php else: ?>
-                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                                <span class="dashicons dashicons-yes-alt wpstream-status-success"></span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -1140,10 +1284,10 @@ class Wpstream_Admin {
                         <td><?php echo $system_info['api_status'] ? esc_html__('Connected', 'wpstream') : esc_html__('Disconnected', 'wpstream'); ?></td>
                         <td>
                             <?php if (!$system_info['api_status']): ?>
-                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span>
+                                <span class="dashicons dashicons-warning wpstream-status-warning"></span>
                                 <?php esc_html_e('API connection issue', 'wpstream'); ?>
                             <?php else: ?>
-                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                                <span class="dashicons dashicons-yes-alt wpstream-status-success"></span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -1210,7 +1354,7 @@ class Wpstream_Admin {
                     </table>
                 </div>
 
-                <div class="wpstream-logs-table-container">
+                <div class="wpstream-logs-table-container" id="wpstream-recent-logs">
                     <h3><?php esc_html_e('Recent Logs', 'wpstream'); ?></h3>
                     <table class="widefat wpstream-logs-table">
                         <thead>
@@ -1224,11 +1368,16 @@ class Wpstream_Admin {
                             <?php
                             // Load the stored plugin logs; show a placeholder row when empty.
                             $logs = get_option('wpstream_logs');
+                            // Work out the requested page of logs; an out-of-range page falls back to the nearest real one.
+                            $logs_per_page = 20;
+                            $logs_total    = is_array($logs) ? count($logs) : 0;
+                            $logs_pages    = max( 1, (int) ceil( $logs_total / $logs_per_page ) );
+                            $logs_page     = isset( $_GET['logs_page'] ) ? min( $logs_pages, max( 1, absint( $_GET['logs_page'] ) ) ) : 1;
                             if ( !is_array($logs) || empty($logs) ) {
                                 echo '<tr><td colspan="3">' . esc_html__('No logs found.', 'wpstream') . '</td></tr>';
                             } else {
-                                // One row per log entry (time, type, description).
-                                foreach ($logs as $log) {
+                                // One row per log entry on this page (time, type, description).
+                                foreach ( array_slice( $logs, ( $logs_page - 1 ) * $logs_per_page, $logs_per_page ) as $log ) {
                                     echo '<tr>';
                                     echo '<td>' . esc_html(date('Y-m-d H:i:s', $log['timestamp'] ) ) . '</td>';
                                     echo '<td>' . esc_html($log['type']) . '</td>';
@@ -1239,6 +1388,22 @@ class Wpstream_Admin {
                             ?>
                         </tbody>
                     </table>
+                    <?php
+                    // Previous and Next appear only when the logs run past one page, and return to this table.
+                    if ( $logs_pages > 1 ) {
+                        $logs_link = function ( $target ) {
+                            return add_query_arg( array( 'page' => 'wpstream_settings', 'tab' => 'support_tab', 'logs_page' => $target ), admin_url( 'admin.php' ) ) . '#wpstream-recent-logs';
+                        };
+                        $logs_first = ( $logs_page - 1 ) * $logs_per_page + 1;
+                        echo '<nav class="wpstream-library library-pagination wpstream-logs-pagination" aria-label="' . esc_attr__( 'Logs pagination', 'wpstream' ) . '">';
+                        /* translators: 1: first log shown, 2: last log shown, 3: total logs. */
+                        echo '<span class="library-count">' . esc_html( sprintf( __( 'Showing %1$d–%2$d of %3$d logs', 'wpstream' ), $logs_first, min( $logs_first + $logs_per_page - 1, $logs_total ), $logs_total ) ) . '</span>';
+                        echo '<span class="library-pagination-links">';
+                        if ( $logs_page > 1 ) { echo '<a class="button" href="' . esc_url( $logs_link( $logs_page - 1 ) ) . '">' . esc_html__( 'Previous', 'wpstream' ) . '</a>'; }
+                        if ( $logs_page < $logs_pages ) { echo '<a class="button" href="' . esc_url( $logs_link( $logs_page + 1 ) ) . '">' . esc_html__( 'Next', 'wpstream' ) . '</a>'; }
+                        echo '</span></nav>';
+                    }
+                    ?>
                 </div>
             </div>
         </div>
@@ -1376,7 +1541,7 @@ class Wpstream_Admin {
 
                     print '<label for="'.$option['name'].'">'.$option['name'].'</label>';
 
-                    print '<div style="display: flex; gap: 25px; justify-content: space-between;">';
+                    print '<div class="wpstream-settings-row">';
                     print '<div class="settings_details">'.$option['details'].'</div>';
                     print '
                     <label class="wpstream_switch">
@@ -1434,250 +1599,18 @@ class Wpstream_Admin {
 
             // All editable roles minus administrator (admins always can broadcast).
             $roles  =   get_editable_roles();
-            $return =   '<select id="wpstream_user_roles" name="'.esc_html($name).'[]"  multiple>';
+            $return = '<div id="wpstream_user_roles" class="wpstream-role-choices">';
             unset( $roles['administrator'] );
 
-            // One option per role, pre-selecting those already chosen.
-            foreach ($roles as $key=>$role){
-                $return .= '<option value="'.$key.'" ';
-                if( in_array($key, $value) ){
-                    $return .= ' selected ';
-                }
-                $return .= '>'.$role['name'].'</option>';
+            foreach ( $roles as $key => $role ) {
+                $return .= '<label><input type="checkbox" name="' . esc_attr( $name ) . '[]" value="' . esc_attr( $key ) . '" ' . checked( in_array( $key, (array) $value, true ), true, false ) . '> ' . esc_html( translate_user_role( $role['name'] ) ) . '</label>';
             }
-            $return .=  '</select>';
-
+            $return .= '</div>';
 
             return $return;
         }
          
             
-        /*
-         * Set credential admin function
-         *
-         * @since    3.0.1
-        */
-        /**
-         * Render the Credentials admin screen and save submitted API credentials.
-         *
-         * On POST it stores the WpStream username/password options and clears the
-         * cached token/quota transients so the next request re-authenticates. It
-         * then shows the connection status and the credentials form. Echoes HTML.
-         *
-         * @return void
-         */
-        public function wpstream_set_wpstream_credentials(){
-			$credentials_from_constants = wpstream_api_credentials_from_constants();
-
-            // Handle a credentials submission.
-            if($_SERVER['REQUEST_METHOD'] === 'POST'){
-                // CSRF/permission gate: only an admin submitting the credentials
-                // form (with its nonce) may overwrite the stored API credentials.
-                $this->wpstream_require_settings_capability();
-                check_admin_referer( 'wpstream_save_credentials', 'wpstream_credentials_nonce' );
-
-				// wp-config owns the complete pair. A forged/manual POST must be the
-				// same no-op as the disabled form presented to the administrator.
-				if ( ! $credentials_from_constants ) {
-
-                $allowed_html   =   array();
-                $exclude_array  =   array();
-                $allowed_html   =   array();
-
-                // Username before this submission: tells a cleared form apart from a new account.
-                $previous_username = (string) get_option( 'wpstream_api_username', '' );
-
-                // Persist only the recognised credential fields.
-                foreach($_POST as $variable=>$value){
-                    if ($variable!='submit'){
-                        if (!in_array($variable, $exclude_array) ){
-                            switch ( $variable ) {
-                                case 'api_username':
-                                    // Unslashed first: WordPress slashes every $_POST value,
-                                    // so a username containing a quote would otherwise be
-                                    // stored with a stray backslash and never authenticate.
-                                    // Then sanitized as text.
-                                    update_option( sanitize_key('wpstream_api_username'), sanitize_text_field( wp_unslash( $value ) ) );
-                                    break;
-                                case 'api_password':
-                                    // Only unslashed, never sanitized: the password is a secret
-                                    // sent verbatim to the API, and sanitizing would silently
-                                    // change it. Unslashing undoes the escaping WordPress adds
-                                    // to every $_POST value, without which a password holding a
-                                    // quote or a backslash is stored — and sent — wrong, so the
-                                    // customer is told their correct password is incorrect.
-                                    // Not autoloaded: it is only needed when authenticating.
-                                    // An empty submission keeps the current password, since the
-                                    // form never pre-fills the field with the stored secret.
-                                    $password = wp_unslash( $value );
-                                    if ( $password !== '' ) {
-                                        update_option( 'wpstream_api_password', $password, false );
-									} elseif (
-										array_key_exists( 'api_username', $_POST )
-										&& '' === sanitize_text_field( wp_unslash( $_POST['api_username'] ) )
-									) {
-										// Clearing the account is an explicit disconnect, not a
-										// password-only edit. Do not retain an orphaned secret.
-										delete_option( 'wpstream_api_password' );
-                                    }
-                                    break;
-                            }
-                        }
-                    }
-                }
-
-
-
-                // Invalidate any cached token/quota so the new credentials are used immediately.
-                update_option('wpstream_token_expire',0);
-                update_option('wpstream_current_token',' ');
-                delete_transient( 'wpstream_token_api');
-                delete_transient('wpstream_token_request_30');
-                $this->main->quota_manager->invalidate();
-
-                // Announce the account change. Only the username travels: the
-                // password and any token stay server-side.
-                $username = (string) get_option( 'wpstream_api_username', '' );
-                if ( '' !== $username ) {
-                    /**
-                     * Fires after WpStream account credentials were saved and the
-                     * cached token/quota dropped; the connection itself is verified
-                     * on the next API call.
-                     *
-                     * @since 4.14.0
-                     *
-                     * @param string $username WpStream.net username or e-mail.
-                     */
-                    do_action( 'wpstream_account_connected', $username );
-                } elseif ( '' !== $previous_username ) {
-                    /**
-                     * Fires after the WpStream account username was cleared.
-                     *
-                     * @since 4.14.0
-                     *
-                     * @param string $username The username that was removed.
-                     */
-                    do_action( 'wpstream_account_disconnected', $previous_username );
-                }
-				}
-            }
-       
-    
-            $allowed_html   =   array();
-
-
-            // Field definitions for the credentials form (username + password).
-            $wpstream_options_array =array(
-                2   =>  array(
-                            'label' =>  'WpStream.net Username or Email',
-                            'name'  =>  'api_username',
-                            'type'  =>  'text',
-                        ),
-                3   =>  array(
-                            'label' =>  'WpStream.net Password',
-                            'name'  =>  'api_password',
-                            'type'  =>  'password',
-                        ),
-
-            );
-
-
-            // Existing installs saved the password as an autoloaded option; flip it
-            // to non-autoloaded so the secret is not loaded on every request.
-            if ( function_exists( 'wp_set_option_autoload' ) ) {
-                wp_set_option_autoload( 'wpstream_api_password', false );
-            }
-
-            // Connectivity and quota data drive the connection-status banner below.
-            $connected    = $this->main->wpstream_live_connection->is_connected();
-            $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_set_wpstream_credentials' );
-
-            $this->main->show_user_data($pack_details);
-
-            print   '<form method="post" action="" >';
-                        // CSRF nonce for the credentials save handled at the top of this method.
-                        wp_nonce_field( 'wpstream_save_credentials', 'wpstream_credentials_nonce' );
-                        print '<div  class="theme_options_tab_wpstream" style="display:block;" >
-                                <h1>'.__('WpStream Credentials','wpstream').'</h1>';
-
-                                // Credentials supplied via wp-config.php constants take
-                                // precedence over anything saved here — tell the admin.
-                                if( $credentials_from_constants ){
-                                    echo '<div class="api_conected">'.esc_html__('Your WpStream credentials are defined in wp-config.php; values saved on this screen are ignored.','wpstream').'</div>';
-                                }
-
-                                // Connection status banner: no credentials, bad credentials, connected, or CURL failure.
-                                if( wpstream_get_api_username()=='' ||  wpstream_get_api_password()== '' ){
-                                    echo '<div class="api_not_conected wpstream_orange">';
-                                        $admin_url_onboard=get_admin_url().'admin.php?page=wpstream_onboard';
-                                        printf ( __('To connect your plugin, enter your WpStream credentials below or go <a href="%s" target="_blank">here</a> to create an account.','wpstream'),$admin_url_onboard);
-                                    echo '</div>';
-
-                                }else if(!$connected){
-                                    // Translate the literals at definition — gettext cannot extract variable strings.
-                                    $text = get_option('wpstream_curl_failed') === "0" ?
-                                        __( ' Incorrect username or password. Please check your credentials or go <a href="https://wpstream.net/my-account/edit-account/" target="_blank">here</a> to reset your password.', 'wpstream' ) :
-                                        __( 'Not connected to WpStream. Please note the errors above and contact support.', 'wpstream' );
-                                    echo '<div class="api_not_conected">'.wp_kses_post($text).'</div>';
-                                }else{
-                                    // Credentials present and a token was obtained: connected.
-                                    echo '<div class="api_conected">'.__('Connected to WpStream.net!','wpstream').'</div>';
-                                }
-                                // Render the credential inputs. The username is pre-filled;
-                                // the password field is always left blank so the stored
-                                // secret is never echoed into the page source (an empty
-                                // submission keeps the saved password). Inputs are disabled
-                                // when the wp-config constants are in charge.
-                                $inputs_disabled = $credentials_from_constants ? ' disabled' : '';
-                                print '<div class="wpstream_option_wrapper">';
-                                    foreach ($wpstream_options_array as $key=>$option){
-                                        print '<div class="wpstream_option">';
-
-                                            print '<label for="'.$option['name'].'">'.$option['label'].'</label>';
-                                            if( $option['type']==='password' ){
-                                                $placeholder = get_option('wpstream_'.$option['name'],'') !== '' ? '*****' : '';
-                                                print '<input id="'.$option['name'].'" type="password" size="36"  name="'.$option['name'].'" value="" autocomplete="new-password" placeholder="'.$placeholder.'"'.$inputs_disabled.' />';
-                                            }else{
-                                                $options_value =  esc_html( get_option('wpstream_'.$option['name'],'') );
-                                                print '<input id="'.$option['name'].'" type="'.$option['type'].'" size="36"  name="'.$option['name'].'" value="'.esc_html($options_value).'"'.$inputs_disabled.' />';
-                                            }
-
-                                        print '</div>';
-                                    }
-                                print '</div>';
-
-
-                            print '<input type="submit"'.$inputs_disabled.' name="submit"  class="wpstream_button wpstream_button_action" value="'.__('Save Changes','wpstream').'" />';
-
-                            print '<h3>Video Tutorials</h3>';
-                 
-                            print '<a class="how_to_videos" target="_blank" href="https://youtu.be/9DQrxsKcpmQ">How to Live Stream to WordPress with OBS</a>';
-                            print '<a class="how_to_videos" target="_blank" href="https://youtu.be/qMSjJCskAfM">How to Live Stream to WordPress in less than 3 Minutes</a>';                            
-                            print '<a class="how_to_videos" target="_blank" href="https://youtu.be/h6myD_vhKcg">How to Live-Stream to WordPress using your iPhone</a>';
-                            
-                            print '<a style="margin-top:10px;" href="https://www.youtube.com/channel/UCIjItiJc4Z7aJApj3W6ArJA" target="_blank" class="how_to_videos">More Tutorials On Our YouTube Channel</a>';
-                            
-
-                        print '</div>';
-            print   '</form>';
-
-            // Quick-action links: create free / paid channel, or jump to the channels list.
-            print '<div  class="theme_options_tab_wpstream" style="display:block;" >';
-                $link_new = admin_url('admin.php?page=wpstream_live_channels');
-                $link_new_paid = admin_url('post-new.php?post_type=product').'&new_stream='. rawurlencode('new');
-                $link_new_free = admin_url('post-new.php?post_type=wpstream_product');
-
-
-                print '<a href="'.esc_url($link_new_free).'" class="wpstream_no_chanel_add_channel">'.esc_html__('Create new Free-To-View channel','wpstream').'</a>';
-                print '<a href="'.esc_url($link_new_paid).'" class="wpstream_no_chanel_add_channel">'.esc_html__('Create Pay-Per-View channel','wpstream').'</a>';
-                print '<a href="'.esc_url($link_new).'"      class="wpstream_no_chanel_add_channel">'.esc_html__('My Channels','wpstream').'</a>';        
-            print '</div>';
-   
-
-    }
-
-
-  
         /**
         * Media Management
         *
@@ -1688,19 +1621,18 @@ class Wpstream_Admin {
         * @return void
         */
         public function wpstream_media_management(){
-            // Storage/streaming quota data for the summary header.
-            $pack_details           =    $this->main->quota_manager->get_live_quota_data( 'wpstream_media_management' );
+            require_once WPSTREAM_PLUGIN_PATH . 'admin/class-wpstream-content-library.php';
+            ( new Wpstream_Content_Library( $this->main ) )->render( 'video' );
+        }
 
-            $this->main->show_user_data($pack_details);
-
-
-            // Upload widget section.
-            print '<div id="wpstream_media_upload"><h3>'.__('Upload New Recording','wpstream').'</h3>'.$this->wpstream_present_media_upload().'</div>';
-
-            // Existing recordings list section.
-            print '<div id="wpstream_file_management"><h3 id="video_management_title">'.__('Your Recordings','wpstream').'</h3>'.$this->wpstream_present_file_management().'</div>';
-
-
+        /**
+        * Render the Unused media files admin screen: every file in the connected cloud account that no video uses.
+        *
+        * @return void
+        */
+        public function wpstream_all_recordings() {
+            require_once WPSTREAM_PLUGIN_PATH . 'admin/class-wpstream-content-library.php';
+            ( new Wpstream_Content_Library( $this->main ) )->render_recordings();
         }
 
 
@@ -1773,6 +1705,38 @@ class Wpstream_Admin {
         
   
         /**
+         * Build the always-visible list of what an uploaded video file must be.
+         *
+         * The upload itself sets no size cap. On data plans a file must fit in both the remaining
+         * storage and the remaining data, so the smaller one is shown. Hours plans only need
+         * recording hours left, so they have no maximum. Without quota data the size row is left out.
+         *
+         * @return string Escaped HTML.
+         */
+        private function wpstream_upload_requirements_html() {
+            $rows = array(
+                __( 'File type', 'wpstream' )   => '.mp4, .mov',
+                __( 'Container', 'wpstream' )   => 'MP4',
+                __( 'Video codec', 'wpstream' ) => 'H264',
+                __( 'Audio codec', 'wpstream' ) => 'AAC',
+            );
+            $quota = $this->main->quota_manager->get_live_quota_data( 'recordings_screen' );
+            if ( is_array( $quota ) && ! empty( $quota['use_streaming_hours'] ) ) {
+                $rows[ __( 'Maximum size', 'wpstream' ) ] = __( 'No maximum', 'wpstream' );
+            } elseif ( is_array( $quota ) && isset( $quota['available_storage_mb'], $quota['available_data_mb'] ) ) {
+                // Reported in megabytes and shown in gigabytes, matching the usage figures in the top bar.
+                $limit = max( 0, min( (float) $quota['available_storage_mb'], (float) $quota['available_data_mb'] ) ) / 1024;
+                /* translators: %s: largest file size in gigabytes. */
+                $rows[ __( 'Maximum size', 'wpstream' ) ] = sprintf( __( '%s GB (your remaining storage and data)', 'wpstream' ), number_format_i18n( $limit, 1 ) );
+            }
+            $html = '<div class="library-upload-requirements"><h3>' . esc_html__( 'Your video file must use these settings', 'wpstream' ) . '</h3><dl>';
+            foreach ( $rows as $label => $value ) {
+                $html .= '<div><dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $value ) . '</dd></div>';
+            }
+            return $html . '</dl><p>' . esc_html__( 'Media will fail to play if it does not follow these settings. You may use a tool like MediaInfo to verify your file, and convert it with software like HandBrake.', 'wpstream' ) . '</p></div>';
+        }
+
+        /**
          * Media upload
          *
          * Build the S3 direct-upload widget for new recordings: checks storage
@@ -1782,7 +1746,7 @@ class Wpstream_Admin {
          * @since  3.0.1
          * @return string Upload widget HTML, or an alert/notice when unavailable.
          */
-        public function wpstream_present_media_upload(){
+        public function wpstream_present_media_upload( $compact = false ){
             $to_return='';
 
             // Refuse when the account is out of storage/data quota.
@@ -1812,7 +1776,7 @@ class Wpstream_Admin {
                     $to_return.='<div class="wpstream_upload_container">';
                     // Several files may be selected or dropped at once; the script
                     // queues them and sends one at a time.
-                    $to_return.='<div id="wpstream_uploaded_mes">'.esc_html__('Please select or drop one or more video files. Do not close this window during the upload!','wpstream').'</div>';
+                    $to_return.='<div id="wpstream_uploaded_mes" role="status">'.( $compact ? '' : esc_html__('Please select or drop one or more video files. Do not close this window during the upload!','wpstream') ).'</div>';
                     $to_return.='<form action="https://wpstream-video.s3.amazonaws.com/"
                                   method="POST"
                                   enctype="multipart/form-data"
@@ -1823,14 +1787,19 @@ class Wpstream_Admin {
 
 
                     $to_return.='<div class="wpstream_file_drop_color">';
-                    $to_return.='<div class="wpstream_form_ex">'.esc_html__('Drop video files here!','wpstream').'</div>';      
-                    $to_return.='<div class="wpstream_form_ex_details">'.__('The Video File must be encoded with the following settings:<br>
+                    // The new screens always show the requirements as a list; the older widget keeps its own text.
+                    if ( $compact ) {
+                        $to_return .= $this->wpstream_upload_requirements_html();
+                    } else {
+                        $to_return.='<div class="wpstream_form_ex">'.esc_html__('Drop video files here!','wpstream').'</div>';
+                        $to_return.='<div class="wpstream_form_ex_details">'.__('The Video File must be encoded with the following settings:<br>
 
                     Container: <strong>MP4</strong>,<br>
                     Video codec: <strong>H264</strong>,<br>
                     Audio codec: <strong>AAC</strong>.<br>
                     Media will fail to play if it does not follow the above settings. 
-                    You may use a tool like MediaInfo to verify your file. Also you may convert it with specialized software like HandBrake.','wpstream').'<strong> '.esc_html__('Accepted file extensions: .mp4, .mov','wpstream').'</strong></div>';    
+                    You may use a tool like MediaInfo to verify your file. Also you may convert it with specialized software like HandBrake.','wpstream').'<strong> '.esc_html__('Accepted file extensions: .mp4, .mov','wpstream').'</strong></div>';
+                    }
                     // Inject each signed S3 field as a hidden input so the browser POST is authorized.
                     if(is_array($formInputs)){
                         foreach ($formInputs['ref'] as $name => $value) {
@@ -2316,15 +2285,15 @@ class Wpstream_Admin {
                 // Optional captions (.vtt) picker; hide the select button when a file is already set.
                 $wpstream_closed_captions_file = get_post_meta($post->ID, 'wpstream_closed_captions_file', true);
 
-                $button_style = $wpstream_closed_captions_file ? 'style="display:none;"' : '';
+                $button_class = $wpstream_closed_captions_file ? ' wpstream-is-hidden' : '';
 
                 print '<p class="meta-option wpstream_vod_captions_url">';
                 print '<label for="wpstream_vod_captions_url_button">'.__('Captions file (optional):','wpstream').' </label><br />
                         <input type="hidden" id="wpstream_closed_captions_file" name="wpstream_closed_captions_file" value="'.esc_attr($wpstream_closed_captions_file).'" />
-                        <input id="wpstream_vod_captions_url_button" type="button" class="upload_button button" value="'.esc_html__('Select .vtt Captions File','wpstream').'" '.$button_style.' />
+                        <input id="wpstream_vod_captions_url_button" type="button" class="upload_button button'.esc_attr($button_class).'" value="'.esc_html__('Select .vtt Captions File','wpstream').'"  />
                         <span class="wpstream_caption_file_display">'.( $wpstream_closed_captions_file ? esc_html( basename( $wpstream_closed_captions_file ) ) : '' ).'</span>';
                 if ( $wpstream_closed_captions_file ) {
-                    print '<input type="button" class="button wpstream_remove_caption" value="'.esc_html__('Remove','wpstream').'" style="margin-left: 5px;" />';
+                    print '<input type="button" class="button wpstream_remove_caption" value="'.esc_html__('Remove','wpstream').'" />';
                 }
                 print '</p> ';
 
@@ -2338,13 +2307,13 @@ class Wpstream_Admin {
                         // Show the recording hint vs the external hint depending on the saved media type.
                         if($wpstream_product_type==2){
                             $show_recording='';
-                            $show_external='style="display:none"';
+                            $show_external=' wpstream-is-hidden';
                         }else{
-                            $show_recording='style="display:none"';
+                            $show_recording=' wpstream-is-hidden';
                             $show_external='';
                         }
-                        print '<p '.$show_recording.' class="wpstream_option_vod_source wpstream_show_recording">'.esc_html__('Choose one of your existing recordings.','wpstream').'</p>';
-                        print '<p '. $show_external.' class="wpstream_option_vod_source wpstream_show_external">'.esc_html__('Upload a video from your computer or paste the URL of a YouTube/external video.','wpstream').'</p>';
+                        print '<p class="wpstream_option_vod_source wpstream_show_recording'.esc_attr($show_recording).'">'.esc_html__('Choose one of your existing recordings.','wpstream').'</p>';
+                        print '<p class="wpstream_option_vod_source wpstream_show_external'.esc_attr($show_external).'">'.esc_html__('Upload a video from your computer or paste the URL of a YouTube/external video.','wpstream').'</p>';
                      
                 print '</div> ';
 
@@ -2624,6 +2593,8 @@ class Wpstream_Admin {
             if ( ! $is_new_product && ! $this->wpstream_is_wpstream_wc_product_context( $post_id ) ) {
                 return;
             }
+            // Live products have no video panel, so explain missing subscription support here too.
+            echo '<div class="options_group show_if_live_stream show_if_video_on_demand">' . Wpstream_Commerce_Requirements::render( 'subscription' ) . '</div>';
             // Subscription-based live channel toggle (only when WC Subscriptions is active).
             if(function_exists('wcs_user_has_subscription')){
                 echo '<div class="options_group   show_if_subscription">';
@@ -2637,7 +2608,7 @@ class Wpstream_Admin {
                 echo '</div>';
             }
 
-            echo '<div class="options_group show_if_live_stream" style="border:none;"></div>';
+            echo '<div class="options_group show_if_live_stream wpstream-borderless"></div>';
             // VOD video chooser section.
             echo '<div class="options_group show_if_video_on_demand">';
 
@@ -2652,8 +2623,9 @@ class Wpstream_Admin {
                 }
                 // Only administrators may assign videos.
                 if( !current_user_can('administrator') ){
-                    print '<div style="margin:10px;">'.esc_html__('You need to be an administrator in order to assign videos','wpstream').'</div>';
-                }else{
+                    print '<div class="wpstream-admin-message">'.esc_html__('You need to be an administrator in order to assign videos','wpstream').'</div>';
+                }elseif ( $this->main->wpstream_live_connection->is_connected() ){
+                    // The native sign-in gate also covers this legacy source field.
                     woocommerce_wp_select( 
                         array( 
                             'id'      =>    '_movie_url', 
@@ -2780,7 +2752,6 @@ class Wpstream_Admin {
             $permited_values = array(
                 '_movie_url',
                 '_subscript_live_event',
-                '_wpstream_parent_sub',
 
             );
 
@@ -2793,15 +2764,18 @@ class Wpstream_Admin {
                     if( !empty( $_POST[$key] ) ){
                         $key    =   sanitize_key($key);
                         $value  =   sanitize_text_field($_POST[$key]);
-
-                        // The parent-subscription field is an array; sanitize each element.
-                        if($key=='_wpstream_parent_sub'){
-                            $value= $_POST[$key];
-                            $value = array_map("sanitize_text_field", $value);
-
-                        }
                         update_post_meta( $post_id, $key, $value );
                     }
+                }
+            }
+
+            // "Attach to subscription" posts nothing when emptied and 0 for its "none" choice, and both mean no plan.
+            if ( function_exists( 'wcs_user_has_subscription' ) ) {
+                $parents = array_values( array_filter( array_map( 'absint', (array) ( $_POST['_wpstream_parent_sub'] ?? array() ) ) ) );
+                if ( $parents ) {
+                    update_post_meta( $post_id, '_wpstream_parent_sub', $parents );
+                } else {
+                    delete_post_meta( $post_id, '_wpstream_parent_sub' );
                 }
             }
             //die();
@@ -3067,51 +3041,6 @@ class Wpstream_Admin {
 
 
 
-   /**
-        * Register a hidden dashboard page used as the onboarding wizard endpoint.
-        *
-        * @return void
-        */
-        public function add_dashboard_page() {
-			$this->main->get_onboarding()->render_part( 'dashboard_page' );
-        }
-
-
-
-
-        /**
-         * Bootstrap the full-screen onboarding wizard screen (non-AJAX requests).
-         *
-         * @return void
-         */
-        public function wpstream_load_onboarding_wizard() {
-			$this->main->get_onboarding()->render_part( 'standalone' );
-        }
-
-
-        /*
-        * Add on boarding to footer
-        */
-        /**
-         * On the onboarding admin page, print the onboarding modal into the footer.
-         *
-         * @return void
-         */
-        public function wpstream_admin_footer_onboarding(){
-			$this->main->get_onboarding()->render_part( 'page_footer' );
-        }
-        
-
-        /*
-        * On Board Display
-        *
-        */
-        /**
-         * Render the Quick Start landing screen (logo, intro, "Start the Guide"
-         * button and the script that opens the onboarding wizard). Echoes HTML.
-         *
-         * @return void
-         */
         public function wpstream_pre_onboard_display(){
 			echo $this->main->get_onboarding()->render();
         }        
@@ -3120,102 +3049,6 @@ class Wpstream_Admin {
 
 
 
-
-
-
-        /*
-        *
-        * On Boarding Content
-        *
-        */
-        /**
-         * Emit the full onboarding wizard markup by rendering each step in order
-         * (header, account, path choice, live/VOD branches, footer). Echoes HTML.
-         *
-         * @return void
-         */
-        public function wpstream_onboard_display() {
-			$this->main->get_onboarding()->render_part( 'wizard' );
-        }
-
-
-        /*
-        *
-        * On Boarding Step 1 - the login/register
-        *
-        */
-        /**
-         * Onboarding step 1: WpStream account login/registration UI, including the
-         * ALTCHA captcha widget (on HTTPS) and a hidden generated registration
-         * password. Emits a marker div when a token already exists. Echoes HTML.
-         *
-         * @return void
-         */
-        public function wpstream_onboarding_step1(){
-			$this->main->get_onboarding()->render_part( 'account' );
-        }
-
-        public function randomPassword() {
-			return $this->main->get_onboarding()->render_part( 'password' );
-        }
-
-        public function wpstream_onboarding_step2(){
-			$this->main->get_onboarding()->render_part( 'path' );
-        }
-
-        public function wpstream_onboarding_step3_live_streaming(){
-			$this->main->get_onboarding()->render_part( 'live' );
-        }
-
-        public function wpstream_onboarding_step_3_A_live_streaming_free_view(){
-			$this->main->get_onboarding()->render_part( 'live_free' );
-        }
-
-        public function wpstream_onboarding_step_3_B_live_streaming_pay_per_view(){
-			$this->main->get_onboarding()->render_part( 'live_ppv' );
-        }
-
-        public function wpstream_onboarding_woo_warning(){
-			$this->main->get_onboarding()->render_part( 'woo_warning' );
-        }
-
-        public function wpstream_onboarding_step4_vod(){
-			$this->main->get_onboarding()->render_part( 'vod' );
-        }
-
-        public function wpstream_onboarding_step_4_free_vod(){
-			$this->main->get_onboarding()->render_part( 'vod_free' );
-        }
-
-        public function wpstream_obboarding_file_warning(){
-			$this->main->get_onboarding()->render_part( 'file_warning' );
-        }
-
-        public function wpstream_onboarding_step_4_ppv_vod(){
-			$this->main->get_onboarding()->render_part( 'vod_ppv' );
-        }
-
-        public function onboarding_wizard_header() {
-			$this->main->get_onboarding()->render_part( 'wizard_header' );
-        }
-
-
-
-
-
-        /*
-        *
-        * On Boarding Footer
-        *
-        */
-        /**
-         * Close the onboarding wizard wrapper and print its modal background. Echoes HTML.
-         *
-         * @return void
-         */
-        public function onboarding_wizard_footer() {
-			$this->main->get_onboarding()->render_part( 'wizard_footer' );
-        }
 
 
 

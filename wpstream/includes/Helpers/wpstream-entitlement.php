@@ -124,6 +124,16 @@ if ( ! function_exists( 'wpstream_user_entitled_for_product_rule' ) ) {
 			return true;
 		}
 
+		// Explicitly linked plans cover this video/channel in either access mode.
+		// The global mode still controls only the site-wide fallback plan below.
+		if ( function_exists( 'wcs_user_has_subscription' ) ) {
+			foreach ( (array) get_post_meta( $product_id, '_wpstream_parent_sub', true ) as $parent_id ) {
+				if ( absint( $parent_id ) && wcs_user_has_subscription( $current_user->ID, absint( $parent_id ), 'active' ) ) {
+					return true;
+				}
+			}
+		}
+
 		// Legs 2+3 apply only to non-subscription products: completed direct
 		// purchase, or completed purchase of the bundle this product belongs to.
 		if ( 'subscription' !== $product->get_type() ) {

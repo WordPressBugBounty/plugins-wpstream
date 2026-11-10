@@ -1,10 +1,10 @@
 === WpStream - Live Streaming, Video on Demand, Pay Per View ===
 Contributors: wpstream
-Tags: live streaming, video streaming, live video, broadcast, live shopping
+Tags: live streaming, video streaming, video on demand, pay per view, live shopping
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.14.3
+Stable tag: 4.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ WpStream is a Video Streaming Plugin that lets you broadcast live events and hel
 
 == Description ==
 
-Live stream on your WordPress website and make recordings available for replay.
+Live stream on your WordPress website and make recordings available for replay. The plugin is free, and the WpStream streaming service starts with a free trial that needs no credit card.
 
 WpStream lets you broadcast from your browser or streaming software such as OBS, with viewers watching on your own site. Add live services, shows, matches, classes, or events to the website you already manage. Offer free viewing or sell access through WooCommerce.
 
@@ -89,53 +89,86 @@ Use the <a href="https://docs.wpstream.net/docs-category/getting-started/" targe
 
 
 == Screenshots ==
-1. Add your WpStream Credentials
-2. WpStream Onboarding Wizard
-3. WpStream Onboarding Wizard - Going Live
-4. WpStream Settings Page
-5. WpStream Channel Settings
-6. Turning On a Channel
-7. WpStream Player on frontend
-8. Pay Per View Live Channel with WooCommerce
-9. Your Channel List
-10. Your Recordings
-11. Setting up a Subscription with WooCommerce Subscriptions Plugin
+1. Connect your site to your WpStream account with your account email and password
+2. Start with the Quick Start guide: go live or create your first video on demand
+3. Go live from the channel's edit page: turn the channel on and click the webcam icon
+4. Choose who may broadcast and the defaults for their channels on the Settings page
+5. Set recording, autoplay, encryption, and website lock per live channel
+6. Turn a live channel on from its edit page, then pick browser or streaming-app broadcasting
+7. Your audience watches live on your own site, with the viewer count on the player
+8. Sell tickets to a live channel as a WooCommerce product at your own price
+9. See every live channel, its on/off status, and its controls in one list
+10. Upload or pick a recording and publish it as a free or pay-per-view video on demand
+11. Offer recurring access to live channels with WooCommerce Subscriptions
 
 == Frequently Asked Questions ==
 
-=What can I use WpStream for?=
-Live Streaming, Video (On Demand), and Pay-Per-View on WordPress websites. Most popular use cases for live video content include <a href="https://wpstream.net/broadcast-live-fitness-and-exercise-classes/" target="_blank">Fitness</a>, <a href="https://wpstream.net/churches-and-houses-of-worship/" target="_blank">Faith</a>, <a href="https://wpstream.net/education-and-e-learning/" target="_blank">Education</a>, and <a href="https://wpstream.net/news-broadcasting/" target="_blank">News / TV Broadcasting</a>.
+= Is WpStream free? =
+The plugin is free. Live streaming and cloud video run on the WpStream streaming service, which starts with a free trial and continues on a <a href="https://wpstream.net/pricing/" target="_blank">paid plan</a>. Self-hosted and external videos do not use your plan's allowance.
 
-=Which plan is the best for my streaming needs?=
-We calculate your ideal plan based on the number of hours you will be streaming, the number of viewers, the amount of storage you need, and the quality of your broadcast. You can calculate which plan is best for you by adding your numbers <a href="https://wpstream.net/pricing/#band_calculator" target="_blank">here</a>.
+= Do I need an account? =
+Yes. Sign up at <a href="https://wpstream.net/" target="_blank">wpstream.net</a>, then enter your credentials under WpStream in your WordPress admin. The free trial needs no credit card.
 
-=How many LIVE channels can I run concurrently?=
-You can run anywhere from 5 to 150  LIVE concurrent channels, depending on the streaming plan you have. Check them out <a href="https://wpstream.net/pricing/" target="_blank">here</a>.
+= What happens when my trial ends? =
+The trial has no time limit; it ends when its streaming and storage allowance is used up. Your account, live channels, videos, and pages stay in place. Live broadcasting and cloud video resume when you choose a paid plan.
 
-=Can I monetize my LIVE and Video (On Demand) content?=
-Absolutely! You can set up subscriptions, pay-per-view, or hybrid models with WooCommerce. Find out more information about the different monetization options for LIVE and Video content  <a href="https://wpstream.net/how-to-monetize-your-live-streaming-content-with-wpstream/" target="_blank">here</a>.
+= What can I use WpStream for? =
+Live streaming, video on demand, and pay-per-view on WordPress websites. Popular uses include <a href="https://wpstream.net/broadcast-live-fitness-and-exercise-classes/" target="_blank">fitness</a>, <a href="https://wpstream.net/churches-and-houses-of-worship/" target="_blank">faith</a>, <a href="https://wpstream.net/education-and-e-learning/" target="_blank">education</a>, and <a href="https://wpstream.net/news-broadcasting/" target="_blank">news and TV broadcasting</a>.
 
-=Can my website users go live on my website on their own?=
-Regular users are able to GO LIVE via the Front-End. Check out the <a href="https://docs.wpstream.net/docs/elementor-3/" target="_blank">documentation</a> to find out how streaming video is done by regular users.
+= Which plan is the best for my streaming needs? =
+The right plan depends on how many hours you stream, how many viewers you expect, how much storage you need, and the quality of your broadcast. Enter your numbers in the <a href="https://wpstream.net/pricing/#band_calculator" target="_blank">plan calculator</a>.
 
-=What can I live stream with?=
-Through any modern browser or using apps with RTMP (Real-Time Messaging Protocol) capability. For example, StreamYard, OBS, Wirecast, iPhones, and Androids. <a href="https://wpstream.net/live-streaming/" target="_blank">See here</a>.
+= How many live channels can I run at the same time? =
+From 5 to 150 live channels at once, depending on your streaming plan. See the <a href="https://wpstream.net/pricing/" target="_blank">plans</a>.
+
+= Can I monetize my live channels and videos on demand? =
+Yes. Set up pay-per-view, subscriptions, or a mix of both with WooCommerce. Read about the <a href="https://wpstream.net/how-to-monetize-your-live-streaming-content-with-wpstream/" target="_blank">monetization options</a>.
+
+= Can my website users go live on my website on their own? =
+Yes. Users in the roles you allow can go live from the front end of your site, without access to the WordPress admin. See the <a href="https://docs.wpstream.net/docs/elementor-3/" target="_blank">front-end broadcasting documentation</a>.
+
+= What can I live stream with? =
+Any modern browser, or an app or encoder with RTMP (Real-Time Messaging Protocol) output, such as OBS Studio, Wirecast, StreamYard, and the Larix mobile app for iPhone and Android. <a href="https://wpstream.net/live-streaming/" target="_blank">Read more</a>.
 
 = Where do I report security bugs found in this plugin? =
-Please report security bugs found in the source code of the WpStream plugin through the [Patchstack Vulnerability Disclosure  Program](https://patchstack.com/database/vdp/9e5fbaaa-34e8-4647-9a67-08c4760f554d). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
+Please report security bugs found in the source code of the WpStream plugin through the [Patchstack Vulnerability Disclosure Program](https://patchstack.com/database/vdp/9e5fbaaa-34e8-4647-9a67-08c4760f554d). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
 
 == Installation ==
-1. Review our comprehensive tutorials here  https://wpstream.net/category/getting-started/
+1. Review our comprehensive tutorials here https://wpstream.net/category/getting-started/
 2. Install and enable the plugin from https://downloads.wordpress.org/plugin/wpstream.zip or by searching for 'WpStream' in your plugin install page
-3. Signup with <a href="https://wpstream.net/">WpStream</a> and get your credentials
-4. Under the "WpStream" section of your WordPress admin, use the WpStream credentials to activate your plugin
-5. (Optional) Install and activate <a href="https://wordpress.org/plugins/woocommerce/">WooCommerce</a> if you need to create pay-per-view video products
-6. Create and publish a new 'Free Live Channel" (under 'Free Free Live Channel / Free Video') or a 'Live channel' type Product (under 'Products')
-7. After publishing your Channel/Product, click the "BROADCAST TO CHANNEL" button. Wait for the channel to become available and select your favorite way to broadcast ('Browser' or '3rd Party'). The browser broadcast will open a pop-up that will immediately begin to broadcast. The '3rd party' option will give you the 'rtmp' parameters you need to set up on your encoder (i.e. OBS)
-8. Live video will be available on the Channel/Product 'permalink' page shortly after starting your broadcast
+3. Sign up with <a href="https://wpstream.net/">WpStream</a> and get your credentials
+4. Open "WpStream" in your WordPress admin and sign in with your WpStream account, or create one there
+5. (Optional) Install and activate <a href="https://wordpress.org/plugins/woocommerce/">WooCommerce</a> if you need to create pay-per-view products
+6. Go to WpStream, All Channels and click "New channel". Choose who can watch: free to watch, or pay per view with WooCommerce
+7. Click "Broadcast" on the channel. Press "Start Broadcast" to go live from your browser camera, or choose "Streaming software" to get the RTMP address and stream key for OBS, vMix, Larix or another streaming app
+8. Live video is available on the live channel page shortly after you start your broadcast
 
 
 == Changelog ==
+
+= 4.15 =
+* Added - Redesigned WpStream admin. All Channels and All Videos are one content library with image tiles, row menus and in-row editing; each row keeps one main action, Broadcast for a channel and View for a video. Recordings are merged into All Videos, and "Publish as video" opens New Video with the recording selected
+* Added - New channel and New video open a single creation workspace with a "Who can watch?" choice (free to watch, pay per view, subscription plan). Publish explains what is still missing while it is disabled, and a draft is kept for the browser session
+* Added - The browser broadcaster is now part of the plugin. It opens from the Broadcast button on its own admin page, as a block under the title in the block editor and after the title in the classic editor, and shows a loading message until the tool is ready
+* Added - The broadcaster stats show NA when off air, Loading while waiting for data and real values once the channel is on air. Start Broadcast is offered again after the encoder stops, without a reload
+* Added - One video source component on New Video, the product editor and the block editor: source first, then upload, recording or URL, preview and captions. Upload requirements and the maximum size are always visible
+* Added - An "Unused media files" page lists every file in the cloud account with search, status filter, sort and paging
+* Added - The admin header shows usage meters for the account and warns at 80% and 95% used
+* Added - Redesigned Settings page: tabs in a white card, labels above fields, a live URL preview for the slug fields, the price field only for paid content, Save always visible, and Recent Logs paged 20 per page
+* Added - The WpStream page opens on the account connection card with Sign in and Create an account tabs; the Live streaming and Video on demand cards unlock once the account is connected
+* Fix - Captions show on the hosted video player. The plugin now serves a video's captions file with the header the player needs and points the player at it
+* Fix - The Streaming software panel shows the RTMP address and stream key of a channel that is not running, including the first channel of a new install; it previously read "No channel selected"
+* Fix - Pressing Start Broadcast again after a page refresh or a cancelled startup reuses the channel that is still running instead of failing with "Failed to turn channel ON"
+* Fix - On a site served over plain http the broadcaster says that browser broadcasting needs https and that streaming software still works, instead of sitting on "Starting" until "Broadcast startup timed out"
+* Fix - A camera that fails at startup reports the camera error at once instead of after the two-minute timeout
+* Fix - The "Enable camera & microphone" button sizes to its label instead of filling the preview area
+* Fix - Customers get a plain sentence when a video download is refused or fails, instead of a raw code or an endless "please wait"
+* Fix - Saving channel defaults in Basic Streaming keeps them, custom messages no longer gain backslashes, Settings refuse invalid slugs and an incomplete Global Subscription Mode with an error, and a failed save is reported
+* Fix - A failed free-to-paid switch restores the item, "Attach to subscription" can be cleared, refreshing after Publish no longer creates a duplicate, and in Global Subscription Mode an existing pay-per-view item stays editable
+* Fix - A refused sign-in no longer replaces the saved account, and the registration consent is checked on the server
+* Fix - Deleting a cloud file confirms on the row and shows failures, downloads start from one click, trashed rows can be restored but not edited, and lists are hidden while the account is disconnected
+* Removed - Onboarding telemetry: the wizard, demo import, start-streaming and broadcaster no longer send events to click.wpstream.net
+* Changed - WordPress.org listing copy: tags, FAQ, screenshot captions and installation steps rewritten; duplicate changelog block and old typos removed
 
 = 4.14.3 =
 * Fix - Paid videos and encrypted free videos play again in the hosted player. Since 4.14.2 the plugin asked the WpStream service for the player's embed key with the storage-prefixed video path instead of the file name, so no key was issued and every such video showed "The player is temporarily unavailable"
@@ -214,7 +247,7 @@ Please report security bugs found in the source code of the WpStream plugin thro
 = 4.11.4 =
 * Enhancement - Hook custom menu items into the WC menu
 * Fix - Start/Stop streaming using the go_live shortcode
-* Fix - Unecessary HLS playback URL
+* Fix - Unnecessary HLS playback URL
 
 = 4.11.3 =
 * Enhancement - Player loading time
@@ -388,7 +421,7 @@ Please report security bugs found in the source code of the WpStream plugin thro
 = 4.6.6 =
 * Feature - basic streaming
 * Enhancement - change text/labels
-* Enhancement - iproved error logging
+* Enhancement - improved error logging
 
 = 4.6.5 =
 * Feature - set up import demos
@@ -402,7 +435,7 @@ Please report security bugs found in the source code of the WpStream plugin thro
 * QoE enhancements
 
 = 4.6.2 =
-* improve the enqueque of wpstream js files
+* improve the enqueue of wpstream js files
 * fixed the way WooCommerce "Shop Manager" user role see the admin interface
 * replace qr code generation link since google qr code is not available anymore
 * added stable tag
@@ -426,7 +459,7 @@ Please report security bugs found in the source code of the WpStream plugin thro
 * Fix - the 'x' on the mute icon is 'chipped' 
 * Enhancement - add title overlay capability to player
 * Optimization - moved code from theme
-* Update - fpr theme changes
+* Update - for theme changes
 * Enhancement - show video collections above comments
 * Enhancement - do not show actors, media categories, ratings in the admin product list
 * Fix - exclude_from_search issue with wpstream post types
@@ -444,10 +477,10 @@ Please report security bugs found in the source code of the WpStream plugin thro
 * Fix - class for warning message
 
 = 4.6.0.1 =
-* Fix full witdth trailer (theme)
+* Fix full width trailer (theme)
 
 = 4.6 =
-* Cumulative changes to accomodate upcoming WpStream Theme
+* Cumulative changes to accommodate upcoming WpStream Theme
 
 = 4.5.12 =
 * Upgrade video.js to 8.11.5 (includes VHS v3.11.2)
@@ -515,7 +548,7 @@ Please report security bugs found in the source code of the WpStream plugin thro
 * tested up to WP 6.2
 
 = 4.5.1 = 
-* Added Low Latancy beta to channel settings (can be enabled/disabled for each channel)
+* Added Low Latency beta to channel settings (can be enabled/disabled for each channel)
 * Added Adaptive bitrate beta to channel settings (can be enabled/disabled for each channel)
 
 = 4.5 = 
@@ -655,9 +688,6 @@ Please report security bugs found in the source code of the WpStream plugin thro
 = 3.10.1 =
 * Fix for no thumb warning
 * Fix for translation string
-
-= 3.10 =
-* Added “encode live stream” as event option
 
 = 3.10 =
 * Added “encode live stream” as event option

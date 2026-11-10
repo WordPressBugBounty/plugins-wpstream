@@ -1,773 +1,460 @@
-/**
- * WpStream admin onboarding wizard styles.
- *
- * Styles the guided first-run onboarding experience shown inside wp-admin:
- * the centered onboarding modal/wrapper, the contextual "bubble" tooltips that
- * point at page elements, the account register/login step, the per-content
- * setup steps (live channel, PPV/free VOD), the accordion sections, the call-to
- * -action buttons, the full-screen dark modal backgrounds, and the responsive
- * adjustments that keep the wizard usable on short/narrow viewports.
- *
- * Loaded on the plugin's admin onboarding screens only.
- */
-
-/* Onboarding wrapper: the fixed, centered panel that hosts the wizard steps.
-   Hidden by default; JS toggles it on. Width is offset by half via negative
-   margin-left to center it against left:50%. */
-.wpstream_on_boarding_wrapper{
-    background-color: #fff;
-    position: fixed;
-    width: 500px;
-    top: 125px;
-    left: 50%;
-    margin-left: -250px;
-    z-index: 10002;
-    display: none;
+/** WpStream account and onboarding components; shared brand tokens own their visual identity. */
+/* Darker than the brand green and red, because this is small text on white and needs 4.5:1 contrast. */
+.wpstream_onboarding_notification{display:none;margin:12px 0;color:#0B7A4B;}
+.onboarding_error{color:#C62A1F;}
+.wpstream-screen{
+    --purple:var(--wpstream-brand-accent, #4E2EE5);
+    --ink:var(--wpstream-brand-text, #0A0A0B);
+    --muted:var(--wpstream-brand-muted, #6E6E77);
+    --line:var(--wpstream-brand-border, #E3E3E7);
+    width:calc(100% - 20px);
+    max-width:960px;
+    margin:0 0 50px;
+    padding:0;
+    box-sizing:border-box;
+    color:var(--wpstream-brand-text, #0A0A0B);
+    font:15px/1.55 var(--wpstream-brand-font, "Manrope", sans-serif);
+}
+.wpstream-screen *,
+.wpstream-screen *::before,
+.wpstream-screen *::after{
+    box-sizing:border-box;
+}
+.wpstream-screen [hidden]{
+    display:none !important;
+}
+.wpstream-screen button:focus-visible,
+.wpstream-screen a:focus-visible,
+.wpstream-screen input:focus-visible{
+    outline:2px solid var(--wpstream-brand-accent, #4E2EE5);
+    outline-offset:2px;
+    box-shadow:none;
+}
+.wpstream-screen a{
+    color:var(--wpstream-brand-accent, #4E2EE5);
 }
 
-/* Contextual tooltip bubble: floating hint anchored beside a target element.
-   Hidden by default. Fixed (viewport-relative, not page-relative) so JS can
-   keep it pinned to its target across page scroll, scroll of an inner
-   container (e.g. the block editor sidebar), and window resize by simply
-   re-reading the target's current getBoundingClientRect() on those events. */
-#wpstream_onboard_bubble{
-    position: fixed;
-    z-index: 10002;
-    background: #fff;
-    left: 175px;
-    top: -30px;
-    width: 375px;
-    display: none;
+/* Intro: eyebrow, heading, description. */
+.wpstream-screen .intro{
+    margin-bottom:29px;
+}
+.wpstream-screen .eyebrow{
+    display:block;
+    font-size:13px;
+    font-weight:750;
+    letter-spacing:.08em;
+    color:var(--wpstream-brand-muted, #6E6E77);
+    margin-bottom:8px;
+}
+.wpstream-screen h1{
+    font-size:32px;
+    font-weight:700;
+    letter-spacing:-.02em;
+    line-height:1.25;
+    margin:0 0 11px;
+    padding:0;
+    color:inherit;
+}
+.wpstream-screen h2{
+    font-size:24px;
+    font-weight:700;
+    line-height:1.4;
+    margin:0 0 10px;
+    padding:0;
+    color:inherit;
+}
+.wpstream-screen p{
+    margin:0 0 16px;
+    line-height:1.6;
+}
+.wpstream-screen .intro > p{
+    color:var(--muted);
+    font-size:14px;
 }
 
-/* Bubble arrows: the little CSS triangle "pointer" on the side of a bubble,
-   drawn with the classic transparent-border trick. Left/right variants point
-   the bubble toward its anchor on either side. */
-.boarding-left-arrow:after{
-    content: " ";
-    position: absolute;
-    top: 20%;
-    margin-top: 0px;
-    left: -12px;
-    width: 0;
-    height: 0;
-    border-top: 10px solid transparent;
-    border-bottom: 10px solid transparent;
-    border-right: 12px solid #F7F4FC;
+/* Connection card: copy column + form column. */
+.wpstream-screen .connection{
+    background:var(--wpstream-brand-raised, #fff);
+    border:1px solid var(--wpstream-brand-border, #E3E3E7);
+    border-radius:20px;
+    padding:28px;
+    margin:0 0 24px;
+    display:grid;
+    grid-template-columns:minmax(240px,1fr) minmax(280px,440px);
+    gap:40px;
+    align-items:start;
+}
+.wpstream-screen .connection-copy{
+    padding-top:4px;
+}
+.wpstream-screen .connection-copy p{
+    font-size:13px;
+    color:var(--muted);
+    max-width:38ch;
 }
 
-.boarding-right-arrow:after{
-    content: " ";
-    position: absolute;
-    top: 20%;
-    margin-top: 0px;
-    right: -12px;
-    width: 0;
-    height: 0;
-    border-top: 10px solid transparent;
-    border-bottom: 10px solid transparent;
-    border-left: 12px solid white;
+/* Sign in / Create an account tabs. */
+.wpstream-screen .account-tabs{
+    display:flex;
+    gap:25px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:18px;
+}
+.wpstream-screen .account-tabs button{
+    background:none;
+    border:0;
+    border-bottom:2px solid transparent;
+    padding:0 0 9px;
+    font:inherit;
+    font-size:13px;
+    color:var(--muted);
+    cursor:pointer;
+}
+.wpstream-screen .account-tabs button[aria-pressed="true"]{
+    color:var(--purple);
+    border-bottom-color:var(--purple);
+    font-weight:650;
 }
 
-
-
-
-/* Shared card chrome: the drop shadow, padding, rounded corners and border
-   applied to both the bubble and the main wrapper so they read as one surface. */
-#wpstream_onboard_bubble,
-.wpstream_on_boarding_wrapper{
-    box-shadow: 8px 8px 7px 1px #0606061f;
-    padding: 20px 30px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+/* Form fields. */
+.wpstream-screen label{
+    display:block;
+    font-size:13px;
+    font-weight:550;
+    margin-bottom:16px;
+    color:inherit;
 }
-
-
-/* Wrapper overrides: bump the wrapper padding and give it the light purple
-   fill used across the onboarding UI. */
-.wpstream_on_boarding_wrapper{
-    padding: 30px;
-    min-height: 60px;
-    background-color: #F7F4FC;
-
-}
-
-
-/* Wizard steps: each step is a hidden panel toggled into view by JS, with a
-   centered heading. wpstream_has_credential is the variant shown once the user
-   already has WpStream credentials. */
-.wpstream_step_wrapper{
-    display: none;
-}
-
-.wpstream_step_wrapper h1{
-    font-size: 20px;
-    margin: 30px 0px 45px 0px;
-    color:#221466;
-    text-align: center;
-}
-
-
-.wpstream_has_credential h1{
-    margin-top: 0px;
-}
-
-.header_special {
-    color: #4e2ee6;
-}
-
-.wpstream_step_wrapper .wpstream_option{
-    width: 100%;
-    padding: 0px 0px 0px 0px;
-}
-
-/* Register / option panels: the boxed sub-sections inside a step (account
-   registration form and generic option groups) with their own padded, bordered
-   purple card. */
-.wpstream_on_board_register_wrapper,
-.wpstream_step_wrapper .wpstream_option_wrapper {
-    max-width: 100%;
-    padding: 0px 0px 0px 0px;
-    padding: 30px;
-    border-radius: 5px;
-    margin-bottom: 30px;
-    background-color: #eae8fc;
-    border: 1px solid #e8dbfc;
-}
-
-.wpstream_on_board_register_wrapper h2{
-    color:#221466;
-    margin-top: 0px;
-}
-
-.wpstream_on_board_register_wrapper #wpstream_register_privacy {
-    width: 1rem;
-}
-
-.wpstream_on_board_register_wrapper .wpstream_terms_agreement {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-}
-
-/* Login explanation blurb: the small centered helper text above the login form. */
-.wpstream_on_board_login_wrapper_explanations{
-    margin-bottom: 35px;
-    font-size: 14px;
-    line-height: 1.6em;
-    margin-top: -20px;
-    text-align: center;
-}
-
-/* Register/login submit buttons stretch full width of their card. */
-.wpstream_onboard_register,
-.wpstream_onboard_login{
+.wpstream-screen label > input[type="text"],
+.wpstream-screen label > input[type="password"]{
+    display:block;
     width:100%;
-
+    min-height:0;
+    padding:10px 11px;
+    border:1px solid var(--wpstream-brand-border, #E3E3E7);
+    background:var(--wpstream-brand-raised, #fff);
+    border-radius:8px;
+    margin:6px 0 0;
+    color:var(--wpstream-brand-text, #0A0A0B);
+    font:inherit;
+    box-shadow:none;
+}
+.wpstream-screen .checkbox{
+    display:flex;
+    align-items:flex-start;
+    gap:7px;
+    flex-wrap:wrap;
+    font-weight:400;
+    font-size:13px;
+}
+.wpstream-screen .checkbox input{
+    width:16px;
+    height:16px;
+    min-width:16px;
+    padding:0;
+    margin:1px 0 0;
+    accent-color:var(--purple);
+}
+.wpstream-screen .field-help{
+    font-size:13px;
+    color:var(--muted);
 }
 
-/* Auth toggles hidden by default: the login action link and the register/login
-   panels start collapsed and are revealed by JS as the user switches modes. */
-#wpstream_onboarding_action_login,
-.wpstream_on_board_register_wrapper,
-.wpstream_on_board_login_wrapper{
-    display: none;
+/* Primary submit button. */
+.wpstream-screen .button{
+    display:inline-flex;
+    justify-content:center;
+    align-items:center;
+    border:1px solid transparent;
+    border-radius:8px;
+    min-height:40px;
+    padding:9px 24px;
+    font:inherit;
+    font-size:13px;
+    font-weight:600;
+    line-height:1.5;
+    cursor:pointer;
+}
+.wpstream-screen .button.primary{
+    background:var(--purple);
+    color:var(--wpstream-brand-raised, #fff);
+}
+.wpstream-screen .button.wide{
+    width:100%;
+}
+.wpstream-screen .button:hover{
+    background:var(--wpstream-brand-accent-hover, #6244EA);
+    color:#fff;
+}
+.wpstream-screen .button:disabled,
+.wpstream-screen .button.primary:disabled{
+    background:var(--purple) !important;
+    color:var(--wpstream-brand-raised, #fff) !important;
+    border-color:transparent !important;
+    opacity:.4;
+    cursor:default;
 }
 
-
-
-/* Inline status messages: green success "notification" pill (hidden until JS
-   shows it), a red error variant, and the "checking account status" text. */
-.wpstream_onboarding_notification{
-    background: #45a73f;
-    padding: 5px 10px;
-    color: #fff;
-    border-radius: 5px;
-    width: auto;
-    margin-top: 10px;
-    display: inline-block;
-    display: none;
+/* Inline account status and error messages. */
+.wpstream-screen .wpstream_onboarding_notification{
+    display:none;
+    margin:0 0 12px;
+    font-size:13px;
 }
 
-.onboarding_error{
-    background: #F24B4B;
-   
-    margin-top: 0px;
+/* Connected confirmation notice: check icon and label side by side. */
+.wpstream-screen .connected-notice{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--wpstream-brand-raised, #fff);
+    border:1px solid var(--wpstream-brand-border, #E3E3E7);
+    border-left:3px solid var(--wpstream-brand-accent, #4E2EE5);
+    border-radius:12px;
+    padding:16px 20px;
+    margin-bottom:24px;
+    color:var(--wpstream-brand-text, #0A0A0B);
+    font-size:15px;
 }
 
-.wpstream_onboarding_notification{
-    margin-bottom: 10px;
+/* Log out sits at the far end of the connected notice. */
+.wpstream-screen .connected-logout{
+    margin:0 0 0 auto;
 }
 
-.wpstream_check_account_status{
-    font-size: 15px;
-    padding: 30px 0px;
-    font-weight: 500;
+/* Intent cards: icon column + text column. They look the same until connected, but only show a tooltip. */
+.wpstream-screen .intent-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:19px;
+}
+.wpstream-screen .intent{
+    background:var(--wpstream-brand-raised, #fff);
+    border:1px solid var(--wpstream-brand-border, #E3E3E7);
+    border-radius:20px;
+    padding:22px;
+    text-align:left;
+    color:var(--ink);
+    font:inherit;
+    cursor:pointer;
+    display:grid;
+    grid-template-columns:44px minmax(0,1fr);
+    column-gap:16px;
+    row-gap:5px;
+    align-content:start;
+    align-items:start;
+    position:relative;
+    transition:border-color .15s,background .15s;
+}
+.wpstream-screen .intent:hover{
+    border-color:var(--wpstream-brand-accent-hover, #6244EA);
+}
+.wpstream-screen .intent-icon{
+    grid-column:1;
+    grid-row:1/4;
+    display:grid;
+    place-items:center;
+    width:44px;
+    height:44px;
+    box-sizing:border-box;
+    border:1px solid var(--wpstream-brand-border, #E3E3E7);
+    border-radius:12px;
+    color:var(--wpstream-brand-accent, #4E2EE5);
+}
+.wpstream-screen .intent-title{
+    grid-column:2;
+    grid-row:1;
+    font-weight:650;
+    font-size:21px;
+    letter-spacing:-.3px;
+}
+.wpstream-screen .intent-description{
+    grid-column:2;
+    grid-row:2;
+    max-width:45ch;
+    font-size:13px;
+    color:var(--muted);
+}
+.wpstream-screen .intent-action{
+    grid-column:2;
+    grid-row:3;
+    display:flex;
+    justify-content:flex-start;
+    gap:12px;
+    margin-top:9px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--purple);
+}
+.wpstream-screen .intent-action span{
+    font-size:21px;
+    line-height:1;
+    transition:transform .15s ease;
+}
+/* The arrow slides forward when a card that can be used is hovered or focused. */
+.wpstream-screen .intent:not([aria-disabled="true"]):hover .intent-action span,
+.wpstream-screen .intent:not([aria-disabled="true"]):focus-visible .intent-action span{
+    transform:translateX(4px);
+}
+@media (prefers-reduced-motion:reduce){
+    .wpstream-screen .intent-action span{transition:none}
+}
+/* A card waiting for a login does not react like a link, and explains itself on hover or keyboard focus. */
+.wpstream-screen .intent[aria-disabled="true"]{
+    cursor:not-allowed;
+}
+.wpstream-screen .intent[aria-disabled="true"]:hover{
+    border-color:var(--wpstream-brand-border, #E3E3E7);
+}
+.wpstream-screen .intent[aria-disabled="true"]::after{
+    content:attr(data-login-tip);
+    position:absolute;
+    left:50%;
+    bottom:calc(100% + 8px);
+    z-index:2;
+    transform:translateX(-50%);
+    width:max-content;
+    max-width:calc(100% - 16px);
+    padding:8px 12px;
+    border-radius:8px;
+    background:var(--wpstream-brand-text, #0A0A0B);
+    color:#fff;
+    font-size:13px;
+    line-height:1.4;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity .15s ease;
+}
+.wpstream-screen .intent[aria-disabled="true"]:hover::after,
+.wpstream-screen .intent[aria-disabled="true"]:focus-visible::after{
+    opacity:1;
+    visibility:visible;
 }
 
-
-/* Option inputs span the full width of their row. */
-.wpstream_step_wrapper .wpstream_option input{
-    width: 100%;
-
-}
-
-/* Register action link hidden by default. */
-#wpstream_onboarding_action_register{
-    display: none;
-}
-
-/* The login/register mode-switch links: small underlined clickable text. */
-#wpstream_onboarding_action_login,
-#wpstream_onboarding_action_register{
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: underline;
-    margin-top: 10px;
-    cursor: pointer;
-    margin-bottom: 10px;
-}
-
-/* Step 1 is the only step visible on load. */
-.wpstream_step_1{
-    display: block;
-}
-
-
-
-/* The "or" divider between two alternative actions (e.g. login vs register). */
-.wpstram_or{
-    text-align: center;
-    font-size: 14px;
-    color: #221466;
-    font-weight: 500;
-}
-
-/* Warning callout: soft-red boxed notice used for onboarding warnings. */
-.wpstream_warning_onboarding{
-    background: #ffe5e5;
-    border: 1px solid #ff4c4c8c;
-    color: #3b3b3b;
-    margin-bottom: 30px;
-    padding: 30px;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1.6;
-    border-radius: 5px;
-}
-
-
-
-/* Accordion header: the clickable collapsible section title (live/VOD setup),
-   with a purple hover state. */
-.wpstream_accordion_header{
-    padding: 20px 10px;
-    border: 1px solid #ccc;
-    cursor: pointer;
-    margin: 20px 0px 20px 0px;
-    border-radius: 5px;
-    font-size: 17px;
-    text-transform: capitalize;
-    text-align: center;
-    font-weight: 500;
-    background-color: #eae8fc;
-    border: 1px solid #e8dbfc;
-    transition: 0.2s ease-out;
-    line-height: 1.4em;
-    color: #221466;
-}
-
-.wpstream_accordion_header:hover{
-    background:#4e2ee6;
-    color: #fff;
-}
-
-
-/* Live-setup sub-block and the field labels used throughout the steps. */
-.wpstream_onboard_live{
-    padding: 10px;
-    border: 1px solid #ccc;
-}
-.wpstream_step_wrapper label{
-    color:#221466;
-    display: block;
-    font-size: 15px;
-    font-weight: 500;
-    margin-bottom: 5px;
-}
-
-
-/* Accordion body: the padded purple panel revealed under an accordion header. */
-.wpstream_accordion_container{
-    padding: 30px;
-    border-radius: 5px;
-    margin-bottom: 30px;
-    background-color: #eae8fc;
-    border: 1px solid #e8dbfc;
-}
-
-/* Onboarding form fields: shared white text-input styling for every channel /
-   VOD name and price input across the live, PPV and free-VOD setup steps. */
-#wpstream_free_vod_file_name_for_ppv,
-#wpstream_onboarding_vod_price,
-#wpstream_onboarding_ppv_vod_name,
-#wpstream_ppv_vod_file_name,
-#wpstream_free_vod_file_name,
-#wpstream_onboarding_vod_name,
-#wpstream_onboarding_event_price_ppv,
-#wpstream_onboarding_channel_name_ppv,
-#wpstream_onboarding_channel_name{
-    border: 1px solid #d6d6d6;
-    background-color: #fff;
-    color: #2c3338;
-    padding: 5px 10px;
-    width: 100%;
-    margin-bottom: 15px;
-}
-
-/* Width tweaks: cap the PPV VOD name field, make the editable post-name a
-   positioning context, and force the VOD file-name fields to full width. */
-#wpstream_onboarding_ppv_vod_name{
-max-width: 450px;
-}
-#editable-post-name{
-    position: relative;
-}
-
-#wpstream_free_vod_file_name_for_ppv,
-#wpstream_ppv_vod_file_name,
-#wpstream_free_vod_file_name{
-    max-width: 100%;
-    width: 100%;
-}
-
-/* Legacy "on board" trigger button (brown). */
-#wpstream_on_board{
-    background-color: brown;
-    padding: 15px;
-    cursor: pointer;
-    width: auto;
-    color: #fff;
-    display: inline-block;
-    /* float: left; */
-    margin: 20px;
-}
-
-/* Primary action buttons: the shared purple pill styling for every wizard/
-   bubble control (next, prev, finish, upload, try again, install, view VOD,
-   start channel, close). */
-#wpstream_onboarding_view_vod,
-.wpstream_upload_video,
-.wpstream_onboarding_tryagain,
-.wpstream_install_plugin,
-.wpstream_onboard_initial_bubble_next,
-.wpstream_onboard_initial_bubble_prev,
-#wpstream_onboarding_start_chanel,
-#wpstrean_close_modal_ack,
-.wpstream_onboard_bubble_finish,
-.wpstream_onboard_bubble_prev,
-.wpstream_onboard_bubble_next{
-    cursor: pointer;
-    margin: 0px 10px 15px 0px;
-    background-color: #4e2ee6;
-    color: #fff;
-    padding: 5px 10px;
-    border-radius: 5px;
-    transition: 0.3s ease-out;
-    display: inline-block;
-    line-height: 1.4em;
-}
-
-/* Extra top margin for the try-again / install-plugin buttons. */
-.wpstream_onboarding_tryagain,
-.wpstream_install_plugin{
-    margin: 30px 0px 0px 0px;
-}
-
-
-/* Positioning contexts so absolutely-positioned bubbles/controls anchor here. */
-#post-body,
-.wpstream_initial_onboarding_controls_wrapper{
-    position: relative;
-}
-
-
-/* Start-channel button laid out as its own block. */
-#wpstream_onboarding_start_chanel{
-    display: block;
-    width: fit-content;
-    margin: 10px 0px;
-}
-
-/* Shared dark-purple hover state for the action buttons above. */
-.wpstream_onboard_initial_bubble_prev:hover,
-#wpstream_onboarding_view_vod:hover,
-.wpstream_onboarding_tryagain:hover,
-.wpstream_install_plugin:hover,
-.wpstream_onboard_bubble_finish:hover,
-#wpstrean_close_modal_ack:hover,
-.wpstream_onboard_bubble_prev:hover,
-.wpstream_onboard_bubble_next:hover{
-    background-color: #221466;
-}
-
-
-/* Progress dots: the row of small round step indicators under a bubble. */
-.wpstream_round_bubble{
-    text-align: center;
-}
-
-.wpstream_round_bubble li{
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background-color: #4e2ee6;
-    display: inline-block;
-    margin-right: 10px!important;
-    opacity: 0.5;
-}
-
-
-
-/* The bubble "finish" button is hidden until the last step. */
-.wpstream_onboard_bubble_finish{
-    display: none;
-}
-
-/* Modal backdrop: full-screen dark dimming layer behind the onboarding modal
-   (hidden until the wizard opens). */
-.wpstream_modal_background_onboard {
-    position: fixed;
-    z-index: 10001;
-    top: 0px;
-    bottom: 0px;
-    left: 0px;
-    right: 0px;
-    background-color: rgb(0 20 40 / 86%);
-    opacity: 0.7;
-    display: none;
-}
-
-/* Decorative background image layer sitting behind the backdrop content. */
-.wpstream_modal_back{
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    left: 0px;
-    top: 0px;
-    background-image: url(home-decor-lines3.png);
-    background-size: cover;
-    background-position: center;
-    opacity: 0.4;
-    z-index: -1;
-}
-
-
-
-/* Secondary backdrop variant (lower z-index) for a second modal layer. */
-.wpstream_modal_background_onboard2 {
-    position: fixed;
-    z-index: 1000;
-    top: 0px;
-    bottom: 0px;
-    left: 0px;
-    right: 0px;
-    background-color: rgb(0 20 40 / 86%);
-    opacity: 0.7;
-    display: none;
-}
-
-/* Close (X) button: the top-right dismiss control on the onboarding panel,
-   using a background-image icon; a second rule nudges it for the initial modal. */
-.wpstream_close_onboarding{
-    width:30px;
-    height: 30px;
-    background-color: rgba(13,110,253,0.12);
-    position: absolute;
-    top:15px;
-    right: 15px;
-    border-radius: 3px;
-    cursor: pointer;
-    background-image: url(../../img/closeicon4.png);
-    background-repeat: no-repeat;
-    background-position: center;
-}
-
-.wpstream_close_onboarding:hover{
-    background-color: rgba(13,110,253,0.32);
-}
-
-.wpstream_close_initial_onboarding{
-    top:30px;
-    right: 30px;
-}
-
-
-
-
-/* "Acknowledge / close" text button inside the modal. */
-#wpstrean_close_modal_ack{
-    font-size: 14px;
-    margin-top: 20px;
-    font-weight: 400;
-    margin-bottom: 0px;
-}
-
-/* Confirmation text shown when the user tries to close mid-onboarding. */
-.wpstream_close_onboarding_warning{
-    color: #1d2327;
-    margin: 15px 0px 0px 0px;
-    display: inline-block;
-    width: 100%;
-    font-size: 15px;
-    line-height: 1.5;
-    font-weight: 500;
-}
-
-
-/* Bubble body text and its line-break spacer. */
-#wpstream_onboard_bubble_content{
-    color: #1d2327;
-    margin: 0px 0px 15px 0px;
-    display: inline-block;
-    width: 100%;
-    font-size: 14px;
-    line-height: 1.5;
-    font-weight: 400;
-}
-
-
-#wpstream_onboard_bubble_content .onboard_line_break{
-    margin-bottom: 10px;
-}
-
-/* Bubble title heading (note: id spells "tile"), forced with !important. */
-#wpstream_onboard_bubble_tile{
-    margin: 15px 0px 15px 0px!important;
-    line-height: 1.3em!important;
-    padding: 0px!important;
-    font-size: 17px!important;
-    color: #221466!important;
-    padding-right: 30px!important;
-    float: left;
-    font-weight: 600!important;
-}
-
-/* Start-channel button, distinct green "success" styling with a green hover. */
-#wpstream_onboarding_start_chanel {
-    padding: 9px 20px;
-    width: auto;
-    min-width: 130px;
-    color: #7a88a3;
-    border: 1px solid #3dc93d;
-    color: #3b3b3b;
-    background-color: #eaf2f7;
-    background-color: #e8f7e8;
-    border: 1px solid #3dc93d85;
-    width: 220px;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 14px;
-    text-align: center;
-}
-
-#wpstream_onboarding_start_chanel:hover{
-    background: #45a73f;
-    color: #fff;
-}
-
-/* Purple call-to-action buttons: register/login, quick-start trigger and the
-   VOD/live "action" buttons, with a shared dark-purple hover. */
-.wpstream_onboard_register,
-.wpstream_onboard_login,
-#wpstream_trigger_quick_start,
-#wpstream_onboard_vod_ppv_action,
-#wpstream_onboard_vod_free_action,
-#wpstream_onboard_live_ppv_action,
-.wpstream_onboard_live_action{
-    background-color:#4e2ee6
-}
-
-/* The quick-start trigger sizes to its label instead of the shared fixed button height. */
-#wpstream_trigger_quick_start{
-    height: auto;
-}
-
-.wpstream_onboard_register:hover,
-.wpstream_onboard_login:hover,
-#wpstream_trigger_quick_start:hover,
-#wpstream_onboard_vod_ppv_action:hover,
-#wpstream_onboard_vod_free_action:hover,
-#wpstream_onboard_live_ppv_action:hover,
-.wpstream_onboard_live_action:hover{
-    background-color: #221466;
-}
-
-/* Sample inline icons: small square glyph badges (settings/camera/view) used
-   in the instructional copy, each set via a background-image SVG with a hover. */
-.wpstream_sample_icon_settings{
-    width: 37px;
-    height: 37px;
-    border: 1px solid #f0f0f0;
-    border-radius: 3px;
-    display: inline-block;
-    text-align: center;
-    background-color: #f8f8f8;
-    background-image: url(settings.svg);
-    background-size: 50%;
-    background-repeat: no-repeat;
-    background-position: 50%;
-    text-align: -webkit-left;
-    vertical-align: middle;
-    margin: 0px 2px;
-}
-
-.wpstream_sample_icon_camera{
-    background-image: url(camera.svg);
-
-}
-
-
-.wpstream_sample_icon_open_channel:hover,
-.wpstream_sample_icon_camera:hover{
-    background-color: #dadada;
-}
-
-
-
-.wpstream_sample_icon_open_channel{
-    background-image: url(view.svg);
-    cursor: pointer;
-}
-
-
-/* Quick-start card: the white bordered panel promoting the quick-start flow,
-   with its heading and paragraph styles. */
-.wpstream_quick_start_wrapper{
-    background: #fff;
-    margin: 5px 15px 2px;
-    padding: 30px 30px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgb(0 25 60 / 8%);
-    border: 1px solid #e2e5e8;
-}
-
-.wpstream_quick_start_wrapper h1{
-    color:#221466!important;
-}
-
-.wpstream_quick_start_wrapper p{
-    max-width: 500px;
-    font-size: 15px;
-    margin: 25px 0px;
-}
-
-
-/* Responsive: short-viewport tweaks. As screen height shrinks the wizard moves
-   up, narrows, drops the logo and tightens spacing so it still fits on screen. */
-@media screen and (max-height: 850px) {
-    .wpstream_on_boarding_wrapper{
-        top: 45px;
+/* Narrow screens: single-column card, then single-column intent cards. */
+@media (max-width:740px){
+    .wpstream-screen .connection{
+        grid-template-columns:1fr;
+        gap:20px;
+    }
+    .wpstream-screen .connection-copy p{
+        max-width:none;
     }
 }
-@media screen and (max-height: 750px) {
-    .wpstream_on_boarding_wrapper {
-        width: 400px;
-        margin-left: -200px;
+@media (max-width:520px){
+    .wpstream-screen{
+        padding:0;
     }
-
-    .wpstream_on_boarding_wrapper{
-        top:40px;
-        padding: 5px 20px;
+    .wpstream-screen h1{
+        font-size:28px;
     }
-
-    .wpstream_onboarding_logo{
-        display: none;;
+    .wpstream-screen .connection{
+        padding:22px;
     }
-    .wpstream_close_initial_onboarding {
-        top: 10px;
-        right: 10px;
+    .wpstream-screen .intent-grid{
+        grid-template-columns:1fr;
+        gap:13px;
     }
-
-    .wpstream_has_credential h1 {
-        margin-top: 0px;
-        margin-bottom: 20px;
-        font-size: 16px;
-    }
-    .wpstream_on_board_login_wrapper_explanations {
-        margin-bottom: 10px;
-        font-size: 13px;
-    }
-    .wpstream_on_board_register_wrapper, .wpstream_step_wrapper .wpstream_option_wrapper {
-        padding: 15px;
-        margin-bottom: 15px;
+    .wpstream-screen .intent{
+        padding:20px;
+        column-gap:14px;
     }
 }
 
-
-@media screen and (max-height: 550px) {
-   
-    .wpstream_on_board_register_wrapper, .wpstream_step_wrapper .wpstream_option_wrapper {
-        padding: 5px;
+/* ==========================================================================
+   Secondary buttons, the tutorials card and the wp-config note.
+   Shares the .wpstream-screen tokens above.
+   ========================================================================== */
+.wpstream-screen .admin-card{
+    background:var(--wpstream-brand-raised, #fff);
+    border:1px solid var(--wpstream-brand-border, #E3E3E7);
+    border-radius:20px;
+    padding:26px;
+    margin:0 0 18px;
+}
+.wpstream-screen .admin-card h2{
+    font-size:24px;
+    margin:0 0 18px;
+}
+.wpstream-screen .button.secondary{
+    background:var(--wpstream-brand-raised, #fff);
+    border-color:var(--wpstream-brand-border, #E3E3E7);
+    color:var(--wpstream-brand-text, #0A0A0B);
+    transition:color .15s ease,border-color .15s ease;
+}
+/* Log out, Change account and Sign up answer the pointer in the accent color. */
+.wpstream-screen .button.secondary:hover{
+    background:var(--wpstream-brand-raised, #fff);
+    border-color:var(--wpstream-brand-accent, #4E2EE5);
+    color:var(--wpstream-brand-accent, #4E2EE5);
+}
+.wpstream-screen .admin-notice{
+    background:#f8f6ee;
+    border:1px solid #e7dfc6;
+    border-radius:8px;
+    padding:12px;
+    margin:0 0 18px;
+    font-size:13px;
+}
+.wpstream-screen .tutorial-links{
+    margin:0;
+    padding:0;
+    list-style:none;
+    font-size:14px;
+    line-height:2.4;
+}
+.wpstream-screen .tutorial-links a{
+    font-weight:500;
+    text-decoration:underline;
+}
+@media (max-width:520px){
+    .wpstream-screen .admin-heading h1{
+        font-size:25px;
     }
-    .wpstream_option{
-        margin-bottom: 10px;
-    }
-    .wpstream_option input {
-        padding: 0px 10px;
-    }
-    .wpstream_step_wrapper h1 {
-        font-size: 14px;
-        margin: 15px 0px 15px 0px;
+    .wpstream-screen .admin-card{
+        padding:18px;
     }
 }
 
-
-/* Responsive: narrow (mobile) viewports. The wizard goes full-screen and form
-   fields/links stretch to fit the small width. */
-@media screen and (max-width: 768px) {
-
-    .wpstream_on_boarding_wrapper {
-        position: fixed;
-        width: 100%;
-        top: 0px;
-        margin-left: 0px;
-        z-index: 10002;
-        height: 100%;
-        left: 0px;
-        right: 0px;
-        padding: 55px 25px;
-        display: inline-block;
-        box-sizing: border-box;
-    }
-    .wpstream_close_initial_onboarding {
-        top: 50px;
-        right: 10px;
-    }
-    #wpstream_onboarding_action_login, #wpstream_onboarding_action_register {
-        text-align: center;
-    }
-
-    #wpstream_onboarding_ppv_vod_name{
-        max-width: 100%;
-    }
-
+/* Entry pages use the blueprint's full-width header and left-aligned 960px body. */
+body.wpstream_page_wpstream_onboard #wpbody-content > .wpstream-library {
+    margin:12px 20px 24px 0;
+}
+.wpstream-entry-header.library-header {
+    min-height:43px;
+    padding:4px 0 16px;
+    margin:0;
+}
+.wpstream-entry-header .library-brand {
+    display:block;
+    color:var(--wpstream-brand-accent, #4E2EE5);
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:-.4px;
+    line-height:1.6;
+}
+.wpstream-entry .connection-form { min-width:0; }
+/* Sign up sits under the form, for someone with no account yet. */
+.wpstream-screen .signup-prompt { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px; margin:16px 0 0; font-size:13px; color:var(--muted); }
+.wpstream-entry .admin-card { margin-top:24px; }
+.wpstream-entry .account-tabs button { line-height:1.6; }
+.wpstream-entry .wpstream-account-management { margin-top:24px; }
+.wpstream-entry .wpstream-account-management > summary {
+    color:var(--wpstream-brand-accent, #4E2EE5);
+    cursor:pointer;
+    margin-bottom:16px;
+}
+@media (max-width:900px) {
+    body.wpstream_page_wpstream_onboard #wpbody-content > .wpstream-library { margin-bottom:20px; }
+}
+@media (max-width:740px) {
+    .wpstream-entry .connection-form { width:100%; max-width:440px; }
 }
 
-/* Loading spinner shown full-width and centred inside an accordion while work is
-   pending (core floats it right, which pushes it to the bottom corner). */
-.wpstream_accordion_container .spinner {
-    visibility: visible;
-    background-position: center;
-    width: 100%;
-    float: none;
-    margin: 0 auto;
-}
+/* Request and captcha states use classes rather than generated inline styles. */
+.wpstream-screen .wpstream_onboarding_notification.is-visible { display:block; }
+.wpstream-screen .wpstream-request-pending { pointer-events:none; opacity:.4; }
+.wpstream-captcha-hidden { display:none; }
+.wpstream-captcha-retry { margin-bottom:8px; color:#C62A1F; }
 
-/* Strip the default admin link box-shadow from links inside a warning box
-   (uses CSS nesting). */
-.wpstream_warning_onboarding {
-    a {
-        box-shadow: none;
-    }
-}
+.wpstream-live-entry-form{margin:0;min-width:0}.wpstream-live-entry-form .intent{width:100%;height:100%;box-sizing:border-box}

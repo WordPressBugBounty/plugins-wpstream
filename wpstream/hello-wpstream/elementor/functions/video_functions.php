@@ -369,9 +369,10 @@ if ( ! function_exists( 'wpstream_item_list_shortcodes' ) ) {
 		// populate from get if we have pagination.
 		$attributes = wpstream_populate_from_get( $attributes );
 
-		// Core query inputs from the attributes.
-		$item_post_type = sanitize_text_field( $attributes['type'] );
-		$posts_per_page = intval( $attributes['number'] );
+		// Core query inputs from the attributes; the type is limited to what the item-list widgets offer.
+		$item_post_type = wpstream_item_list_allowed_post_type( sanitize_text_field( $attributes['type'] ) );
+		// Items per page, capped so a request cannot force an unbounded query.
+		$posts_per_page = wpstream_item_list_page_size( $attributes['number'] );
 		$paged          = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
 
 		// The page query-var is suffixed with the widget uid so multiple lists paginate independently.

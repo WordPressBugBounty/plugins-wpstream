@@ -15,6 +15,13 @@
 
 // The VOD iframe host wiring.
 (function () {
+	/** Reveal player elements through state classes without writing inline styles. */
+	function setPlayerVisibility(element, visible) {
+		if (!element) return;
+		element.classList.toggle('wpstream-is-hidden', !visible);
+		element.classList.toggle('wpstream-player-visible', visible);
+	}
+
 	/**
 	 * Post a player.command message to a player iframe.
 	 *
@@ -163,12 +170,12 @@
 		}
 		if (trailerIsMuted) {
 			// Muted: hide the mute button, show the unmute button.
-			muteEl.style.display = "none";
-			unmuteEl.style.display = "block";
+			setPlayerVisibility(muteEl, false);
+			setPlayerVisibility(unmuteEl, true);
 		} else {
 			// Unmuted: show the mute button, hide the unmute button.
-			muteEl.style.display = "block";
-			unmuteEl.style.display = "none";
+			setPlayerVisibility(muteEl, true);
+			setPlayerVisibility(unmuteEl, false);
 		}
 	}
 
@@ -254,8 +261,8 @@
 		if (!iframe) {
 			return;
 		}
-		// Toggle CSS display (empty string restores the default display).
-		iframe.style.display = visible ? "" : "none";
+		// The visible class overrides initial trailer hiding without inline CSS.
+		setPlayerVisibility(iframe, visible);
 		// Mirror the visibility to assistive technology.
 		iframe.setAttribute("aria-hidden", visible ? "false" : "true");
 		// Keep hidden frames out of the tab order.
@@ -317,8 +324,8 @@
 		if (!overlay) {
 			return;
 		}
-		// Apply the opacity as a string CSS value.
-		overlay.style.opacity = String(opacity);
+		// Hover events choose the visible or resting overlay state.
+		overlay.classList.toggle('wpstream-player-overlay-visible', opacity > 0);
 	}
 
 	/**
@@ -370,7 +377,7 @@
 			return;
 		}
 		// Flip the wrapper to visible (it starts hidden until playback begins).
-		wrapper.style.visibility = "visible";
+		setPlayerVisibility(wrapper, true);
 	}
 
 	/**
@@ -407,9 +414,9 @@
 		const $t = jQuery(targetEl);
 		const $scope = $t.parents().slice(0, 12);
 		// Hide trailer-only chrome now that main content is playing.
-		$scope.find(".wpstream_hide_on_trailer").hide();
+		$scope.find(".wpstream_hide_on_trailer").each(function () { setPlayerVisibility(this, false); });
 		// Hide "hide on play" chrome (posters, play buttons).
-		$scope.find(".wpstream_hide_on_play").hide();
+		$scope.find(".wpstream_hide_on_play").each(function () { setPlayerVisibility(this, false); });
 		// Clear the has-trailer marker class from the player element.
 		$scope.find(".vjs-wpstream").removeClass(
 			"wpstream_theme_player_has_trailer"
@@ -431,9 +438,9 @@
 		const $t = jQuery(targetEl);
 		const $scope = $t.parents().slice(0, 12);
 		// Hide trailer-only chrome while the trailer itself plays.
-		$scope.find(".wpstream_hide_on_trailer").hide();
+		$scope.find(".wpstream_hide_on_trailer").each(function () { setPlayerVisibility(this, false); });
 		// Show "hide on play" chrome (trailer still counts as pre-content).
-		$scope.find(".wpstream_hide_on_play").show();
+		$scope.find(".wpstream_hide_on_play").each(function () { setPlayerVisibility(this, true); });
 		// Mark the player element as currently showing a trailer.
 		$scope.find(".vjs-wpstream").addClass("wpstream_theme_player_has_trailer");
 	}
@@ -453,7 +460,7 @@
 		const $t = jQuery(targetEl);
 		const $scope = $t.parents().slice(0, 12);
 		// Hide the action buttons wrapper (play/trailer/mute controls).
-		$scope.find(".wpstream_video_on_demand_actions_wrapper").hide();
+		$scope.find(".wpstream_video_on_demand_actions_wrapper").each(function () { setPlayerVisibility(this, false); });
 	}
 
 	/**
@@ -748,13 +755,13 @@
 			root
 				.querySelectorAll(".wpstream_video_on_demand_mute_trailer")
 				.forEach(function (el) {
-					el.style.display = "none";
+					setPlayerVisibility(el, false);
 				});
 			// Hide every unmute button in scope.
 			root
 				.querySelectorAll(".wpstream_video_on_demand_unmute_trailer")
 				.forEach(function (el) {
-					el.style.display = "none";
+					setPlayerVisibility(el, false);
 				});
 		}
 
@@ -764,21 +771,21 @@
 		if (typeof jQuery !== "undefined") {
 			// jQuery path: re-show the poster/trailer chrome and play-trailer button.
 			const $root = jQuery(scopeRoot);
-			$root.find(".wpstream_hide_on_trailer").show();
-			$root.find(".wpstream_video_on_demand_play_trailer").show();
+			$root.find(".wpstream_hide_on_trailer").each(function () { setPlayerVisibility(this, true); });
+			$root.find(".wpstream_video_on_demand_play_trailer").each(function () { setPlayerVisibility(this, true); });
 			// Also re-show trailer chrome that lives as siblings of the scope root.
-			$root.siblings(".wpstream_hide_on_trailer").show();
+			$root.siblings(".wpstream_hide_on_trailer").each(function () { setPlayerVisibility(this, true); });
 		} else {
-			// Vanilla fallback: clear inline display on the same chrome elements.
+			// Vanilla fallback: reveal the same chrome elements through state classes.
 			scopeRoot
 				.querySelectorAll(".wpstream_hide_on_trailer")
 				.forEach(function (el) {
-					el.style.removeProperty("display");
+					setPlayerVisibility(el, true);
 				});
 			scopeRoot
 				.querySelectorAll(".wpstream_video_on_demand_play_trailer")
 				.forEach(function (el) {
-					el.style.removeProperty("display");
+					setPlayerVisibility(el, true);
 				});
 		}
 	}
@@ -915,7 +922,7 @@
 			return;
 		}
 		// Ensure the status container is visible before setting the message.
-		statusEl.style.display = "block";
+		setPlayerVisibility(statusEl, true);
 		switch ( status ) {
 			case "stopped":
 				// Not live: show the "not live" message and clear the init styling.

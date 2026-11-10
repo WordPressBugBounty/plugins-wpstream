@@ -1,0 +1,42 @@
+/** Shared WpStream identity, from the supplied brand reference. Locally hosted fonts; component rules remain scoped. */
+@font-face { font-family: Manrope; font-style: normal; font-weight: 400; font-display: swap; src: url(../fonts/manrope-400.ttf) format("truetype"); }
+@font-face { font-family: Manrope; font-style: normal; font-weight: 500; font-display: swap; src: url(../fonts/manrope-500.ttf) format("truetype"); }
+@font-face { font-family: Manrope; font-style: normal; font-weight: 600; font-display: swap; src: url(../fonts/manrope-600.ttf) format("truetype"); }
+@font-face { font-family: Manrope; font-style: normal; font-weight: 700; font-display: swap; src: url(../fonts/manrope-700.ttf) format("truetype"); }
+@font-face { font-family: Manrope; font-style: normal; font-weight: 800; font-display: swap; src: url(../fonts/manrope-800.ttf) format("truetype"); }
+:root {
+ --wpstream-brand-font: "Manrope", "Helvetica Neue", Arial, sans-serif;
+ --wpstream-brand-accent: #4E2EE5;
+ --wpstream-brand-accent-hover: #6244EA;
+ --wpstream-brand-accent-press: #3D20C2;
+ --wpstream-brand-accent-tint: rgba(78,46,229,.12);
+ --wpstream-brand-text: #0A0A0B;
+ --wpstream-brand-muted: #6E6E77;
+ --wpstream-brand-border: #E3E3E7;
+ --wpstream-brand-surface: #F7F7F8;
+ --wpstream-brand-raised: #FFFFFF;
+ --wpstream-brand-success: #0FA968;
+ --wpstream-brand-danger: #E23A2E;
+ --wpstream-brand-warning: #F0A81B;
+ --wpstream-brand-info: #597DFA;
+ --wpstream-brand-radius: 12px;
+ --wpstream-brand-card-radius: 20px;
+ --wpstream-brand-focus: 0 0 0 3px rgba(78,46,229,.4);
+}
+.wpstream-is-hidden { display: none !important; }
+.wpstream-commerce-requirement,
+.wpstream-video-signin-required {
+ box-sizing: border-box;
+ padding: 16px 24px;
+ border: 1px solid var(--wpstream-brand-border);
+ border-left: 4px solid var(--wpstream-brand-warning);
+ border-radius: var(--wpstream-brand-radius);
+ background: var(--wpstream-brand-raised);
+ color: var(--wpstream-brand-text);
+ font: 400 15px/1.55 var(--wpstream-brand-font);
+ box-shadow: none;
+}
+.wpstream-commerce-requirement a,
+.wpstream-video-signin-required a { color: var(--wpstream-brand-accent); font-weight: 600; }
+.wpstream-commerce-requirement a:focus-visible,
+.wpstream-video-signin-required a:focus-visible { outline: 2px solid var(--wpstream-brand-accent); outline-offset: 3px; }

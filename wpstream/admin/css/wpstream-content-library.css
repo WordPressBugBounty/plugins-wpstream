@@ -1,0 +1,308 @@
+/* WpStream library, creation and quota components. Brand tokens come from wpstream-brand.css; rules stay inside plugin-owned classes. */
+.wpstream-library{--library-secondary:#52525B;--library-control-radius:8px;color:var(--wpstream-brand-text);margin:16px 20px 40px 0;font:15px/1.55 var(--wpstream-brand-font)}
+.wpstream-library *{box-sizing:border-box}
+.wpstream-library a{color:var(--wpstream-brand-accent)}
+.wpstream-library a:hover{color:var(--wpstream-brand-accent-hover)}
+.wpstream-library :is(.button,.page-title-action){display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:10px 20px;border:1px solid var(--wpstream-brand-border);border-radius:var(--library-control-radius);background:#fff;color:var(--wpstream-brand-text);font:600 15px/1 var(--wpstream-brand-font);text-decoration:none;box-shadow:none;cursor:pointer;transition:background-color 150ms,border-color 150ms,transform 150ms}
+.wpstream-library :is(.button,.page-title-action):hover{background:#F2F2F4;color:var(--wpstream-brand-text);transform:translateY(-1px)}
+.wpstream-library .button-primary{background:var(--wpstream-brand-accent);border-color:transparent;color:#fff}
+.wpstream-library .button-primary:hover{background:var(--wpstream-brand-accent-hover);border-color:transparent;color:#fff}
+.wpstream-library :is(button,a,input,select,textarea,summary):focus-visible{outline:2px solid var(--wpstream-brand-accent);outline-offset:3px;box-shadow:0 0 0 3px rgba(78,46,229,.12)}
+.wpstream-library :is(input,select,textarea){font-family:var(--wpstream-brand-font);color:var(--wpstream-brand-text);accent-color:var(--wpstream-brand-accent)}
+.wpstream-library :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]),textarea){min-height:44px;border:1px solid var(--wpstream-brand-border);border-radius:var(--library-control-radius);padding:8px 12px;background-color:#fff;box-shadow:none}
+/* Selects keep room for the arrow and match the text field height, overriding the core admin line-height. */
+.wpstream-library select{min-height:44px;border:1px solid var(--wpstream-brand-border);border-radius:var(--library-control-radius);padding:8px 32px 8px 12px;line-height:1.3;background-color:#fff;box-shadow:none}
+.wpstream-library :is(.button,button):disabled{opacity:.4;cursor:not-allowed;transform:none}
+.wpstream-library [hidden]{display:none!important}
+.library-header{display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid var(--wpstream-brand-border);padding-bottom:20px;margin-bottom:24px}
+.library-brand{display:flex;align-items:center;flex-shrink:0;font-size:18px;font-weight:600;text-decoration:none;white-space:nowrap}
+.library-brand img{display:block;width:108px;height:auto}
+.library-video-workspace{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;max-width:1280px;margin:24px auto}
+.library-video-source,.library-video-details,.library-video-success{background:#fff;border:1px solid var(--wpstream-brand-border);border-radius:20px;padding:24px;min-width:0;align-self:start}
+/* The published card's buttons and its "Back to All Videos" link share one centred line with an even gap. */
+.library-video-success{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.library-video-success>:is(h2,p){flex-basis:100%}
+.library-video-details h2{margin:0 0 22px;font-size:24px;line-height:1.3;letter-spacing:-.02em}
+.library-video-workspace label:not(.library-access-option){display:block;font-weight:600;margin:14px 0 6px}
+.library-video-workspace input:not([type=radio]):not([type=hidden]):not([type=file]),.library-video-workspace select{width:100%;max-width:100%;min-height:44px;margin:0}
+.library-video-details fieldset{border:0;padding:0;margin:22px 0 16px}
+.library-video-details legend{font-weight:600;margin-bottom:10px}
+.library-access-option{display:flex;gap:10px;padding:12px;border:1px solid var(--wpstream-brand-border);border-radius:12px;margin-bottom:8px;cursor:pointer}
+.library-access-option:has(input:checked){border-color:var(--wpstream-brand-accent);background:rgba(78,46,229,.12)}
+.library-access-option input{margin:4px 0 0;flex-shrink:0}
+.library-access-option small{display:block;color:var(--wpstream-brand-muted);font-weight:400}
+.library-billing-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.library-video-details button[type=submit]{width:100%;margin-top:22px;min-height:40px}
+.library-video-cancel{display:block;text-align:center;margin-top:12px}
+/* What is still missing before Publish, right above the button. */
+.library-video-requirement{margin:22px 0 -12px;color:var(--wpstream-brand-muted);font-size:13px}
+.library-video-requirement:empty{display:none}
+@media(max-width:900px){.library-video-workspace{grid-template-columns:minmax(0,1fr);max-width:650px}.library-video-source,.library-video-details{padding:16px}}
+.library-account-status{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px;flex:1;min-width:0;position:relative;z-index:20}
+.library-account-disconnected{align-self:center;color:var(--wpstream-brand-muted)}
+.library-account-status .library-account-upgrade{align-self:center;text-align:center;font-size:13px}
+.library-account-status .library-account-upgrade.is-quiet{color:var(--wpstream-brand-muted);text-decoration:underline}
+/* Usage pills and popovers: the portal dashboard's design, with its fonts hosted locally and its values kept as tokens here. */
+@font-face{font-family:'Inter Tight';font-style:normal;font-weight:400 600;font-display:swap;src:url(../../public/fonts/inter-tight-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Inter Tight';font-style:normal;font-weight:400 600;font-display:swap;src:url(../../public/fonts/inter-tight-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Fragment Mono';font-style:normal;font-weight:400;font-display:swap;src:url(../../public/fonts/fragment-mono-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Fragment Mono';font-style:normal;font-weight:400;font-display:swap;src:url(../../public/fonts/fragment-mono-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+.library-usage-item{--usage-accent:#4C67F3;--usage-cyan:#40C5FF;--usage-border:#E4E4E7;--usage-border-strong:#D4D4D8;--usage-track:#F4F4F5;--usage-text:#09090B;--usage-text-2:#3F3F46;--usage-text-3:#71717A;--usage-text-4:#A1A1AA;--usage-ink:#18181B;--usage-sans:"Inter Tight",system-ui,sans-serif;--usage-mono:"Fragment Mono",ui-monospace,monospace;position:relative;flex:none;font:14px/1.45 var(--usage-sans);letter-spacing:.14px}
+.library-usage-item>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px 0 6px;background:#fff;border:1px solid var(--usage-border);border-radius:10px;font-size:12px;line-height:1.5;letter-spacing:normal;color:var(--usage-text);white-space:nowrap;transition:border-color .12s ease,background .12s ease}
+.library-usage-item>summary:hover{border-color:var(--usage-border-strong)}
+.library-usage-item>summary::-webkit-details-marker{display:none}
+.library-usage-item>summary:focus-visible{outline:2px solid var(--wpstream-brand-accent);outline-offset:2px}
+.library-usage-icon{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:6px;background:#EDE7FE;color:#6D49DD}
+.library-usage-viewer .library-usage-icon{background:#FFEDD5;color:#B8580A}
+.library-usage-recording .library-usage-icon{background:#E3FFF2;color:#0A8B4D}
+.library-usage-label{color:var(--usage-text-3);font-size:11.5px;font-weight:500}
+.library-usage-mini{position:relative;width:44px;height:4px;background:var(--usage-track);border-radius:999px;overflow:hidden}
+.library-usage-mini-fill{display:block;height:100%;background:linear-gradient(90deg,var(--usage-accent),var(--usage-cyan));border-radius:999px}
+.library-usage-mini-fill.is-warn{background:linear-gradient(90deg,#F59E0B,#FB923C)}
+.library-usage-mini-fill.is-danger{background:linear-gradient(90deg,#EF4444,#FB7185)}
+.library-usage-value{font-family:var(--usage-mono);font-size:12px;font-variant-numeric:tabular-nums;font-weight:500;color:var(--usage-text)}
+.library-usage-value small{font-size:10.5px;font-weight:400;color:var(--usage-text-3);margin-left:1px}
+.library-usage-chev{color:var(--usage-text-4);margin-left:-2px}
+.library-usage-popover{position:absolute;right:0;top:calc(100% + 8px);min-width:280px;background:#fff;border:1px solid var(--usage-border);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06),0 12px 32px -6px rgba(9,9,11,.18);color:var(--usage-text);z-index:30;animation:library-usage-pop .16s cubic-bezier(.16,1,.3,1)}
+@keyframes library-usage-pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.library-usage-popover{animation:none}}
+.library-usage-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;font-size:13px}
+.library-usage-head strong{font-weight:600}
+.library-usage-percent{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:#E5F7FF;color:#0E7AB0;font-size:11.5px;font-weight:500;white-space:nowrap}
+.library-usage-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.library-usage-meter{height:8px;background:var(--usage-track);border-radius:999px;overflow:hidden}
+.library-usage-meter>span{display:block;height:100%;background:linear-gradient(90deg,var(--usage-accent),var(--usage-cyan));border-radius:999px}
+.library-usage-viewer .library-usage-meter>span{background:linear-gradient(90deg,#FFEDD5,#F59E0B)}
+.library-usage-recording .library-usage-meter>span{background:linear-gradient(90deg,#10B981,#34D399)}
+.library-usage-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:11.5px;color:var(--usage-text-3)}
+.library-usage-popover dl{margin:14px 0 0}
+.library-usage-popover dl>div{display:flex;align-items:center;gap:8px;padding:8px 0 2px;border-top:1px solid var(--usage-border);font-size:12.5px;font-weight:600;color:var(--usage-text-2)}
+.library-usage-popover dt{flex:1;font-weight:600}
+.library-usage-popover dd{margin:0;font-family:var(--usage-mono);font-variant-numeric:tabular-nums}
+.library-usage-actions{display:flex;align-items:center;gap:6px;margin-top:12px}
+.library-usage-item .library-usage-actions a{display:flex;flex:1 1 0%;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--usage-border);border-radius:8px;background:transparent;color:var(--usage-text);font-size:12.5px;font-weight:500;letter-spacing:.125px;white-space:nowrap;text-decoration:none;transition:background .12s,color .12s,border-color .12s,transform .12s,box-shadow .12s}
+.library-usage-item .library-usage-actions .library-usage-upgrade{background:var(--usage-ink);border-color:var(--usage-ink);color:#fff}
+.library-usage-item .library-usage-actions a:hover{background:transparent;color:var(--usage-text);transform:translateY(-1px);box-shadow:0 1px 2px rgba(9,9,11,.05),0 2px 8px rgba(9,9,11,.04)}
+.library-usage-item .library-usage-actions a:active{transform:scale(.97)}
+@media(max-width:1250px){.library-header{flex-wrap:wrap}.library-account-status{flex-basis:100%}.library-usage-mini{width:28px}}
+@media(max-width:782px){.library-account-status{width:100%}}
+@media(max-width:520px){.library-account-status{display:grid;grid-template-columns:1fr;gap:6px}.library-usage-value{margin-left:auto}.library-usage-popover{position:relative;inset:auto;min-width:0;width:100%;margin-top:7px}}
+
+/* The way out of the creation screen, above its title. */
+.wpstream-library a.library-back-link{display:inline-block;margin:0 0 8px;color:var(--library-secondary);font-size:13px;font-weight:500;text-decoration:none;transition:color 150ms}
+.wpstream-library a.library-back-link:hover{color:var(--wpstream-brand-accent)}
+.library-heading{display:flex;align-items:center;gap:12px;margin:0 0 16px}
+.library-heading>.button{margin-left:auto}
+.library-heading-count{margin-left:-4px;color:var(--library-secondary);font-size:20px;font-weight:500}
+.library-heading-count::before{content:"·";margin-right:8px}
+.library-heading h1{margin:0;padding:0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-.02em}
+/* The heading's text column: title and count on one line, a note under them. The button beside it centres on both lines. */
+.library-heading-text{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0}
+.library-heading-note{flex-basis:100%;max-width:720px;margin:0;color:var(--library-secondary);font-size:14px}
+/* Search first, then the filters, with sorting at the far right. */
+.library-filters{--library-filter-height:40px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 16px}
+.wpstream-library .library-filters [name=library_sort]{margin-left:auto}
+.wpstream-library .library-filters :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]),select){margin-block:0;margin-right:0;max-width:100%;min-height:var(--library-filter-height);font-size:14px}
+.wpstream-library .library-filters :is(input,select){width:auto;margin-left:0}
+.wpstream-library .library-filters input[type=search]{width:280px}
+.library-table-wrap{width:100%;border:1px solid var(--wpstream-brand-border);border-radius:12px;background:white}
+.wpstream-library .library-table{border:0;box-shadow:none;width:100%;table-layout:auto;border-collapse:separate;border-spacing:0;margin:0;background:none}
+.wpstream-library .library-table thead :is(th,td){height:41px;padding-block:6px;background:var(--wpstream-brand-surface)}
+.wpstream-library .library-table thead :is(th,td):first-child{border-top-left-radius:11px}
+.wpstream-library .library-table thead :is(th,td):last-child{border-top-right-radius:11px}
+.wpstream-library .library-table th,.wpstream-library .library-table td{padding:14px 12px;vertical-align:middle;border-bottom:1px solid var(--wpstream-brand-border);font-size:13px;color:var(--wpstream-brand-text);text-align:left;overflow-wrap:anywhere}
+.wpstream-library .library-table th{font-weight:500;color:var(--library-secondary);white-space:nowrap}
+/* Every list row is followed by its hidden editor, so the last visible row is not always the last child. */
+.wpstream-library .library-table tbody tr:is(:last-child,:has(+tr.library-editor[hidden]:last-child))>*{border-bottom:0}
+.wpstream-library .library-table tbody tr:is(:last-child,:has(+tr.library-editor[hidden]:last-child))>:first-child{border-bottom-left-radius:11px}
+.wpstream-library .library-table tbody tr:is(:last-child,:has(+tr.library-editor[hidden]:last-child))>:last-child{border-bottom-right-radius:11px}
+/* Desktop rows respond to the pointer and to keyboard focus. Actions stay visible at all times, so touch needs no hover. */
+@media(min-width:783px){.wpstream-library .library-table tbody tr:is([data-content-id],.wpstream_video_wrapper):is(:hover,:focus-within)>*{background:var(--wpstream-brand-surface)}}
+.wpstream-library .library-table td.library-title{width:100%}
+.library-item{display:flex;align-items:center;gap:14px;min-width:0}
+.library-item-text{flex:1;min-width:0}
+/* The picture, or the first letter of the title when the item has no picture. */
+.library-tile{flex:none;display:grid;place-items:center;width:80px;height:45px;border-radius:8px;overflow:hidden;background:#F4F4F5;color:#A1A1AA}
+.library-tile img{display:block;width:100%;height:100%;object-fit:cover}
+/* A file's own frame: a muted preview the page script loads into the tile. It covers the icon once it has a picture. */
+.library-tile{position:relative}
+.library-tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;opacity:0;pointer-events:none}
+.library-tile.has-frame video{opacity:1}
+.library-duration{font-variant-numeric:tabular-nums}
+/* Access and the other details read as one quiet line. Only a long file name gives way. */
+.library-meta{display:flex;align-items:center;margin-top:3px;font-size:13px;color:var(--library-secondary);white-space:nowrap}
+.library-meta>*{flex:none}
+.library-meta>*+*::before{content:"·";margin:0 5px}
+.library-meta>small{font-size:inherit;margin-left:5px}
+.library-meta>small::before{content:none}
+.library-meta>.library-meta-file{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* Anything viewers pay for gets a neutral badge, which needs no separator after it. */
+.library-meta>.library-access-badge{padding:0 7px;border-radius:6px;line-height:20px;background:#EDEDF0;color:var(--wpstream-brand-text);font-size:12px;font-weight:500}
+.library-meta>.library-access-badge+*{margin-left:8px}
+.library-meta>.library-access-badge+*::before{content:none}
+/* Long titles stay on one line; keyboard focus shows the whole name. */
+.library-title-line{display:flex;align-items:center;gap:8px;min-width:0}
+.wpstream-library .library-title-link{min-width:0;overflow:hidden;color:var(--wpstream-brand-text);font-size:15px;font-weight:600;line-height:1.4;text-decoration:none;text-overflow:ellipsis;white-space:nowrap}
+.wpstream-library a.library-title-link:focus-visible{overflow:visible;white-space:normal}
+.wpstream-library .library-title-link:hover{color:var(--wpstream-brand-accent);text-decoration:underline}
+/* Only states other than Published are called out, beside the title. */
+.library-state-tag{flex:none;display:inline-block;padding:1px 8px;border-radius:980px;background:#F2F2F4;color:var(--library-secondary);font-size:11px;font-weight:600;vertical-align:1px}
+.library-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.library-actions form{margin:0}.library-actions a,.library-actions button{font-size:13px}
+/* A list row holds one compact action line; editor buttons keep the full size. */
+.library-table td>.library-actions{flex-wrap:nowrap;white-space:nowrap}
+.wpstream-library .library-table td>.library-actions .button{min-height:32px;padding:6px 16px;font-size:13px}
+.wpstream-library .library-table tr[data-content-id] td>.library-actions{justify-content:flex-end;gap:8px}
+/* The row's main action is neutral, so purple stays rare. Broadcast turns solid while the channel is live. */
+.wpstream-library .library-table td>.library-actions .library-main-action:not(.button-primary){background:#fff;color:var(--wpstream-brand-text)}
+.wpstream-library .library-table td>.library-actions .library-main-action:not(.button-primary):hover{border-color:var(--wpstream-brand-accent);color:var(--wpstream-brand-accent)}
+/* The menu holding every other row action. */
+.library-menu{position:relative}
+.library-menu>summary{list-style:none;display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--wpstream-brand-border);border-radius:var(--library-control-radius);background:#fff;color:var(--wpstream-brand-text);cursor:pointer}
+.library-menu>summary::-webkit-details-marker{display:none}
+.library-menu>summary:hover,.library-menu[open]>summary{border-color:#C4C4CB;background:#F2F2F4}
+.library-menu-list{position:absolute;top:calc(100% + 6px);right:0;z-index:30;display:flex;flex-direction:column;min-width:160px;padding:6px;border:1px solid var(--wpstream-brand-border);border-radius:12px;background:#fff;box-shadow:0 12px 32px -6px rgba(9,9,11,.18)}
+.library-menu-list form{margin:0}
+.wpstream-library .library-table .library-menu-list :is(a,button){display:block;width:100%;padding:8px 10px;border:0;border-radius:8px;background:none;color:var(--wpstream-brand-text);font-size:13px;line-height:1.4;text-align:left;text-decoration:none;cursor:pointer}
+.wpstream-library .library-table .library-menu-list :is(a,button):hover{background:#F2F2F4}
+.wpstream-library .library-table .library-menu-list .button-link-delete{color:#CC1818}
+.wpstream-library .library-actions .button-link{padding:0;border:0;background:none;color:var(--wpstream-brand-accent);line-height:1.5;text-decoration:none;cursor:pointer}
+.wpstream-library .library-actions .button-link-delete{color:#CC1818}
+.library-status{margin-right:8px;color:var(--library-secondary);white-space:nowrap}
+.library-status::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:#8E8E96;vertical-align:1px}
+.library-status.is-live::before{background:currentColor}
+.wpstream-library .library-table tr.library-row-live>*{background:rgba(15,169,104,.05)}
+.library-status.is-live{display:inline-block;padding:2px 9px;border-radius:980px;background:rgba(15,169,104,.14);color:#0B7A4B;font-weight:600}
+.library-editor>td{background:var(--wpstream-brand-surface)}.library-edit-form{max-width:780px;margin:0}
+/* The Edit panel: fields on the left and the stored file on the right, stacked once the two would get cramped. */
+.wpstream-library .library-editor-title{margin:4px 8px 14px;font-size:15px;font-weight:600}
+.library-editor-layout{padding:0 8px 8px}
+.library-editor-layout.has-source{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.library-editor-layout.has-source .library-edit-form{max-width:none}
+@media(max-width:1100px){.library-editor-layout.has-source{grid-template-columns:minmax(0,1fr)}}
+.library-edit-form label{display:block;font-size:12px;font-weight:600;margin-bottom:14px}
+.library-edit-form input:not([type=hidden]),.library-edit-form select,.library-edit-form textarea{display:block;width:100%;max-width:none;margin-top:5px;font-weight:400}
+.library-file{margin:0!important;padding:16px!important;border:1px solid var(--wpstream-brand-border);background:white!important;width:auto!important;float:none!important}
+.library-file-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.wpstream-library .library-file-head h4{margin:0;font-size:14px;font-weight:600}
+.library-file-name{margin:0 0 10px;overflow-wrap:anywhere}
+.library-file .wpstream_video_notice:not(:empty){margin-top:10px}
+.library-file .library-preview{max-width:none}
+/* Saved confirmation on the row itself, and a running-time slot with no value takes no space or separator. */
+.library-row-saved{flex:none;margin-left:8px;color:#0B7A4B;font-size:12px;font-weight:600}
+.library-meta>:empty{display:none}
+@media(min-width:783px){.wpstream-library .library-table td.library-title{max-width:0}.wpstream-library .library-table :is(th,td):first-child{padding-left:20px}.wpstream-library .library-table :is(th,td):last-child{padding-right:20px}}
+.library-pagination{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+.library-count{font-size:13px;color:var(--library-secondary)}
+.library-pagination-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.wpstream-library .library-pagination .button{min-height:36px;padding:6px 16px;font-size:13px}
+.wpstream-library .library-pagination .library-page-link{min-width:36px;padding:6px 10px}
+.wpstream-library .library-pagination .library-page-link.is-current{background:var(--wpstream-brand-accent);border-color:transparent;color:#fff;cursor:default;transform:none}
+.wpstream-library .library-pagination .library-page-link.is-disabled{background:#fff;opacity:.4;cursor:not-allowed;transform:none}
+.library-page-gap{min-width:20px;text-align:center;color:var(--wpstream-brand-muted)}
+.wpstream-library .library-empty{text-align:center;padding:36px;color:var(--wpstream-brand-muted)}
+/* The file type stays on one line. On a phone each value shows its own label, so the column names go. */
+.library-files td[data-label=Type]{white-space:nowrap}
+@media(max-width:782px){.wpstream-library .library-table.library-files thead{display:none}}
+/* Cells sit on the row's centre line. An open preview makes the row tall, so that row aligns to the top instead, and Type and Actions take the tile's height to stay centred on it. */
+@media(min-width:783px){.wpstream-library .library-table.library-files tbody tr:has(.library-preview) td{vertical-align:top}.wpstream-library .library-table.library-files tbody tr:has(.library-preview) td[data-label=Type]{line-height:45px}.wpstream-library .library-table.library-files tbody tr:has(.library-preview) td>.library-actions{min-height:45px}}
+/* A file row ends like a channel or video row: Create video, then the menu with the rest. */
+.wpstream-library .library-table.library-files td>.library-actions.library-recording-actions{justify-content:flex-end;gap:8px}
+
+.wpstream-library #wpstream_media_upload{float:none;width:100%;padding:0;margin:0}
+.wpstream-library .library-table tr.wpstream_video_wrapper{display:table-row;float:none;margin:0;padding:0;border:0;background:none}
+.wpstream-library .wpstream_get_download_link,.wpstream-library .wpstream_delete_media,.wpstream-library .create_new_free_video,.wpstream-library .create_new_ppv_video{float:none;width:auto;margin:0;padding:0;background:none;border:0;line-height:1.6;color:var(--wpstream-brand-accent);text-transform:none;font-weight:400}
+.wpstream-library .wpstream_delete_media{color:#CC1818}
+/* Row status messages, such as the preview loading state, read as quiet inline text rather than the legacy grey bar. */
+.wpstream-library .wpstream_video_notice{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:6px 0 0;padding:6px 10px;border-radius:8px;background:var(--wpstream-brand-surface);color:var(--wpstream-brand-muted);font-size:12px}
+.wpstream-library .wpstream_video_notice:empty{display:none}
+/* The delete question keeps its two buttons on its own line, sized to the small text beside them. */
+.wpstream-library .wpstream_video_notice .button{min-height:30px;padding:4px 12px;font-size:12px}
+.wpstream-library .storage_file_name_real{font-size:13px;overflow-wrap:anywhere}
+.library-muted{color:var(--library-secondary)}.library-preview{display:block;width:100%;max-width:520px;margin-top:14px;background:#000}
+#library-broadcast{margin-top:26px;display:flow-root}#library-broadcast .event_list_unit{max-width:600px;width:100%;margin:0}
+@media(max-width:1100px){.library-actions{gap:8px}.library-header{align-items:flex-start}}
+@media(max-width:782px){
+ .wpstream-library{margin:15px 10px 30px 0}.library-header{flex-direction:column;gap:12px}
+ .library-heading{justify-content:space-between;gap:8px}.library-heading h1{font-size:23px}
+ /* A heading with a note gives its text the full width; the button follows on its own line. */
+ .library-heading:has(.library-heading-text){flex-wrap:wrap}.library-heading-text{flex-basis:100%}
+ .library-filters{display:grid;grid-template-columns:1fr 1fr;--library-filter-height:44px}.wpstream-library .library-filters [name=library_sort]{margin-left:0}.wpstream-library .library-filters input[type=search]{grid-column:1/-1;width:100%}.wpstream-library .library-filters select{width:100%;min-width:0}
+ .library-table-wrap{border:0;background:none}.wpstream-library .library-table,.wpstream-library .library-table tbody{display:block;background:none}
+ .wpstream-library .library-table thead{display:block}.wpstream-library .library-table thead tr{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 16px 8px}.wpstream-library .library-table thead :is(th,td){display:block;width:auto;height:auto;padding:0;border:0;background:none}.wpstream-library .library-table tbody>tr,.wpstream-library .library-table .wpstream_video_wrapper{display:block;position:relative;background:#fff;border:1px solid var(--wpstream-brand-border);border-radius:12px;margin-bottom:12px;padding:16px}
+ .wpstream-library .library-table td{display:block;width:100%;border:0;padding:7px 0;font-size:13px;min-width:0}
+ .wpstream-library .library-table td[data-label]:not(.library-title)::before{content:attr(data-label);display:block;font-size:11px;color:var(--wpstream-brand-muted);margin-bottom:3px}
+ .wpstream-library .library-title-link{white-space:normal;overflow-wrap:anywhere}.wpstream-library .library-table tr[data-content-id] td>.library-actions,.wpstream-library .library-table.library-files td>.library-actions.library-recording-actions{justify-content:space-between}.library-menu>summary{width:40px;height:40px}.library-tile{width:64px;height:36px;font-size:15px}
+ /* Phone cards: details stacked so long file names wrap, full-size tap targets. */
+ .library-item{align-items:flex-start}.library-item-text{flex:1}
+ .library-meta{display:block;white-space:normal}.library-meta>*{display:block;overflow-wrap:anywhere}.library-meta>*+*::before{content:none}.library-meta>small{margin-left:0}.library-meta>.library-access-badge{display:inline-block;margin-bottom:3px}.library-meta>.library-access-badge+*{margin-left:0}
+ .library-status{flex-basis:100%}
+ .wpstream-library .library-table tr[data-content-id]>.library-title{padding:0 0 8px}
+ .wpstream-library .library-table tr[data-content-id]>td:last-child{padding-top:12px;text-align:left}
+ .wpstream-library .library-table tr[data-content-id]>td:last-child::before{display:none}
+ .library-table td>.library-actions{flex-wrap:wrap}.wpstream-library .library-table td>.library-actions .button{min-height:40px;padding:10px 24px;font-size:15px}
+ .library-edit-form{padding:0}.library-edit-form input,.library-edit-form textarea{max-width:100%}.library-actions{gap:12px}
+}
+
+.library-video-workspace.library-channel-workspace{display:block;max-width:720px;}
+
+@media(prefers-reduced-motion:reduce){.wpstream-library :is(.button,.page-title-action){transition:none}.wpstream-library :is(.button,.page-title-action):hover{transform:none}}
+
+/* Blueprint: focused settings form, full-width header and wrapping tab navigation. */
+.wpstream-settings-page.theme_options_tab_wpstream{float:none;width:auto;max-width:none;margin:-12px 20px 40px 0;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;box-sizing:border-box}
+/* The tabs and their fields sit in one white card, matching the list tables on the other screens. */
+.wpstream-settings-page form{padding:0 24px 24px;border:1px solid var(--wpstream-brand-border);border-radius:12px;background:#fff}
+.wpstream-settings-page h1{font-size:32px;line-height:1.15;letter-spacing:-.02em;font-weight:700;margin:0 0 22px}
+.wpstream-settings-page .nav-tab-wrapper{display:flex;flex-wrap:wrap;gap:4px;margin:0 -24px;padding:6px 18px 0}
+.wpstream-settings-page .nav-tab{margin:0;white-space:normal}
+/* Hovering a tab fades in the accent colour and a lighter version of the active tab's underline. */
+.wpstream-settings-page .nav-tab{transition:color 150ms,border-color 150ms}
+.wpstream-settings-page .nav-tab:not(.nav-tab-active):hover{background:transparent;color:var(--wpstream-brand-accent);border-bottom-color:var(--wpstream-brand-border)}
+@media(prefers-reduced-motion:reduce){.wpstream-settings-page .nav-tab{transition:none}}
+/* No focus ring on a mouse click; moving through the tabs by keyboard still shows it. */
+.wpstream-settings-page .nav-tab:focus:not(:focus-visible){box-shadow:none;outline:0}
+.wpstream-settings-page .wpstream_option_wrapper,.wpstream-settings-page .options_wrapper{float:none;width:100%;max-width:none;min-width:0;box-sizing:border-box}
+.wpstream-settings-page .wpstream_option_wrapper{display:block}
+/* The tab title and its Video Help link share one row, at the width of the fields below. */
+.wpstream-settings-page .wpstream-settings-tab-head{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:720px;margin:26px 0 20px}
+.wpstream-settings-page .wpstream-settings-section-title{font-size:14px;margin:0}
+/* Every label sits above its control, in one column of a comfortable reading width. */
+.wpstream-settings-page .wpstream_option{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;float:none;width:100%;max-width:720px;margin:0 0 22px;padding:0;box-sizing:border-box}
+.wpstream-settings-page .wpstream_option>label{font-weight:500;margin:0;width:auto;float:none}
+.wpstream-settings-page .wpstream_option>input:not([type=hidden]),.wpstream-settings-page .wpstream_option>select,.wpstream-settings-page .wpstream_option>.wpstream-image-upload-wrapper,.wpstream-settings-page .wpstream_option>.wpstream-settings-row{max-width:100%;width:100%;margin:0;box-sizing:border-box;min-width:0}
+.wpstream-settings-page .settings_details{width:auto;max-width:none;float:none;font-size:12px;margin:0;color:var(--wpstream-brand-muted)}
+.wpstream-settings-page .wpstream-role-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;max-width:480px}
+.wpstream-settings-page .wpstream-role-choices label{display:inline-flex;gap:6px;align-items:center;width:auto;max-width:100%;margin:0}
+.wpstream-settings-page .wpstream-role-choices input[type=checkbox]{width:16px;min-width:16px;height:16px;flex:0 0 16px;margin:0;border-color:var(--wpstream-brand-border)}
+/* Section headings split a long tab into groups. The first one follows the tab title, so it needs no separator. */
+.wpstream-settings-page .wpstream-settings-section{max-width:720px;margin:30px 0 18px;padding-top:24px;border-top:1px solid var(--wpstream-brand-border);font-size:15px;font-weight:600}
+.wpstream-settings-page .wpstream-settings-tab-head+.wpstream-settings-section{margin-top:0;padding-top:0;border-top:0}
+/* The page address a slug produces. */
+.wpstream-settings-page .wpstream-url-preview{font-size:12px;color:var(--wpstream-brand-muted);overflow-wrap:anywhere}
+.wpstream-settings-page .wpstream-url-preview strong{color:var(--wpstream-brand-text);font-weight:600}
+/* Message boxes use the full column, since they hold whole sentences. */
+.wpstream-settings-page.theme_options_tab_wpstream .wpstream_option.wpstream-field-textarea textarea{max-width:100%}
+.wpstream-settings-page .wpstream-field-user_streaming_global_channel_options,.wpstream-settings-page .wpstream-field-logs_table{display:block}
+/* The Support tables use the full card width, unlike the form fields. */
+.wpstream-settings-page .wpstream-field-logs_table{max-width:none}
+/* Each on/off row keeps its description on the left and its switch on the right, at one fixed width. */
+.wpstream-settings-page .wpstream_setting_event_unit_wrapper{max-width:600px}
+.wpstream-settings-page .wpstream-settings-row{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:space-between;gap:20px}
+.wpstream-settings-page .wpstream-settings-row .settings_details{flex:1 1 auto;min-width:0;margin:0}
+.wpstream-settings-page .wpstream-settings-row .wpstream_switch{flex:0 0 auto;float:none;margin:0}
+.wpstream-settings-page .wpstream_options_help{float:none;width:auto;margin:0;flex:0 0 auto}
+/* Video Help responds to the pointer like the primary buttons on the list screens. */
+.wpstream-settings-page .wpstream_options_help a{transition:background-color 150ms,transform 150ms}
+.wpstream-settings-page .wpstream_options_help a:hover{background-color:var(--wpstream-brand-accent-hover);color:#fff;transform:translateY(-1px)}
+@media(prefers-reduced-motion:reduce){.wpstream-settings-page .wpstream_options_help a{transition:none}.wpstream-settings-page .wpstream_options_help a:hover{transform:none}}
+/* Save stays in view at the bottom of the screen while the form scrolls, and rests at the foot of the card. */
+.wpstream-settings-page .wpstream-save-settings{position:sticky;bottom:0;z-index:5;float:none;margin:24px -24px -24px;padding:16px 24px;border-top:1px solid var(--wpstream-brand-border);border-radius:0 0 12px 12px;background:#fff}
+.wpstream-settings-page .wpstream-save-settings input{float:none}
+.wpstream-settings-page :is(input,select,textarea){max-width:100%;box-sizing:border-box}
+/* The logs pagination borrows the list-page look without the page margins of its wrapper class. */
+.wpstream-settings-page .wpstream-logs-pagination{margin:14px 0 0}
+.wpstream-settings-page .wpstream-support-tab-root table{table-layout:fixed;width:100%}
+.wpstream-settings-page .wpstream-support-tab-root :is(td,th){overflow-wrap:anywhere}
+@media(max-width:782px){.wpstream-settings-page.theme_options_tab_wpstream{margin:20px 10px 30px 0}.wpstream-settings-page form{padding:0 16px 16px}.wpstream-settings-page .wpstream-save-settings{margin:24px -16px -16px;padding:12px 16px}.wpstream-settings-page .nav-tab-wrapper{gap:6px;margin:0 -16px;padding:6px 10px 0}.wpstream-settings-page .nav-tab{font-size:12px;padding:6px 8px}}
+.library-row-notice{margin:0;color:#b32d2e}.library-row-notice:empty,.library-row-status:empty{display:none}.library-row-status{margin:8px 0;color:#0B7A4B;font-weight:600}
+/* Settings buttons share the 8px control corner used on the channel and video lists. */
+.wpstream-settings-page.theme_options_tab_wpstream .wpstream_button,.wpstream-settings-page.theme_options_tab_wpstream .wpstream-image-upload-wrapper .wpstream-image-upload-buttons .button{border-radius:8px}

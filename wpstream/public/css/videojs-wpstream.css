@@ -7,19 +7,18 @@
  * Scoped to the .vjs-wpstream player and the featured-player wrapper.
  */
 
+.vjs-wpstream { font-family: var(--wpstream-brand-font, "Manrope", sans-serif); }
+
 /* Control bar: fully transparent background, fixed height, centred controls. */
 .vjs-wpstream.vjs-theme-default .vjs-control-bar {
     background-color: hsl(0 0% 100% / 0);
     padding: 0px 12px;
-    height: auto;
     height: 4em;
     align-items: center;
 }
 
 /* Individual control buttons: sizing, slight transparency, hover transition. */
 .vjs-wpstream .vjs-control{
-    height: 44px;
-    width: 34px;
     opacity: 0.87;
     transition: 0.3s ease-out;
     padding: 0px;
@@ -37,7 +36,6 @@
 /* Enlarge the control icon glyphs. */
 .vjs-wpstream .vjs-button>.vjs-icon-placeholder:before {
     font-size: 2.1em;
-    line-height: 44px;
     line-height: 1.6;
 
 }
@@ -137,14 +135,14 @@
 
 /* Time display: vertical line-height alignment. */
 .vjs-wpstream .vjs-time-control{
-    line-height: 44px;
     line-height: 3em;
 }
 
 
 /* Centre big "play" button: subtle grey border. */
 .vjs-wpstream .vjs-big-play-button{
-    border: .06666em solid #595656;
+    border: .06666em solid transparent;
+    background-color: var(--wpstream-brand-accent);
 }
 
 /* Volume panel: animate width and reserve space. */

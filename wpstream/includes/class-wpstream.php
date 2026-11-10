@@ -156,6 +156,19 @@ class Wpstream {
 			new Wpstream_Baker_Media_List_Active_Catalog( $this->wpstream_live_connection )
 		);
 		$this->playback_presentation = new Wpstream_Playback_Presentation( $this );
+		// Old links keep working after an item moves between free and paid.
+		new Wpstream_Permalink_Redirects();
+
+		// All Channels and All Videos save a row without reloading the page.
+		add_action(
+			'wp_ajax_wpstream_library_save',
+			function () {
+				( new Wpstream_Content_Library( $this ) )->ajax_save();
+			}
+		);
+		// Unused media files keeps the frame the browser captured for a file, so the file is read once.
+		add_action( 'wp_ajax_wpstream_save_media_thumb', array( 'Wpstream_Media_Thumbs', 'ajax_save' ) );
+
 		$this->streaming_content_creation = new Wpstream_Streaming_Content_Creation(
 			$this,
 			$this->channel_settings,
@@ -377,6 +390,9 @@ class Wpstream {
                 $plugin_admin = new Wpstream_Admin( $this->get_plugin_name(), $this->get_version(), $this->main );
 
 		        $this->admin  = $plugin_admin;
+				require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-wpstream-classic-video-creation.php';
+				Wpstream_Classic_Video_Creation::register();
+
 
 			    // Admin CSS/JS and the plugin's admin menu (late priority).
 			    $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin,  'enqueue_styles' );
@@ -438,15 +454,22 @@ class Wpstream {
 					2
 				);
 
+				// Log out from the entry screen.
+				add_action(
+					'admin_post_wpstream_logout',
+					function () {
+						$this->get_onboarding()->handle_logout();
+					}
+				);
+
 				// Load onboarding only when its page assets or one of its AJAX routes runs.
 				add_action(
 					'admin_enqueue_scripts',
 					function () {
-						$screen       = get_current_screen();
-						$is_quickstart = $screen && 'wpstream_page_wpstream_onboard' === $screen->base;
-						$is_post_edit  = isset( $_GET['onboard'] ) && 'yes' === $_GET['onboard'];
+						$screen         = get_current_screen();
+						$is_quickstart  = $screen && in_array( $screen->base, array( 'wpstream_page_wpstream_onboard', 'toplevel_page_wpstream_onboard' ), true );
 
-						if ( $is_quickstart || $is_post_edit ) {
+						if ( $is_quickstart ) {
 							$this->get_onboarding()->enqueue_assets();
 						}
 					},
@@ -996,26 +1019,9 @@ class Wpstream {
         * @param string $type    Streaming unit type/context.
         */
         public function wpstream_live_stream_unit_wrapper($item_id,$type){
-            // Coerce to an integer id.
-            $item_id = intval($item_id);
-
-            // The unit's controller script (+ its QR dependency chain) and the shared
-            // admin stylesheet are registered on every page but only enqueued here,
-            // where the go-live unit actually renders (scripts print in the footer).
-            wp_enqueue_script( 'wpstream-start-streaming' );
-            wp_enqueue_style( 'wpstream_front_style' );
-
-            if($item_id == 0){
-                //retrive or  create channel for front end streamers
-                $item_id=$this->wpstream_retrieve_front_end_channel();
-            }
-            // Modal backdrop and reusable error-notification markup.
-            print'<div class="wpstream_modal_background"></div>';
-            print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er2</div>
-            <div class="wpstream_error_ok wpstream_button" type="button">'.esc_html__('Close','wpstream').'</div>
-            </div>';
-			// Render through the shared Live Channel presentation module.
-			$this->get_live_channel_presentation()->render_channel( $item_id, $type );
+            $item_id = intval( $item_id );
+            if ( ! $item_id ) { $item_id = $this->wpstream_retrieve_front_end_channel(); }
+            Wpstream_Broadcaster_Host::frame( $item_id );
         }
         
         
@@ -1031,24 +1037,9 @@ class Wpstream {
         */
 
         public function wpstream_live_stream_unit_wrapper_for_theme($item_id,$type){
-            // Coerce to an integer id.
-            $item_id = intval($item_id);
-
-            // Same render-time asset loading as wpstream_live_stream_unit_wrapper().
-            wp_enqueue_script( 'wpstream-start-streaming' );
-            wp_enqueue_style( 'wpstream_front_style' );
-
-            if($item_id == 0){
-                //retrive or  create channel for front end streamers
-                $item_id=$this->wpstream_retrieve_front_end_channel();
-            }
-            // Modal backdrop and reusable error-notification markup.
-            print'<div class="wpstream_modal_background"></div>';
-            print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er2</div>
-            <div class="wpstream_error_ok wpstream_button" type="button">'.esc_html__('Close','wpstream').'</div>
-            </div>';
-			// Render the companion-theme variant through the same presentation module.
-			$this->get_live_channel_presentation()->render_channel( $item_id, 'theme' );
+            $item_id = intval( $item_id );
+            if ( ! $item_id ) { $item_id = $this->wpstream_retrieve_front_end_channel(); }
+            Wpstream_Broadcaster_Host::frame( $item_id );
         }
         
         

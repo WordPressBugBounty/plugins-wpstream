@@ -342,6 +342,43 @@ if ( ! function_exists( 'wpstream_item_list_shortcodes_input_to_tax' ) ) {
 		);
 	}
 }
+
+if ( ! function_exists( 'wpstream_item_list_allowed_post_type' ) ) {
+	/**
+	 * Limit an item list to the content types the item-list widgets offer.
+	 *
+	 * The list type can arrive from a guest request, so it is never trusted:
+	 * anything outside the widget options falls back to free live channels.
+	 *
+	 * @param string $type Requested post type.
+	 * @return string A post type an item list is allowed to show.
+	 */
+	function wpstream_item_list_allowed_post_type( $type ) {
+		// The same options the item-list widgets present in their "type" control.
+		$allowed = array( 'wpstream_product', 'wpstream_product_vod', 'wpstream_bundles', 'product' );
+
+		// Keep an offered type; replace anything else with the first widget option.
+		return in_array( $type, $allowed, true ) ? $type : 'wpstream_product';
+	}
+}
+
+if ( ! function_exists( 'wpstream_item_list_page_size' ) ) {
+	/**
+	 * Limit how many items one page of a list may hold.
+	 *
+	 * The page size can arrive from a guest request, so a huge value or the
+	 * "all items" value (-1) would let anyone force an unbounded query.
+	 *
+	 * @param mixed $number Requested items per page.
+	 * @return int The requested size, or 100 when it is negative or above 100.
+	 */
+	function wpstream_item_list_page_size( $number ) {
+		$number = intval( $number );
+
+		// Out-of-range requests get the maximum page; in-range requests are kept as asked.
+		return ( $number < 0 || $number > 100 ) ? 100 : $number;
+	}
+}
 /*
 * Wpstream filter bar - shortcode 
 * 

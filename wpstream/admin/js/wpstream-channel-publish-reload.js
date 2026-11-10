@@ -1,15 +1,15 @@
 /**
- * Live Channel editor — reveal the Live Streaming controls after Publish.
+ * Live Channel editor — reveal the Live Streaming controls after the first save.
  *
  * The Live Streaming sidebar panel is a classic metabox rendered by PHP. The
  * block editor draws such metaboxes once, on page load, and never redraws them
- * after a save, so a channel that was a draft when the editor opened keeps
- * showing "publish your channel first" after Publish. This script watches the
- * editor's store and reloads the page once a publish has completed, so the
- * panel comes back rendered for a published channel.
+ * after a save, so a channel that was new when the editor opened keeps
+ * showing "save this channel" after it was saved. This script watches the
+ * editor's store and reloads the page once a first save has completed, so the
+ * panel comes back rendered for a saved channel.
  *
- * Only loaded on the block-editor screen of a not-yet-published channel; the
- * classic editor reloads on its own after Publish. The enqueue declares the
+ * Only loaded on the block-editor screen of a never-saved channel; the
+ * classic editor reloads on its own after a save. The enqueue declares the
  * editor package as a dependency, so the core/editor store exists here.
  *
  * @package Wpstream
@@ -32,8 +32,8 @@
 		}
 		sawSave = false;
 
-		// A save just finished. Only a publish changes what the panel should show.
-		if (editor.getCurrentPostAttribute('status') === 'publish') {
+		// A save just finished. Once the channel exists the panel can load the broadcaster.
+		if (editor.getCurrentPostAttribute('status') !== 'auto-draft') {
 			unsubscribe();
 			window.location.reload();
 		}

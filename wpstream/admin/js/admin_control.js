@@ -140,7 +140,14 @@ jQuery(document).ready(function ($) {
 
 
     // The direct-upload form and multipart upload state shared across handlers.
-    var form = $('.direct-upload');
+    function initializeUpload(uploadDocument) {
+    var scope = uploadDocument || document;
+    var jQuery = function (selector) { return window.jQuery(selector, scope); };
+    Object.assign(jQuery, window.jQuery);
+    var $ = jQuery;
+    var form = $('.direct-upload').first();
+    if (!form.length || form.data('wpstream-upload-ready')) return;
+    form.data('wpstream-upload-ready', true);
     // Holds multipart part URLs and the chunk size once a multipart upload is
     // initiated (null = standard upload).
     var multipartUploadData = null;
@@ -157,6 +164,8 @@ jQuery(document).ready(function ($) {
     // Configure the jQuery File Upload plugin on the direct-upload form.
     // The library enters `add` once per selected or dropped file.
     form.fileupload({
+        dropZone: form.closest('.recording-upload-zone').length ? form.closest('.recording-upload-zone') : jQuery(scope),
+        formData: function () { return form.find('input[type=hidden]').serializeArray(); },
         url: form.attr('action'),
         type: form.attr('method'),
 
@@ -201,7 +210,8 @@ jQuery(document).ready(function ($) {
                 var row = $('<div class="progress"></div>');
                 row.append($('<span class="wpstream_upload_file_name"></span>').text(file.name));
                 row.append($('<span class="wpstream_upload_status"></span>').text(wpstream_admin_control_vars.queued));
-                row.append($('<div class="bar"></div>').css('width', '0%'));
+                row.append($('<progress class="bar" max="100" value="0"></progress>').attr('aria-label', file.name));
+                row.append($('<span class="wpstream-upload-percent">0%</span>'));
                 $('.progress-bar-area').append(row);
                 row.slideDown('fast');
                 uploadQueue.push({ file: file, data: data, row: row });
@@ -280,7 +290,8 @@ jQuery(document).ready(function ($) {
      */
     function showUploadProgress(percent) {
         if (activeUpload) {
-            activeUpload.row.find('.bar').css('width', percent + '%').html(percent + '%');
+            activeUpload.row.find('.bar').val(percent);
+            activeUpload.row.find('.wpstream-upload-percent').text(percent + '%');
         }
     }
 
@@ -577,7 +588,7 @@ jQuery(document).ready(function ($) {
         }
         // The row loses its bar and keeps the reason.
         if (activeUpload) {
-            activeUpload.row.find('.bar').remove();
+            activeUpload.row.find('.bar, .wpstream-upload-percent').remove();
             activeUpload.row.find('.wpstream_upload_status').text(messageBox.text());
         }
         endActiveUpload(wpstream_admin_control_vars.upload_failed2);
@@ -620,11 +631,15 @@ jQuery(document).ready(function ($) {
         jQuery('#video_management_title').after(to_insert);
 
         // Begin polling so the pending entry updates once processing completes.
-        WpStreamUtils.checkPendingVideos();
+        WpStreamUtils.checkPendingVideos(scope);
 
         // Continue with the next queued file, if any.
         endActiveUpload(wpstream_admin_control_vars.upload_complete2);
     }
+
+    }
+    WpStreamUtils.initializeUpload = initializeUpload;
+    initializeUpload();
 
     // When the WooCommerce product type changes, reveal the "sold individually"
     // field for WpStream product types.
@@ -638,6 +653,30 @@ jQuery(document).ready(function ($) {
         }
 
     });
+
+    /**
+     * Show the broadcast tool only while the selected product type can own a live channel,
+     * and scroll to it when it comes back, because the type dropdown sits further down the page.
+     *
+     * The server prints the tool for the saved type, so a type chosen in the
+     * dropdown has to hide it or bring it back until the product is saved.
+     */
+    function wpstream_toggle_broadcast_tool() {
+        // Read the selected type; a subscription sells a channel only when flagged as one.
+        var selected_type = jQuery('#product-type').val();
+        var sells_channel = selected_type === 'live_stream' ||
+            ( selected_type === 'subscription' && jQuery('#_subscript_live_event').val() === 'yes' );
+        var $tool = jQuery('#wpstream-sidebar-meta');
+        // Only a hidden tool that is about to appear scrolls the page, never a page load.
+        var coming_back = sells_channel && $tool.is(':hidden');
+        $tool.toggle( sells_channel );
+        if ( coming_back ) {
+            // Stop short of the top so the WordPress admin bar does not cover the tool.
+            window.scrollTo({ top: $tool.offset().top - 60, behavior: 'smooth' });
+        }
+    }
+    // Only product editors have these selects, so channel posts always keep their tool.
+    jQuery('#product-type,#_subscript_live_event').on('change', wpstream_toggle_broadcast_tool);
 
     // Deep-link support: if arriving with a new VOD name, preselect VOD.
     if(wpstream_findGetParameter('new_video_name')!=='' && wpstream_findGetParameter('new_video_name')!=null ){
@@ -720,17 +759,17 @@ jQuery(document).ready(function ($) {
         jQuery('.video_free').hide();
         jQuery('.video_free_external').hide();
 
-        jQuery('.wpstream_option_vod_source').hide();
+        jQuery('.wpstream_option_vod_source').addClass('wpstream-is-hidden');
 
         // Value "2": recorded/free video source.
         if( jQuery('#wpstream_product_type').val()=== "2"){
             jQuery('.video_free').show();
-            jQuery('.wpstream_show_recording').show();
+            jQuery('.wpstream_show_recording').removeClass('wpstream-is-hidden');
         }
         // Value "3": external video source.
         if( jQuery('#wpstream_product_type').val()=== "3"){
             jQuery('.video_free_external').show();
-            jQuery('.wpstream_show_external').show();
+            jQuery('.wpstream_show_external').removeClass('wpstream-is-hidden');
         }
     });
     // Apply the product-type visibility on initial load.
@@ -881,11 +920,11 @@ function wpstream_handle_caption_selection(){
 			parent.find('.wpstream_caption_file_display').text(attachment.filename);
 
 			// Hide the select button now that a caption is chosen.
-			button.hide();
+			button.addClass('wpstream-is-hidden');
 
 			// Add a "remove caption" button if one is not already present.
 			if( parent.find('.wpstream_remove_caption').length === 0 ){
-				parent.append('<input type="button" class="button wpstream_remove_caption" value="' + wpstream_admin_control_vars.remove_button + '" style="margin-left: 5px;" />');
+				parent.append('<input type="button" class="button wpstream_remove_caption" value="' + wpstream_admin_control_vars.remove_button + '" />');
 			}
 		});
 
@@ -903,7 +942,7 @@ function wpstream_handle_caption_selection(){
 		parent.find('.wpstream_caption_file_display').text('');
 
 		// Show the caption picker button again.
-		parent.find('#wpstream_vod_captions_url_button').show();
+		parent.find('#wpstream_vod_captions_url_button').removeClass('wpstream-is-hidden');
 
 		// Remove this "remove" button.
 		jQuery(this).remove();
@@ -948,11 +987,11 @@ function wpstream_upload_player_logo(){
             mediaUploader.on('select', function() {
                 // Store the selected image URL and populate the preview.
                 var attachment = mediaUploader.state().get('selection').first().toJSON();
-                inputField.val(attachment.url);
+                inputField.val(attachment.url).trigger('change');
 
                 previewArea.find('img').attr('src', attachment.url);
-                previewArea.show();
-                removeButton.show();
+                previewArea.removeClass('wpstream-is-hidden');
+                removeButton.removeClass('wpstream-is-hidden');
             });
         }
 
@@ -972,8 +1011,8 @@ function wpstream_upload_player_logo(){
         var previewArea = wrapper.find('.wpstream-image-preview');
 
         // Clear the stored logo and hide the preview/remove button.
-        inputField.val('');
-        previewArea.hide();
-        button.hide();
+        inputField.val('').trigger('change');
+        previewArea.addClass('wpstream-is-hidden');
+        button.addClass('wpstream-is-hidden');
     });
 }

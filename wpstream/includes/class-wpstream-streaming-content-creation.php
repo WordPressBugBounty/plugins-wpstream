@@ -281,12 +281,24 @@ class Wpstream_Streaming_Content_Creation {
 			return $this->fail( 'invalid_title', $request );
 		}
 
-		if ( ( $is_live && array_key_exists( 'source_recording', $request ) ) || ( 'free' === $access && array_key_exists( 'price', $request ) ) ) {
+		if ( ( $is_live && ( array_key_exists( 'source_recording', $request ) || array_key_exists( 'external_source', $request ) ) ) || ( 'free' === $access && array_key_exists( 'price', $request ) ) ) {
 			return $this->fail( 'invalid_fields', $request );
 		}
 
 		$source_recording = '';
-		if ( $is_vod ) {
+		$external_source = '';
+		if ( $is_vod && array_key_exists( 'external_source', $request ) ) {
+			// A URL is an alternative source, never a fallback for an invalid recording.
+			if ( array_key_exists( 'source_recording', $request ) || ! is_string( $request['external_source'] ) ) {
+				return $this->fail( 'invalid_fields', $request );
+			}
+			$external_source = trim( $request['external_source'] );
+			$parts = wp_parse_url( $external_source );
+			if ( ! $parts || empty( $parts['host'] ) || ! in_array( strtolower( $parts['scheme'] ?? '' ), array( 'http', 'https' ), true ) || false === filter_var( $external_source, FILTER_VALIDATE_URL ) ) {
+				return $this->fail( 'invalid_external_source', $request );
+			}
+			$external_source = esc_url_raw( $external_source, array( 'http', 'https' ) );
+		} elseif ( $is_vod ) {
 			$source_recording = isset( $request['source_recording'] ) ? sanitize_text_field( $request['source_recording'] ) : '';
 			if ( '' === $source_recording ) {
 				return $this->fail( 'invalid_source_recording', $request );
@@ -359,9 +371,9 @@ class Wpstream_Streaming_Content_Creation {
 				return $this->fail( 'storage_failed', $request );
 			}
 
-			update_post_meta( $content_id, 'wpstream_product_type', $is_live ? 1 : 2 );
+			update_post_meta( $content_id, 'wpstream_product_type', $is_live ? 1 : ( $external_source ? 3 : 2 ) );
 			if ( $is_vod && 'free' === $access ) {
-				update_post_meta( $content_id, 'wpstream_free_video', $source_recording );
+				update_post_meta( $content_id, $external_source ? 'wpstream_free_video_external' : 'wpstream_free_video', $external_source ?: $source_recording );
 			}
 			if ( 'paid' === $access ) {
 				$product_type = $is_live ? 'live_stream' : 'video_on_demand';
@@ -382,7 +394,7 @@ class Wpstream_Streaming_Content_Creation {
 					$product->save();
 					update_post_meta( $content_id, 'event_passed', 0 );
 					if ( $is_vod ) {
-						update_post_meta( $content_id, '_movie_url', $source_recording );
+						update_post_meta( $content_id, $external_source ? '_movie_url_external' : '_movie_url', $external_source ?: $source_recording );
 					}
 				} catch ( Throwable $exception ) {
 					wp_delete_post( $content_id, true );

@@ -90,6 +90,10 @@ if ( ! defined( 'ABSPATH' ) ) {
                 </div>
 
 				<?php
+				// Keep dependency guidance visible when paid controls cannot be offered.
+				if ( wpstream_return_user_can_create_paid() || current_user_can( 'manage_options' ) ) {
+					echo Wpstream_Commerce_Requirements::render( 'paid' );
+				}
 				// Show the price section only when WooCommerce is active and the user may create paid channels.
 				if ( function_exists( 'get_woocommerce_currency_symbol' ) && (  wpstream_return_user_can_create_paid() || current_user_can( 'manage_options' ) )  )  :
 

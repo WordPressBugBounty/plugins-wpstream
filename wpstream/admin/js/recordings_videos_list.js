@@ -31,9 +31,9 @@ jQuery(document).ready(function () {
  *
  * @return {void}
  */
-WpStreamUtils.checkPendingVideos = function () {
+WpStreamUtils.checkPendingVideos = function (scope = document) {
     // Collect all currently-pending video placeholders.
-    const pendingElements = document.querySelectorAll('.wpstream_video_pending');
+    const pendingElements = scope.querySelectorAll('.wpstream_video_pending');
 
     // Nothing pending: clear any scheduled poll and stop.
     if ( !pendingElements.length ) {
@@ -54,13 +54,13 @@ WpStreamUtils.checkPendingVideos = function () {
         success: function(response) {
             // Apply status updates when the response carries items.
             if ( response.success && response.data.items ) {
-                updateVideoStatuses( response.data.items );
+                updateVideoStatuses( response.data.items, scope );
             }
         },
         complete: function() {
             // Reschedule the poll in 10s if any pending videos still remain.
-            if (document.querySelector('.wpstream_video_pending')) {
-                pendingVideosTimeout = setTimeout(WpStreamUtils.checkPendingVideos, 10000);
+            if (scope.querySelector('.wpstream_video_pending')) {
+                pendingVideosTimeout = setTimeout(() => WpStreamUtils.checkPendingVideos(scope), 10000);
             }
         }
     });
@@ -72,11 +72,11 @@ WpStreamUtils.checkPendingVideos = function () {
  * @param {Array<{name: string}>} videos - Videos the server reports as ready.
  * @return {void}
  */
-function updateVideoStatuses(videos) {
+function updateVideoStatuses(videos, scope = document) {
     // Process each ready video from the server response.
     videos.forEach(video => {
         // Grab all video wrapper rows in the list.
-        const videoWrapper = document.querySelectorAll('.wpstream_video_wrapper');
+        const videoWrapper = scope.querySelectorAll('.wpstream_video_wrapper');
 
         // Find the wrapper whose displayed file name matches this video.
         const singleVideo = Array.from(videoWrapper).find(wrapper => {
@@ -94,18 +94,40 @@ function updateVideoStatuses(videos) {
         if (pendingDiv) {
             // Drop the "processing" placeholder.
             pendingDiv.remove();
+            document.dispatchEvent(new CustomEvent('wpstream:recording-ready', { detail: { name: video.name } }));
+            if (scope.querySelector('#library-video-form,.editor-video-panel')) {
+                singleVideo.remove();
+                return;
+            }
 
-            // Build the action-buttons markup for the now-ready video.
-            const buttonHtml = `
-                <div class="wpstream_delete_media" data-filename="${video.name}">${wpstream_recordings_videos_list_vars.delete_file}</div>
-                <div class="wpstream_get_download_link" data-filename="${video.name}">${wpstream_recordings_videos_list_vars.download}</div>
-                <a href class="wpstream_download_link"></a>
-                <a class="create_new_free_video" href="${wpstream_recordings_videos_list_vars.add_free_video_url}${video.name}">${wpstream_recordings_videos_list_vars.create_ftv_vod}</a>
-                ${wpstream_recordings_videos_list_vars.woocommerce_exists ? `<a class="create_new_ppv_video" href="${wpstream_recordings_videos_list_vars.add_paid_video_url}${video.name}">${wpstream_recordings_videos_list_vars.create_ptv_vod}</a>` : ''}
-            `
-
-            // Inject the new buttons at the end of the video wrapper.
-            singleVideo.insertAdjacentHTML('beforeend', buttonHtml);
+            // The media files list prints a finished row's actions in advance, hidden. Showing them is all a
+            // ready file needs; their click handlers were bound with the page. The Processing word goes too.
+            const library = singleVideo.querySelector('.library-recording-actions');
+            if (library) {
+                library.querySelectorAll('[hidden]').forEach(element => element.removeAttribute('hidden'));
+                const status = singleVideo.querySelector('.library-recording-status');
+                if (status) status.remove();
+                return;
+            }
+            // Build inert DOM nodes: a recording name is data, never HTML.
+            const labels = wpstream_recordings_videos_list_vars;
+            const target = singleVideo;
+            const addButton = (className, label) => {
+                const button = document.createElement('button');
+                button.type = 'button'; button.className = 'button-link ' + className;
+                button.dataset.filename = video.name; button.textContent = label;
+                target.append(button); return button;
+            };
+            addButton('wpstream_get_download_link', labels.download);
+            const download = document.createElement('a');
+            download.className = 'wpstream_download_link'; download.style.display = 'none'; target.append(download);
+            const addLink = (className, base, label) => {
+                const link = document.createElement('a'); link.className = className;
+                link.href = base + encodeURIComponent(video.name); link.textContent = label; target.append(link);
+            };
+            addLink('create_new_free_video', labels.add_free_video_url, labels.create_ftv_vod);
+            if (labels.woocommerce_exists) addLink('create_new_ppv_video', labels.add_paid_video_url, labels.create_ptv_vod);
+            addButton('wpstream_delete_media', labels.delete_file);
             // Clear any stale click handlers before re-binding.
             jQuery('.wpstream_get_download_link').unbind('click');
             jQuery('.wpstream_delete_media').unbind('click');

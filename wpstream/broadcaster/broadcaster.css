@@ -1,0 +1,1646 @@
+/* WpStream broadcaster components. Shared brand tokens supply typography,
+ * colours and surfaces; module aliases stay scoped to its UI and dialogs. */
+.wpstream_portal_broadcaster, .wpstream_portal_modal_backdrop, .wpstream_portal_bc_channel_picker {
+  /* Type */
+  --font-display: var(--wpstream-brand-font, "Manrope", sans-serif);
+  --font-sans: var(--wpstream-brand-font, "Manrope", sans-serif);
+  --font-mono: "Fragment Mono", ui-monospace, monospace;
+
+  /* Neutrals (zinc) */
+  --c-bg: #F7F7F8;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #F2F2F4;
+  --c-surface-3: #F7F7F8;
+  --c-border: #E3E3E7;
+  --c-border-strong: #D4D4D8;
+  --c-text: #0A0A0B;
+  --c-text-2: #45454C;
+  --c-text-3: #6E6E77;
+  --c-text-4: #9A9AA3;
+  --c-text-inv: #F7F7F8;
+  --c-ink: #18181B;
+
+  /* Accent */
+  --c-accent: var(--wpstream-brand-accent, #4E2EE5);
+  --c-accent-2: var(--wpstream-brand-accent-hover, #6244EA);
+  --c-accent-soft: rgba(78,46,229,.12);
+  --c-cyan: #40C5FF;
+  --c-cyan-soft: #E5F7FF;
+  --c-lime: #BEFF4B;
+  --c-orange: #FFB66E;
+  --c-rose: #FFC9D0;
+  --c-mint: #E3FFF2;
+  --c-lavender: #EDE7FE;
+  --c-cream: #FFEDD5;
+
+  /* Status */
+  --c-live: #E8442A;
+  --c-live-soft: #FFE4EC;
+  --c-success: #0FA968;
+  --c-success-soft: #DCFCE7;
+  --c-warning: #F0A81B;
+  --c-warning-soft: #FEF3C7;
+  --c-danger: #E23A2E;
+  --c-danger-soft: #FEE2E2;
+
+  /* Radii */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
+  --r-pill: 999px;
+
+  /* Shadow */
+  --sh-sm: 0 1px 2px rgba(9,9,11,0.04);
+  --sh-md: 0 1px 2px rgba(9,9,11,0.05), 0 2px 8px rgba(9,9,11,0.04);
+  --sh-lg: 0 0.5px 0.5px -1px rgba(0,0,0,0.06), 0 2px 2px -2px rgba(9,9,11,0.06), 0 10px 24px -8px rgba(9,9,11,0.10);
+  --sh-pop: 0 1px 4px rgba(0,0,0,0.06), 0 12px 32px -6px rgba(9,9,11,0.18);
+
+  /* Motion — duplicated from dashboard-2026.css :root; used by the copied
+     button / popover / modal rules in the HOST BASE DUPLICATES block. */
+  --dur-1: 0.12s;
+  --dur-2: 0.16s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --lift-1: 1px;
+}
+
+/* ============================================================
+   HOST BASE DUPLICATES
+   Copies of every dashboard-2026.css rule that reaches the widget, in
+   the host's source order, so the widget renders identically without
+   the host sheet. Declarations are byte-identical to the host and the
+   specificity is unchanged (see the manifest at the top of this file):
+   in the portal each copy is a harmless duplicate of its host twin.
+   Placed BEFORE the module's own rules so those keep winning ties,
+   exactly as they did when the host sheet held these rules.
+   ============================================================ */
+
+/* Box-sizing reset (host: app-shell scoped reset). */
+.wpstream_portal_broadcaster,
+.wpstream_portal_broadcaster *,
+.wpstream_portal_broadcaster *::before,
+.wpstream_portal_broadcaster *::after,
+.wpstream_portal_bc_channel_picker,
+.wpstream_portal_bc_channel_picker * {
+  box-sizing: border-box;
+}
+
+/* Typography base the widget inherits from the app shell in the portal.
+   Set on the module root (and the detached channel picker, which can sit
+   outside it) so the plugin host gets the same type. */
+.wpstream_portal_broadcaster,
+.wpstream_portal_bc_channel_picker {
+  font-family: var(--font-sans);
+  color: var(--c-text);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
+}
+
+/* Theme-neutralising element resets (host: app-shell :where() resets).
+   :where() keeps the element-only specificity of the host originals. */
+button:where(.wpstream_portal_broadcaster *, .wpstream_portal_bc_channel_picker *),
+[type="button"]:where(.wpstream_portal_broadcaster *),
+[type="submit"]:where(.wpstream_portal_broadcaster *) {
+  display: inline-flex;
+  font-weight: inherit;
+  color: inherit;
+  text-align: inherit;
+  white-space: normal;
+  background-color: transparent;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
+  transition: none;
+  cursor: pointer;
+}
+input[type="text"]:where(.wpstream_portal_broadcaster *),
+input[type="date"]:where(.wpstream_portal_broadcaster *),
+input[type="email"]:where(.wpstream_portal_broadcaster *),
+input[type="number"]:where(.wpstream_portal_broadcaster *),
+input[type="password"]:where(.wpstream_portal_broadcaster *),
+input[type="search"]:where(.wpstream_portal_broadcaster *),
+input[type="tel"]:where(.wpstream_portal_broadcaster *),
+input[type="url"]:where(.wpstream_portal_broadcaster *),
+select:where(.wpstream_portal_broadcaster *),
+textarea:where(.wpstream_portal_broadcaster *) {
+  font: inherit;
+  color: inherit;
+}
+a:where(.wpstream_portal_broadcaster *) {
+  color: inherit;
+  text-decoration: none;
+}
+ul:where(.wpstream_portal_broadcaster *),
+ol:where(.wpstream_portal_broadcaster *) {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Popover / modal entrance keyframe (host-identical). */
+@keyframes wpstream_portal_pop_in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* Reduced-motion guard (host-identical values, scoped to the widget). */
+@media (prefers-reduced-motion: reduce) {
+  .wpstream_portal_broadcaster, .wpstream_portal_broadcaster *, .wpstream_portal_broadcaster *::before, .wpstream_portal_broadcaster *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Generic button styles — base (verbatim, unscoped: byte-identical to host). */
+.wpstream_portal_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 24px;
+  min-height: 40px;
+  border-radius: var(--r-pill);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  /* Motion tokens (spec §0.1): micro color/border shift on hover. */
+  transition: background var(--dur-1) var(--ease-in-out), border-color var(--dur-1) var(--ease-in-out), color var(--dur-1) var(--ease-in-out);
+  white-space: nowrap;
+}
+/* Ghost/outline button */
+.wpstream_portal_btn_ghost:where(.wpstream_portal_broadcaster *) {
+  background: transparent;
+  color: var(--c-text-2);
+  border: 1px solid var(--c-border);
+}
+.wpstream_portal_btn_ghost:where(.wpstream_portal_broadcaster *):hover {
+  background: var(--c-surface-2);
+  border-color: var(--c-border-strong);
+}
+/* Small size modifier */
+.wpstream_portal_btn_sm:where(.wpstream_portal_broadcaster *) {
+  padding: 8px 16px;
+  min-height: 32px;
+  font-size: 13px;
+  border-radius: var(--r-pill);
+}
+.wpstream_portal_mono:where(.wpstream_portal_broadcaster *) {
+  font-family: var(--font-mono), 'Fragment Mono', monospace;
+}
+
+/* Popover shell (the channel popover extends it). */
+.wpstream_portal_popover:where(.wpstream_portal_broadcaster *, .wpstream_portal_bc_channel_picker *) {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: var(--sh-pop);
+  min-width: 280px;
+  z-index: 30;
+  animation: wpstream_portal_pop_in var(--dur-2) var(--ease-out);
+  display: none; /* hidden by default; JS adds .wpstream_portal_popover_open to show */
+}
+.wpstream_portal_popover.wpstream_portal_popover_open:where(.wpstream_portal_broadcaster *, .wpstream_portal_bc_channel_picker *) {
+  display: block;
+}
+.wpstream_portal_row:where(.wpstream_portal_broadcaster *) { display: flex; align-items: center; gap: 8px; }
+.wpstream_portal_bold:where(.wpstream_portal_broadcaster *) { font-weight: 600; }
+
+/* Shared keyframes used by .wpstream_portal_ldot_pulse and
+   .wpstream_portal_bc_encoder_pulse::before (host-identical). */
+@keyframes wpstream_portal_blink { 50% { opacity: 0.4; } }
+@keyframes wpstream_portal_pulse {
+  0%   { transform: scale(0.7); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Button family as the app shell styles it (re-keyed on the module root). */
+.wpstream_portal_broadcaster .wpstream_portal_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--c-ink);
+  color: white;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  border: 1px solid var(--c-ink);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--dur-1) var(--ease-spring), background var(--dur-1) var(--ease-in-out), border-color var(--dur-1) var(--ease-in-out), box-shadow var(--dur-1) var(--ease-in-out);
+}
+.wpstream_portal_broadcaster .wpstream_portal_btn:hover {
+  background-color: transparent;
+  color: var(--c-text);
+  transform: translateY(calc(-1 * var(--lift-1)));
+  box-shadow: var(--sh-md);
+}
+.wpstream_portal_broadcaster .wpstream_portal_btn:active { transform: scale(0.97); }
+.wpstream_portal_broadcaster .wpstream_portal_btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-accent); }
+.wpstream_portal_broadcaster .wpstream_portal_btn[disabled] { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.wpstream_portal_broadcaster .wpstream_portal_btn_ghost {
+  background: transparent;
+  border-color: var(--c-border);
+  color: var(--c-text);
+}
+.wpstream_portal_broadcaster .wpstream_portal_btn_ghost:hover { background: var(--c-surface-2); border-color: var(--c-border-strong); }
+.wpstream_portal_broadcaster .wpstream_portal_btn_sm { height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }
+.wpstream_portal_broadcaster .wpstream_portal_btn_lg { height: 44px; padding: 0 18px; font-size: 15px; border-radius: 12px; }
+
+/* Native select styling (shared). */
+.wpstream_portal_select:where(.wpstream_portal_broadcaster *) {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--c-border);
+  background: white;
+  font-size: 14px;
+  color: var(--c-text);
+  outline: 0;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  flex: 1;
+}
+.wpstream_portal_select:where(.wpstream_portal_broadcaster *):focus {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
+}
+
+/* Copy button family (verbatim, unscoped: byte-identical to host). */
+.wpstream_portal_copy_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--c-text-3);
+  cursor: pointer;
+  border: 1px solid var(--c-border);
+  background: white;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.wpstream_portal_broadcaster .wpstream_portal_copy_btn:hover { color: var(--c-text); background: var(--c-surface-2); }
+.wpstream_portal_copy_btn_copied { color: var(--c-success); border-color: var(--c-success-soft); }
+
+/* Embed-code card (shared with the video Share card — the host keeps its
+   own copy for the video-detail screen, where this sheet does not load). */
+/* The card stays in the page but is not shown in the broadcasting tool. */
+.wpstream_portal_broadcaster .wpstream_portal_bc_embed { display: none; }
+.wpstream_portal_bc_embed {
+  position: relative;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-surface-3);
+  padding: 12px 16px 14px;
+}
+.wpstream_portal_bc_embed_head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.wpstream_portal_bc_embed_code {
+  margin: 0;
+  padding: 12px 14px;
+  background: white;
+  color: var(--c-text);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+  border: 1px solid var(--c-border);
+}
+.wpstream_portal_bc_embed_code code { color: inherit; font-family: inherit; }
+.wpstream_portal_bc_embed_code::-webkit-scrollbar { height: 6px; }
+.wpstream_portal_bc_embed_code::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: 3px; }
+.wpstream_portal_bc_embed_tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  gap: 2px;
+  padding: 2px;
+  background: var(--c-surface-2, #F2F2F4);
+  border: 1px solid var(--c-border);
+  border-radius: 9px;
+}
+.wpstream_portal_bc_embed_tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--c-text-3);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 6px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.wpstream_portal_bc_embed_tab:hover { color: var(--c-text); }
+/* Active state — (0,3,0) so it beats the button :focus neutralise (0,2,1). */
+.wpstream_portal_broadcaster .wpstream_portal_bc_embed_tab.wpstream_portal_tab_active {
+  background: white;
+  color: var(--c-accent);
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+.wpstream_portal_bc_embed_panel_head {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0;
+}
+
+/* Typography helpers. */
+.wpstream_portal_muted:where(.wpstream_portal_broadcaster *) { color: var(--c-text-3); }
+.wpstream_portal_tiny:where(.wpstream_portal_broadcaster *) { font-size: 12px; }
+.wpstream_portal_bold:where(.wpstream_portal_broadcaster *) { font-weight: 600; }
+.wpstream_portal_mono:where(.wpstream_portal_broadcaster *) { font-family: var(--font-mono); }
+
+/* Generic icon button (in-content use — the modal close button). */
+.wpstream_portal_icon_btn:where(.wpstream_portal_broadcaster *) {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--c-text-3);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  transition: background 0.12s ease, color 0.12s ease;
+  position: relative;
+  flex: none;
+}
+.wpstream_portal_broadcaster .wpstream_portal_icon_btn:hover { background: var(--c-surface-2); color: var(--c-text); }
+
+/* Share row — both host definitions, in host order (the second wins the
+   gap / padding / radius conflicts; the first contributes
+   justify-content: space-between). */
+.wpstream_portal_share_row:where(.wpstream_portal_broadcaster *) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--c-surface-3);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+}
+.wpstream_portal_share_row:where(.wpstream_portal_broadcaster *) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--c-surface-3);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+}
+.wpstream_portal_copy_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--c-text-3);
+  cursor: pointer;
+  border: 1px solid var(--c-border);
+  background: white;
+}
+.wpstream_portal_broadcaster .wpstream_portal_copy_btn:hover { color: var(--c-text); background: var(--c-surface-2); }
+.wpstream_portal_copy_btn.copied { color: var(--c-success); border-color: var(--c-success-soft); }
+.wpstream_portal_icon_btn:where(.wpstream_portal_broadcaster *) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: var(--r-md);
+  background: transparent;
+  border: 1px solid var(--c-border);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.wpstream_portal_broadcaster .wpstream_portal_icon_btn:hover { background: var(--c-surface-2); border-color: var(--c-border-strong); }
+
+/* Modal shell the encoder-setup modal reuses. The backdrop base is verbatim
+   and unscoped (byte-identical to host); the rest is widget-scoped. */
+.wpstream_portal_modal_backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(9,9,11,0.45);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  /* Open: backdrop fade-in on mount (spec §1.8). Reuses pop_in rather than a new
+     fade keyframe (spec §0.4); on a translucent full-viewport overlay the slight
+     translate/scale is imperceptible. Close (reverse) is JS-driven. */
+  animation: wpstream_portal_pop_in var(--dur-2) var(--ease-out);
+}
+.wpstream_portal_modal:where(.wpstream_portal_broadcaster *) {
+  background: white;
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-lg);
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: wpstream_portal_pop_in var(--dur-2) var(--ease-out);
+}
+.wpstream_portal_modal_lg:where(.wpstream_portal_broadcaster *) { max-width: 720px; }
+.wpstream_portal_modal_head:where(.wpstream_portal_broadcaster *) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 0;
+}
+.wpstream_portal_modal_title:where(.wpstream_portal_broadcaster *) {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--c-text);
+  letter-spacing: -0.02em;
+}
+.wpstream_portal_modal_sub:where(.wpstream_portal_broadcaster *) {
+  font-size: 12.5px;
+  color: var(--c-text-3);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.wpstream_portal_modal_body:where(.wpstream_portal_broadcaster *) {
+  padding: 16px 20px;
+  flex: 1;
+}
+.wpstream_portal_modal_foot:where(.wpstream_portal_broadcaster *) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px 20px;
+  border-top: 1px solid var(--c-border);
+}
+
+/* Select box-sizing fix the app shell applies (re-keyed on the module root). */
+.wpstream_portal_broadcaster select.wpstream_portal_select,
+.wpstream_portal_broadcaster .wpstream_portal_select {
+  box-sizing: border-box;
+  height: 38px;
+  padding: 10px 12px;
+  line-height: normal;
+}
+
+/* Parent-theme button :hover / :focus neutralise + focus-ring removal + link
+   hover reset (host: app-shell scoped; re-keyed on the module root). */
+.wpstream_portal_broadcaster button:hover,
+.wpstream_portal_broadcaster button:focus,
+.wpstream_portal_broadcaster [type=submit]:hover,
+.wpstream_portal_broadcaster [type=submit]:focus,
+.wpstream_portal_broadcaster [type=button]:hover,
+.wpstream_portal_broadcaster [type=button]:focus,
+.wpstream_portal_bc_channel_picker button:hover,
+.wpstream_portal_bc_channel_picker button:focus {
+  color: inherit;
+  background-color: transparent;
+}
+.wpstream_portal_broadcaster button:focus,
+.wpstream_portal_broadcaster [type=submit]:focus,
+.wpstream_portal_broadcaster [type=button]:focus,
+.wpstream_portal_bc_channel_picker button:focus {
+  outline: 0;
+}
+.wpstream_portal_broadcaster a:hover:not(.wpstream_portal_btn) {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Tab + copy-button de-mute override (!important; host-identical values).
+   The encoder-tab half is module-only and now lives ONLY here; the embed-tab
+   and copy-button half is also kept in the host for the video Share card. */
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab:not(.active),
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab:not(.active) *,
+.wpstream_portal_bc_embed_tab:not(.wpstream_portal_tab_active),
+.wpstream_portal_bc_embed_tab:not(.wpstream_portal_tab_active) *,
+.wpstream_portal_copy_btn,                    /* "Copy code" btn: same de-mute */
+.wpstream_portal_copy_btn * {
+  color: #27272a !important;
+  -webkit-text-fill-color: #27272a !important; /* theme uses text-fill; keep in sync */
+  opacity: 1 !important;
+}
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab.active,
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab.active *,
+.wpstream_portal_bc_embed_tab.wpstream_portal_tab_active,
+.wpstream_portal_bc_embed_tab.wpstream_portal_tab_active * {
+  color: var(--wpstream-brand-accent, #4E2EE5) !important;
+  -webkit-text-fill-color: var(--wpstream-brand-accent, #4E2EE5) !important;
+}
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab.active,
+.wpstream_portal_bc_embed_tab.wpstream_portal_tab_active {
+  background: #fff !important;
+  box-shadow: 0 1px 2px rgba(9,9,11,.08) !important; /* soft lift, no ring */
+}
+/* Centre the "Show camera preview" ghost button between the tabs and the
+   Channel selector (host-identical; !important). */
+.wpstream_portal_row:where(.wpstream_portal_broadcaster *) > .wpstream_portal_btn_ghost.wpstream_portal_btn_sm {
+  margin-left: auto !important; margin-right: auto !important;
+}
+
+/* ============================================================
+   START / STOP BROADCAST BUTTONS
+   (moved from dashboard-2026.css ~lines 1143-1154 and ~1798-1809.
+   These EXTEND the shell-keyed .wpstream_portal_btn rule (duplicated above
+   as .wpstream_portal_broadcaster .wpstream_portal_btn); the root-keyed
+   overrides re-assert the accent/danger colour at matching specificity.
+   They come after that copy (and, in the portal, after dashboard-2026.css)
+   so they keep winning the cascade.)
+   ============================================================ */
+
+/* Start broadcast button — accent color + full width */
+.wpstream_portal_btn_start_broadcast {
+  width: 100%;
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  justify-content: center;
+  font-weight: 600;
+}
+.wpstream_portal_btn_start_broadcast:hover { background: #3D55E0; border-color: #3D55E0; }
+/* Scope-matched override: the shell-keyed / root-keyed .wpstream_portal_btn rule has specificity (0,2,0) and forces background:var(--c-ink) (black). Re-assert the accent colour at the same specificity (keyed on the module root, so it works with or without the host app shell) so the start button stays blue. */
+.wpstream_portal_broadcaster .wpstream_portal_btn_start_broadcast { background: var(--c-accent); border-color: var(--c-accent); color: white; }
+.wpstream_portal_broadcaster .wpstream_portal_btn_start_broadcast:hover { background: #3D55E0; border-color: #3D55E0; color: white; }
+
+/* End Broadcast button — danger variant of .wpstream_portal_btn_lg, full width inside the side panel. */
+.wpstream_portal_btn_stop_broadcast {
+  width: 100%;
+  background: var(--c-danger);
+  border-color: var(--c-danger);
+  color: var(--c-text-inv);
+  justify-content: center;
+  font-weight: 600;
+}
+.wpstream_portal_btn_stop_broadcast:hover { background: #DC2626; border-color: #DC2626; }
+/* Scope-matched override — same reason as the start button: the (0,2,0) .wpstream_portal_btn rule wins on specificity otherwise. */
+.wpstream_portal_broadcaster .wpstream_portal_btn_stop_broadcast { background: var(--c-danger); border-color: var(--c-danger); color: var(--c-text-inv); }
+.wpstream_portal_broadcaster .wpstream_portal_btn_stop_broadcast:hover { background: #DC2626; border-color: #DC2626; color: var(--c-text-inv); }
+
+/* ============================================================
+   BROADCASTER CARD
+   (moved from dashboard-2026.css ~lines 1260-2068)
+   ============================================================ */
+
+/* ---- Broadcaster ---- */
+/* proto: .broadcaster (line 291) */
+.wpstream_portal_broadcaster {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2xl);
+  overflow: hidden;
+}
+/* proto: .broadcaster-head (line 297) */
+.wpstream_portal_broadcaster_head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface-3);
+}
+/* proto: .bc-head-label (line 308) */
+.wpstream_portal_bc_head_label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: var(--c-text);
+}
+
+/* ---- Encoder tabs (pill strip) ----
+   The broadcaster no longer renders this strip (its mode choice is the
+   SOURCE CHOICE cards below). Kept because the host channel-detail
+   Statistics perf-range toggle (#perf-range-tabs) reuses these classes.
+   The per-tab rules are scoped to the .wpstream_portal_encoder_tabs
+   container so they do NOT reach the source cards, which also carry the
+   wpstream_portal_encoder_tab class as the JS/test hook. */
+/* proto: .encoder-tabs (line 2449) */
+.wpstream_portal_encoder_tabs {
+  display: flex; gap: 4px;
+  background: var(--c-surface-2);
+  padding: 3px;
+  border-radius: 10px;
+  width: fit-content;
+}
+/* proto: .encoder-tabs button (line 2456) */
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--c-text-3);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+/* proto: .encoder-tabs button.active (line 2463) */
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab.active { background: white; color: var(--c-text); box-shadow: var(--sh-sm); }
+/* proto: .encoder-tabs button:disabled (line 2464) */
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--c-text-3);
+  filter: grayscale(0.4);
+}
+.wpstream_portal_encoder_tabs .wpstream_portal_encoder_tab[disabled]:hover { background: transparent; }
+
+/* ---- SOURCE CHOICE: "How do you want to go live?" ----
+   Blueprint: plugins/plugin/tests/work-on-blueprints-2/broadcast-tool.css
+   lines 13-30 (.source-choice / .source-card ...). Values byte-for-byte;
+   blueprint tokens map to module tokens with the blueprint literal as the
+   fallback (--ink -> --c-text, --line -> --c-border, --muted -> --c-text-3).
+   Blueprint -> module mapping:
+     .live-workspace      -> .wpstream_portal_broadcaster (module root)
+     .external-workspace  -> the root while the "external" card is pressed
+                             (:has(), so no extra JS state class is needed)
+     .workgrid            -> .wpstream_portal_broadcaster_body (the element
+                             that directly follows the choice block)
+   --mode / --mode-tint are renamed --wpstream-portal-bc-mode(-tint).
+   Card selectors carry `button` so they tie the module's parent-theme
+   button:hover/:focus neutralise rule (0,2,1) and win by source order. */
+.wpstream_portal_bc_source_choice{--wpstream-portal-bc-mode:#5d3abf;--wpstream-portal-bc-mode-tint:#ede6fb;background:var(--wpstream-portal-bc-mode-tint);padding:16px 16px 0}
+.wpstream_portal_broadcaster .wpstream_portal_broadcaster_body{--wpstream-portal-bc-mode:#5d3abf;--wpstream-portal-bc-mode-tint:#ede6fb}
+.wpstream_portal_broadcaster:has(.wpstream_portal_bc_source_card[data-wpstream-portal-encoder-tab="external"][aria-pressed="true"]) .wpstream_portal_bc_source_choice,
+.wpstream_portal_broadcaster:has(.wpstream_portal_bc_source_card[data-wpstream-portal-encoder-tab="external"][aria-pressed="true"]) .wpstream_portal_broadcaster_body{--wpstream-portal-bc-mode:#0e7c6b;--wpstream-portal-bc-mode-tint:#dff1ec}
+.wpstream_portal_broadcaster .wpstream_portal_bc_source_choice:not([hidden])~.wpstream_portal_broadcaster_body{background:var(--wpstream-portal-bc-mode-tint);border-radius:0;padding:16px}
+.wpstream_portal_bc_source_choice_title{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--c-text, #252936)}
+.wpstream_portal_bc_source_choice_cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* white-space:normal is the one non-blueprint declaration: it undoes the
+   parent theme's button{white-space:nowrap} so the card text can wrap. */
+.wpstream_portal_bc_source_choice button.wpstream_portal_bc_source_card{display:flex;flex-direction:row;align-items:center;gap:12px;text-align:left;background:#fff;border:1px solid var(--c-border, #dde0e7);border-radius:8px;padding:14px;position:relative;color:var(--c-text, #252936);cursor:pointer;font:inherit;white-space:normal}
+.wpstream_portal_bc_source_choice button.wpstream_portal_bc_source_card::before{display:none}
+.wpstream_portal_bc_source_choice button.wpstream_portal_bc_source_card:hover:not(:disabled){border-color:var(--wpstream-portal-bc-mode)}
+.wpstream_portal_bc_source_choice button.wpstream_portal_bc_source_card[aria-pressed=true]{border:2px solid var(--wpstream-portal-bc-mode);padding:13px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.wpstream_portal_bc_source_choice button.wpstream_portal_bc_source_card:focus-visible{outline:2px solid var(--wpstream-portal-bc-mode);outline-offset:2px}
+/* [disabled] lockout (carried over from the old pill tabs). */
+.wpstream_portal_bc_source_choice button.wpstream_portal_bc_source_card:disabled{cursor:not-allowed}.wpstream_portal_bc_source_choice button.wpstream_portal_bc_source_card:disabled:not([aria-pressed=true]){opacity:.55}
+.wpstream_portal_bc_source_card_copy{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.wpstream_portal_bc_source_card_icon{display:inline-flex;align-items:center;justify-content:center;color:var(--c-text-2, #4b5563);flex:none}
+.wpstream_portal_bc_source_card_title{font-size:14px;font-weight:600;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.wpstream_portal_bc_source_card_badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#5d3abf;background:#ece6fb;border-radius:999px;padding:2px 8px}
+.wpstream_portal_bc_source_card_text{font-size:12px;color:var(--c-text-3, #737987);line-height:1.45}
+@media(max-width:620px){.wpstream_portal_bc_source_choice_cards{grid-template-columns:1fr}.wpstream_portal_bc_source_choice{padding:12px 12px 0}.wpstream_portal_broadcaster .wpstream_portal_bc_source_choice:not([hidden])~.wpstream_portal_broadcaster_body{padding:12px}}
+
+/* ---- Channel select ---- */
+/* proto: .channel-select (line 317) */
+.wpstream_portal_channel_select { position: relative; }
+
+/* proto: .channel-select-btn (line 318) */
+.wpstream_portal_channel_select_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--c-border);
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+  white-space: nowrap;
+  width: 360px;
+  max-width: 100%;
+}
+.wpstream_portal_channel_select_btn:hover:not([disabled]) { border-color: var(--c-border-strong); }
+.wpstream_portal_channel_select_btn[aria-expanded="true"] { border-color: var(--c-border-strong); background: var(--c-surface-2); }
+.wpstream_portal_channel_select_btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+/* proto: .channel-select-name (line 337) */
+.wpstream_portal_channel_select_name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--c-text);
+  font-weight: 500;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* proto: .channel-select-chev (line 347) */
+.wpstream_portal_channel_select_chev { color: var(--c-text-4); margin-left: 2px; }
+
+/* proto: .channel-popover (line 363) */
+.wpstream_portal_channel_popover {
+  width: 360px;
+  min-width: 280px;
+  padding: 4px;
+  right: 0;
+  left: auto;
+  top: calc(100% + 6px);
+  /* Cap the popover height and scroll its contents internally. Users can own
+     200+ channels, and options are now two lines each (title + domain), so the
+     unconstrained list grew far past the trigger and painted UNDER the stat
+     cards below (RECORDING HOURS / CHANNELS). The min(60vh, 360px) cap keeps
+     the popover anchored near the Channel dropdown; overflow-y:auto scrolls the
+     options (and the "New live stream" foot, reachable at the bottom) inside
+     the popover instead of overflowing the page. */
+  max-height: min(60vh, 360px);
+  overflow-y: auto;
+}
+/* proto: .channel-option (line 371) */
+.wpstream_portal_channel_option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  text-align: left;
+}
+.wpstream_portal_channel_option:hover { background: var(--c-surface-2); }
+/* Livelier row hover: shift the channel NAME to the accent colour + a subtle
+   weight bump so the whole option feels responsive when hovered (the name is a
+   child, so hovering it = hovering the row). The domain line stays muted. */
+.wpstream_portal_channel_option:hover .wpstream_portal_channel_option_name {
+  color: var(--c-accent);
+  font-weight: 500;
+}
+/* proto: .channel-option.selected (line 383) */
+.wpstream_portal_channel_option_selected { background: var(--c-accent-soft); }
+
+/* Column wrapper for the option label: title on top, domain beneath.
+   Takes the row's free space (flex:1) — inherited from the old .option-name —
+   and min-width:0 lets the name's text-overflow:ellipsis engage inside flex. */
+.wpstream_portal_channel_option_text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* proto: .channel-option-name (line 384) */
+.wpstream_portal_channel_option_name {
+  font-size: 13px;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Secondary line: the channel's domain, rendered smaller + muted (--c-text-3)
+   so the title stays the focal point. Only present when the channel has a
+   domain (broadcaster.php guards the empty case). */
+.wpstream_portal_channel_option_domain {
+  font-size: 11px;
+  color: var(--c-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Separate the repeated create action from the channel list. */
+.wpstream_portal_channel_popover_head {
+  padding: 2px 2px 4px;
+  border-bottom: 1px solid var(--c-border, #e4e4e7);
+  margin-bottom: 4px;
+}
+/* proto: .channel-popover-foot (line 393) */
+.wpstream_portal_channel_popover_foot {
+  padding: 2px;
+  border-top: 1px solid var(--c-border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+/* proto: .channel-create (line 399) */
+.wpstream_portal_channel_create {
+  /* The detached picker cannot rely on the host's button reset. */
+  border: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--c-accent);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.wpstream_portal_channel_create:hover { background: var(--c-accent-soft); }
+
+/* Detached channel picker: wpstream_portal_render_broadcaster_channel_select()
+   prints the label + dropdown outside the card, in a host slot (the dashboard
+   puts it above its view tabs). Blueprint broadcast-tool.css
+   .live-view-row .channel-picker: gap 10px, 12px/600 label. The picker sits at
+   the row's left edge, so the popover opens from the left instead of the
+   head's right-aligned default. */
+.wpstream_portal_bc_channel_picker { display: flex; align-items: center; gap: 10px; }
+.wpstream_portal_bc_channel_picker .wpstream_portal_bc_head_label { font-size: 12px; font-weight: 600; }
+.wpstream_portal_bc_channel_picker .wpstream_portal_channel_popover { left: 0; right: auto; }
+
+@media (max-width: 920px) {
+  .wpstream_portal_broadcaster_head { flex-wrap: wrap; }
+  .wpstream_portal_channel_select_name { max-width: 130px; }
+}
+
+/* ---- Broadcaster body ---- */
+/* Next-step guidance beneath Start, visible only until browser devices are ready. */
+.wpstream_portal_bc_prestart_help {
+  margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--c-muted, #71717a);
+}
+.wpstream_portal_bc_prestart_help[hidden] { display: none; }
+/* Recording summary: module-owned wireframe styling, including its switch. */
+.wpstream_portal_bc_recording {
+  display: grid; grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 2px 10px; padding: 10px 12px; margin: 14px 0;
+  border: 1px solid var(--c-border, #e4e4e7); border-radius: 6px;
+  background: var(--c-surface, #fff); font-size: 12px; line-height: 1.45;
+}
+.wpstream_portal_bc_recording::before {
+  content: ''; grid-row: 1; width: 10px; height: 10px; margin-top: 3px;
+  border: 2px solid #9aa1ad; border-radius: 50%; box-sizing: border-box;
+}
+.wpstream_portal_bc_recording:has(input:checked)::before { border-color: #d63649; background: #d63649; }
+.wpstream_portal_bc_recording strong { grid-column: 2; color: var(--c-text, #18181b); font-weight: 600; }
+.wpstream_portal_bc_recording span { grid-column: 2; color: var(--c-muted, #71717a); }
+.wpstream_portal_bc_recording input[role="switch"] {
+  appearance: none; grid-column: 3; grid-row: 1 / span 2; align-self: center;
+  width: 32px; height: 18px; border: 0; border-radius: 12px; margin: 0;
+  background: #a1a1aa; cursor: pointer; position: relative;
+}
+.wpstream_portal_bc_recording input[role="switch"]::after {
+  content: ''; position: absolute; width: 14px; height: 14px; top: 2px; left: 2px;
+  background: #fff; border-radius: 50%;
+}
+.wpstream_portal_bc_recording input:checked { background: var(--c-accent, #7c3aed); }
+.wpstream_portal_bc_recording input:checked::after { left: 16px; }
+.wpstream_portal_bc_recording input:disabled { opacity: .5; cursor: not-allowed; }
+.wpstream_portal_bc_recording input:focus-visible { outline: 2px solid var(--c-accent, #7c3aed); outline-offset: 3px; }
+.wpstream_portal_bc_recording [role="status"]:empty { display: none; }
+
+/* proto: .broadcaster-body (line 426) */
+/* The player and controls are separate rounded widgets inside one outer card. */
+.wpstream_portal_broadcaster_body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+}
+.wpstream_portal_bc_preview,
+.wpstream_portal_bc_side { min-width: 0; border-radius: 12px; }
+/* proto: .bc-preview (line 430) */
+.wpstream_portal_bc_preview {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  background: #0A0A0B;
+  aspect-ratio: 16 / 9;
+  /* Stretch beside taller controls; keep the captured setup height when live
+     controls become shorter. A stacked mobile row keeps its preferred ratio. */
+  align-self: stretch;
+  min-height: var(--wpstream-bc-live-preview-height, 0px);
+  overflow: hidden;
+  border-right: 1px solid var(--c-border);
+}
+
+/* ---- Off-air state ---- */
+/* proto: .bc-offair (line 547) */
+/* z-index: 2 stacks the off-air overlay above #localVideo (z-index: 1) so the
+ * permission-aware camera preview shows through this layer. Background is
+ * transparent — only the grid pattern (opacity 0.5) and the centre content
+ * (opacity 1, default) are visible. No dimming gradient — the camera feed
+ * shows at full brightness behind everything except the solid icon + text.
+ */
+.wpstream_portal_bc_offair {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  z-index: 2;
+}
+/* proto: .bc-offair-grid (line 556) */
+/* opacity: 0.5 — the grid pattern is the ONLY translucent layer over the
+ * camera preview. Keeps the studio aesthetic but lets the user see themselves
+ * through it. */
+/* Uniform dim layer — sibling of the grid, BEFORE it in DOM order so the grid
+ * renders on top. Black at 75% opacity uniformly darkens the camera preview
+ * underneath so the off-air UI stays readable without needing a gradient. */
+.wpstream_portal_bc_offair_dim {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  opacity: 0.75;
+}
+.wpstream_portal_bc_offair_grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+}
+/* proto: .bc-offair-center (line 566) */
+/* opacity: 1 explicit — the icon/label/text/status-pill stays fully solid over
+ * the camera preview. z-index: 1 keeps it above the 0.5-opacity grid pattern
+ * inside this overlay's local stacking context. */
+.wpstream_portal_bc_offair_center {
+  position: relative;
+  text-align: center;
+  color: #9A9AA3;
+  z-index: 1;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  opacity: 1;
+}
+
+/* Hover-to-reveal — mousing over the preview pane fades the off-air overlay's
+ * dim layer + grid pattern + centre content to opacity 0 so the user can see
+ * the full camera feed unobstructed. 0.3s ease transition each direction. */
+.wpstream_portal_bc_offair_dim,
+.wpstream_portal_bc_offair_grid,
+.wpstream_portal_bc_offair_center {
+  transition: opacity 0.3s ease;
+}
+.wpstream_portal_bc_preview:hover .wpstream_portal_bc_offair_dim,
+.wpstream_portal_bc_preview:hover .wpstream_portal_bc_offair_grid,
+.wpstream_portal_bc_preview:hover .wpstream_portal_bc_offair_center {
+  opacity: 0;
+}
+
+/* ---- Camera gate ("Private camera preview") ----
+   Copy, colours and button ported from the blueprint
+   plugins/plugin/tests/work-on-blueprints-2/ (broadcast-tool.html
+   #camera-empty, workspace.css #camera-empty / .stage-center / .button /
+   .primary). The camera opens only on a user action, so until then the
+   off-air centre also shows this block with the "Enable camera &
+   microphone" button.
+   Placement: the block lives INSIDE .wpstream_portal_bc_offair_center, under
+   the status row, so the camera icon, "Off Air", "Camera ready", the status
+   dot + text and the clock stay visible together with it. No overlay, no
+   background, no z-index of its own: it rides the off-air overlay (z 2, above
+   #localVideo z 1; spinner z 3, badges z 4, #messageContainer z 10 above).
+   Margins are tighter than the blueprint stage so the whole off-air stack
+   still fits the 16:9 pane (the overlay clips with overflow:hidden).
+   broadcaster.js shows/hides it with the `hidden` attribute; the [hidden]
+   rule keeps that working against display:block. */
+.wpstream_portal_bc_camera_gate {
+  display: block;
+  margin-top: 14px;
+  color: #ededf1;
+}
+.wpstream_portal_bc_camera_gate[hidden] { display: none; }
+.wpstream_portal_broadcaster [data-wpstream-portal-bc-show-preview][hidden] { display: none; }
+/* Sized to their label: both share the Start Broadcast class, which fills the side panel. */
+.wpstream_portal_broadcaster [data-wpstream-portal-bc-show-preview] { width: auto; margin: 0 0 12px; padding: 0 24px; }
+.wpstream_portal_broadcaster [data-wpstream-portal-bc-enable-camera] { width: auto; padding: 0 24px; }
+.wpstream_portal_broadcaster:not(.wpstream_portal_bc_preview_shown) .wpstream_portal_bc_preview:hover .wpstream_portal_bc_offair:has([data-wpstream-portal-bc-show-preview]:not([hidden])) .wpstream_portal_bc_offair_center { opacity: 1; }
+.wpstream_portal_bc_preview_shown .wpstream_portal_bc_offair { opacity: 0; pointer-events: none; }
+.wpstream_portal_broadcaster [data-wpstream-portal-bc-hide-preview] {
+  display: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+}
+.wpstream_portal_bc_preview_shown:has([data-wpstream-portal-encoder-tab="browser"][aria-pressed="true"]) [data-wpstream-portal-bc-hide-preview] { display: inline-flex; }
+.wpstream_portal_broadcaster:not(.wpstream_portal_bc_preview_shown) .wpstream_portal_bc_preview:has([data-wpstream-portal-bc-show-preview]:not([hidden])) #localVideo { visibility: hidden; }
+.wpstream_portal_bc_camera_gate h2 {
+  font-size: 18px;
+  line-height: 1.4;
+  margin: 0 0 4px;
+  color: inherit;
+}
+.wpstream_portal_bc_camera_gate p {
+  color: #9696a1;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+/* Hover-to-reveal (above) fades the whole off-air centre to opacity 0 so the
+   user can see the camera feed. While the gate is showing there is no feed
+   yet, and fading would hide the Enable button under the cursor, so keep the
+   off-air layers fully visible in that case. Higher specificity than the
+   hover rule, same properties. */
+.wpstream_portal_bc_preview:hover .wpstream_portal_bc_offair:has(.wpstream_portal_bc_camera_gate:not([hidden])) .wpstream_portal_bc_offair_dim {
+  opacity: 0.75;
+}
+.wpstream_portal_bc_preview:hover .wpstream_portal_bc_offair:has(.wpstream_portal_bc_camera_gate:not([hidden])) .wpstream_portal_bc_offair_grid,
+.wpstream_portal_bc_preview:hover .wpstream_portal_bc_offair:has(.wpstream_portal_bc_camera_gate:not([hidden])) .wpstream_portal_bc_offair_center {
+  opacity: 1;
+}
+/* Blueprint .button.primary. Keyed (0,3,0) on the module root so it beats the
+   (0,2,0) module button family (.wpstream_portal_broadcaster .wpstream_portal_btn),
+   whose black background, fixed height and lift-on-hover would otherwise win. */
+.wpstream_portal_broadcaster .wpstream_portal_bc_camera_gate .wpstream_portal_btn_primary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  height: auto;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 11px 17px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: normal;
+  background: #5d3abf;
+  color: white;
+}
+.wpstream_portal_broadcaster .wpstream_portal_bc_camera_gate .wpstream_portal_btn_primary:hover {
+  background: #5d3abf;
+  color: white;
+  filter: brightness(.95);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Live-state hide — once broadcaster.js's updateStatus("connected") fires
+   (ICE connection established, WHIP push live), the status dot inside the
+   off-air meta pill gets the .connected modifier. Use :has() to fade the
+   dim + grid + centre block to 0 opacity so the camera preview / live
+   broadcast video is fully visible. pointer-events:none on the faded
+   layers so clicks pass through to anything underneath. The "LIVE" badge
+   in the top corner (#videoLiveIndicatorLive) is on a separate stacking
+   context and remains visible — the user still has a clear live cue.
+
+   Also fade during .connecting (the WHIP handshake, "just before broadcasting"):
+   the camera is already attached and we've swapped to the live panel + End
+   Broadcast button, so a big "OFF AIR" plate over the user's own face is
+   contradictory. Showing the live camera preview with the amber connecting dot
+   reads correctly as "going live". */
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.connected) .wpstream_portal_bc_offair_dim,
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.connected) .wpstream_portal_bc_offair_grid,
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.connected) .wpstream_portal_bc_offair_center,
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.connecting) .wpstream_portal_bc_offair_dim,
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.connecting) .wpstream_portal_bc_offair_grid,
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.connecting) .wpstream_portal_bc_offair_center {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* proto: .bc-offair-ico (line 573) */
+.wpstream_portal_bc_offair_ico {
+  width: 64px; height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: grid; place-items: center;
+  color: #6E6E77;
+  backdrop-filter: blur(6px);
+}
+/* proto: .bc-offair-label (line 583) */
+.wpstream_portal_bc_offair_label {
+  margin-bottom: 10px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #F7F7F8;
+}
+/* proto: .bc-offair-sub (line 591) */
+.wpstream_portal_bc_offair_sub {
+  font-size: 12.5px;
+  color: #6E6E77;
+  margin: 6px auto 0;
+  max-width: 320px;
+}
+/* proto: .bc-offair-meta (line 597) */
+.wpstream_portal_bc_offair_meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 5px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  font-size: 11px;
+  color: #6E6E77;
+}
+.wpstream_portal_bc_offair_dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--c-text-4);
+  margin-right: 6px;
+}
+/* Connection-state classes — broadcaster.js (line 348+) toggles one of these onto #statusIndicator (= .wpstream_portal_bc_offair_dot) on every ICE state change. */
+.wpstream_portal_bc_offair_dot.connected    { background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+.wpstream_portal_bc_offair_dot.connecting   { background: #F0A81B; box-shadow: 0 0 0 3px rgba(245,158,11,0.18); animation: wpstream_portal_bc_status_pulse 1.2s ease-in-out infinite; }
+.wpstream_portal_bc_offair_dot.disconnected { background: #6E6E77; }
+/* Turning-on state — amber pulse during Phase 1/2/3 of the turn-on flow.
+   Cycle #6d of the turn-on-flow rewrite. Distinct from the .connecting
+   modifier (which paints the same colour but is owned by the ICE state
+   handler and only fires once Phase 4 hands off to WHIP); the turning-on
+   modifier covers the orchestration phases BEFORE the WHIP attempt and
+   is toggled by setTurningOnUI() in broadcaster.js. See
+   dashboard-files/screens/components/broadcaster-turn-on-flow.html
+   "UI state machine during turn-on" section for the contract. */
+.wpstream_portal_bc_offair_dot.turning-on   { background: #F0A81B; box-shadow: 0 0 0 3px rgba(245,158,11,0.18); animation: wpstream_portal_bc_pulse_amber 1.4s ease-in-out infinite; }
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.turning-on) .wpstream_portal_bc_offair_dim,
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.turning-on) .wpstream_portal_bc_offair_grid,
+.wpstream_portal_bc_offair:has(.wpstream_portal_bc_offair_dot.turning-on) .wpstream_portal_bc_offair_center { display: none; }
+@keyframes wpstream_portal_bc_status_pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+@keyframes wpstream_portal_bc_pulse_amber {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* Turning-on wrapper modifier — added to .wpstream_portal_broadcaster by
+   setTurningOnUI(true) in broadcaster.js. setTurningOnUI flips the side-live
+   panel's inline display to 'flex' during the turn-on phases. Per the
+   broadcaster notes (Starting state), the End Broadcast button must NOT be
+   visible while the channel is starting — so this rule hides EVERY child of
+   the side-live panel during turn-on (stats, Share/Preview rows AND the Stop
+   button). The user sees the Setup panel's disabled "Starting…" button as the
+   only control until the WHIP handshake reaches ICE 'connected', at which
+   point updateStatus('connected') swaps to the real live panel. */
+.wpstream_portal_broadcaster.wpstream_portal_broadcaster--turning-on .wpstream_portal_bc_side_live > * {
+  display: none;
+}
+.wpstream_portal_muted_w { color: #45454C; }
+
+/* Discrete channel-state readout (debug aid — may be removed later). Sits under
+   the Start / End buttons and under the external encoder-state block. Kept
+   intentionally subtle — small muted monospace — so it reads as a diagnostic,
+   not a control. broadcaster.js writes the text via updateChannelStateIndicator(). */
+.wpstream_portal_bc_channel_state {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  text-align: center;
+  color: var(--c-text-3, #6E6E77);
+  opacity: 0.65;
+  user-select: text;
+}
+
+/* ---- Live-broadcast surface (added 2026-05-27 for browser broadcaster engine) ---- */
+/* The <video> element + spinner + live/error badges that broadcaster.js toggles on Start Broadcast. Inline display:none on each element keeps them invisible during the Off-Air setup state. */
+
+/* #localVideo ? the camera preview attached by getUserMedia. Stretches to fill the 16:9 preview pane. */
+#localVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  z-index: 1;
+}
+
+/* Pre-WHIP-handshake spinner — centered overlay shown while the broadcaster.js engine boots OvenLiveKit + reaches the ingest. */
+.wpstream-pre-load-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: var(--c-accent);
+  border-radius: 50%;
+  animation: wpstream_portal_bc_spin 0.8s linear infinite;
+  z-index: 3;
+}
+@keyframes wpstream_portal_bc_spin {
+  to { transform: rotate(360deg); }
+}
+
+/* LIVE badge — solid red pill in the top-left of the preview pane while the WebRTC ICE state is 'connected'. */
+.wpstream_portal_bc_live_badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: #DC2626;
+  color: #F7F7F8;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 2px 8px rgba(220,38,38,0.45);
+}
+
+/* Starting and connecting use the same red status treatment as LIVE. */
+.wpstream_portal_bc_error_badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: #DC2626;
+  color: #F7F7F8;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 2px 8px rgba(220,38,38,0.45);
+}
+
+/* ---- Broadcaster side panel ---- */
+/* proto: .bc-side (line 618) */
+.wpstream_portal_bc_side {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--c-surface);
+  min-width: 0;
+  transition: opacity 0.12s ease;
+}
+
+/* Channel-switch loading state — applied by the dropdown handler in
+   dashboard-2026.js the instant a different channel is picked, removed when
+   that channel's check_event_status data arrives. Dims + blocks interaction
+   so the panel can't be clicked while it still shows the previous channel. */
+.wpstream_portal_bc_side.wpstream_portal_bc_side--loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* proto: .bc-field (line 627) */
+.wpstream_portal_bc_field { display: flex; flex-direction: column; gap: 6px; }
+.wpstream_portal_bc_field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text);
+  letter-spacing: -0.01em;
+}
+/* proto: .bc-field .select — broadcaster-scoped descendant rule over the
+   SHARED .wpstream_portal_select (base rule kept in dashboard-2026.css and duplicated in the HOST BASE DUPLICATES block above). */
+.wpstream_portal_bc_field .wpstream_portal_select {
+  flex: 1;
+  font-size: 12.5px;
+  min-width: 0;
+}
+
+/* ---- Camera / Mic toggle icon button ---- */
+/* proto: .bc-toggle-ic (line 639) */
+.wpstream_portal_bc_toggle_ic {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--c-border);
+  background: white;
+  color: var(--c-text-3);
+  display: grid; place-items: center;
+  flex: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.wpstream_portal_bc_toggle_ic:hover { background: var(--c-surface-2); }
+/* proto: .bc-toggle-ic.on (line 651) */
+.wpstream_portal_bc_toggle_ic.on {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+/* proto: .bc-toggle-ic.off (line 656) */
+.wpstream_portal_bc_toggle_ic.off {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+  background: var(--c-danger-soft);
+}
+
+.wpstream_portal_bc_cancel_start { width: 100%; justify-content: center; }
+/* Cancel startup only shows during a start; the button rule above would otherwise override the hidden class. */
+.wpstream_portal_broadcaster .wpstream_portal_bc_cancel_start.hidden { display: none; }
+.wpstream_portal_bc_live_av_controls { display: flex; flex-direction: column; gap: 8px; }
+.wpstream_portal_bc_live_av_control { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; padding: 8px 10px; border: 1px solid var(--c-border, #dde0e7); border-radius: 10px; background: var(--c-surface-2, #f8f9fb); color: var(--c-text, #252936); font-size: 12px; font-weight: 600; }
+.wpstream_portal_bc_audio_level { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 48px; max-width: 150px; margin-left: auto; }
+.wpstream_portal_bc_audio_level_track { height: 8px; flex: 1; overflow: hidden; border-radius: 999px; background: var(--c-border, #dde0e7); }
+.wpstream_portal_bc_audio_level_track > span { display: block; width: 0; height: 100%; border-radius: inherit; background: #16a34a; transition: width 80ms linear; }
+.wpstream_portal_bc_audio_level_value { width: 34px; color: var(--c-text-3, #737987); font-size: 10px; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---- Broadcaster tip ---- */
+/* proto: .bc-tip (line 662) */
+.wpstream_portal_bc_tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 10px;
+  background: var(--c-surface-3);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  font-size: 11.5px;
+  color: var(--c-text-3);
+  line-height: 1.4;
+}
+.wpstream_portal_bc_tip > svg { color: var(--c-accent); flex: none; margin-top: 1px; }
+
+/* ---- Live pulsing dot (Start Broadcast button) ---- */
+/* proto: .ldot-pulse (line 738) */
+/* Uses the SHARED @keyframes wpstream_portal_blink (duplicated in this file — see the
+   dependency manifest at the top of this file). */
+.wpstream_portal_ldot_pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: white;
+  margin-right: 2px;
+  position: relative;
+  animation: wpstream_portal_blink 1.2s infinite;
+}
+
+/* ---- Message overlay — JS-driven info/error toast inside the preview pane ---- */
+/* #messageContainer is fed by broadcaster.js showMessage(). Anchored at the top of the preview; hidden when empty so the off-air placeholder text stays unobstructed during setup. */
+.wpstream_portal_bc_message_overlay {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  max-width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+.wpstream_portal_bc_message_overlay:empty { display: none; }
+.wpstream_portal_bc_message_overlay .info-message,
+.wpstream_portal_bc_message_overlay .error-message,
+.wpstream_portal_bc_message_overlay .success-message {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #F7F7F8;
+  background: rgba(9, 9, 11, 0.92);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.wpstream_portal_bc_message_overlay .error-message   { background: rgba(220, 38, 38, 0.92); }
+.wpstream_portal_bc_message_overlay .success-message { background: rgba(16, 185, 129, 0.92); }
+
+/* Stats grid — vertical stack of stat rows. */
+.wpstream_portal_bc_stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wpstream_portal_bc_browser_stats {
+  padding: 16px 16px 0;
+  background: #ede6fb;
+}
+.wpstream_portal_bc_browser_stats .wpstream_portal_bc_stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.wpstream_portal_broadcaster:has([data-wpstream-portal-encoder-tab="external"][aria-pressed="true"]) .wpstream_portal_bc_browser_stats {
+  background: #dff1ec;
+}
+.wpstream_portal_bc_side_live .wpstream_portal_bc_stats,
+.wpstream_portal_bc_side_external .wpstream_portal_bc_stats {
+  display: none;
+}
+@media (max-width: 600px) {
+  .wpstream_portal_bc_browser_stats .wpstream_portal_bc_stat { flex-direction: column; gap: 4px; padding: 8px 4px; }
+  .wpstream_portal_bc_browser_stats .wpstream_portal_bc_stat_ico { display: none; }
+}
+.wpstream_portal_bc_stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--c-surface-3);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.wpstream_portal_bc_stat_l {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--c-text-3);
+  min-width: 0;
+}
+.wpstream_portal_bc_stat_ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex: none;
+}
+/* Icon tint variants — each maps to one of the theme's soft-color tokens. */
+.wpstream_portal_bc_stat_ico_live    { background: var(--c-live-soft);    color: var(--c-live); }
+.wpstream_portal_bc_stat_ico_cyan    { background: var(--c-cyan-soft);    color: var(--c-cyan); }
+.wpstream_portal_bc_stat_ico_success { background: var(--c-success-soft); color: var(--c-success); }
+.wpstream_portal_bc_stat_ico_neutral { background: var(--c-surface-2);    color: var(--c-text-3, #71717A); }
+/* Health-dot warn (Fair) + danger (Poor) — swapped onto the Health icon
+   span by broadcaster.js (applyHealth). Reuse the shared orange/red tokens. */
+.wpstream_portal_bc_stat_ico_warn    { background: var(--c-warning-soft); color: var(--c-warning); }
+.wpstream_portal_bc_stat_ico_danger  { background: var(--c-danger-soft);  color: var(--c-danger); }
+
+.wpstream_portal_bc_stat_health_dot { font-size: 12px; line-height: 1; }
+
+.wpstream_portal_bc_stat_v {
+  font-weight: 600;
+  color: var(--c-text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Broadcaster share-row value span — the broadcaster-only suffix over the
+   SHARED base .wpstream_portal_share_row (base rule kept in dashboard-2026.css and duplicated above;
+   it is also used by video-detail.php). Used by the External-encoder panel +
+   the encoder-setup modal rows. */
+.wpstream_portal_share_row_val {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--c-text-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* ---- External encoder side panel (added 2026-05-27) ---- */
+/* Shown when the user clicks the "External encoder" tab in the broadcaster
+   head. Hides .wpstream_portal_bc_side_setup at the same time. Verbatim port
+   of the proto .bc-encoder-state + .bc-encoder-pulse blocks (project/styles.css
+   lines 674–701). Reuses the existing .wpstream_portal_share_row, .wpstream_portal_bc_field,
+   .wpstream_portal_copy_btn, .wpstream_portal_btn_ghost / _sm classes for the
+   RTMP URL + stream key rows and the Full-encoder-setup button. */
+
+/* proto: .bc-encoder-state (line 674) — waiting-for-encoder card, warning tint */
+.wpstream_portal_bc_encoder_state {
+  padding: 12px 14px;
+  background: var(--c-warning-soft);
+  border-radius: 10px;
+  border: 1px solid #FCD66A;
+}
+
+/* proto: .bc-encoder-pulse (line 680) — circular dot with a pulsing ring */
+.wpstream_portal_bc_encoder_pulse {
+  width: 32px; height: 32px;
+  position: relative;
+  display: grid; place-items: center;
+  background: white;
+  border-radius: 50%;
+  color: #B45309;
+  flex: none;
+}
+/* Pulsing ring — reuses the SHARED wpstream_portal_pulse keyframe
+   (duplicated in this file — see the manifest at the top of this file). */
+.wpstream_portal_bc_encoder_pulse::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid #FBBF24;
+  animation: wpstream_portal_pulse 1.6s ease-out infinite;
+}
+/* Inner solid dot inside the ring */
+.wpstream_portal_bc_encoder_pulse > span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #B45309;
+}
+
+@media (max-width: 920px) {
+  .wpstream_portal_broadcaster_body { grid-template-columns: minmax(0, 1fr); }
+  /* Stacked panels size independently, including a resize during a live stream. */
+  .wpstream_portal_bc_preview { min-height: 0; border-right: 0; border-bottom: 1px solid var(--c-border); }
+}
+
+/* Wrapped embed tabs need their own row; keep Copy below them on small screens. */
+@media (max-width: 600px) {
+  .wpstream_portal_broadcaster .wpstream_portal_bc_embed_panel_head {
+    position: static; display: flex; justify-content: flex-end; margin-bottom: 8px;
+  }
+}
+
+/* ============================================================
+   EXTERNAL-ENCODER SETUP MODAL
+   "Go Live with External Streaming App" — same INFO as the
+   official plugin's external-streaming modal, restyled to the
+   2026 dashboard design system. Reuses the dashboard modal shell
+   (.wpstream_portal_modal_backdrop / _modal / _head / _body —
+   duplicated in this file, see the manifest); the rules below only
+   style the encoder-specific innards.
+   ============================================================ */
+
+/* Cap the height so the instruction list scrolls inside the
+   modal body rather than pushing the modal off-screen on short
+   viewports. */
+.wpstream_portal_encoder_modal { max-width: 520px; }
+.wpstream_portal_encoder_modal .wpstream_portal_modal_body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Per-encoder instruction list — numbered steps reproduced
+   verbatim from the plugin. Plain readable list, no bullets. */
+.wpstream_portal_encoder_steps {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wpstream_portal_encoder_steps li {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--c-text-2);
+}
+
+/* Larix QR image — centred, framed to read clearly against the
+   white modal background. */
+.wpstream_portal_encoder_qr {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+}
+.wpstream_portal_encoder_qr img {
+  width: 150px;
+  height: 150px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: white;
+  padding: 6px;
+}
+/* Hide the QR frame until its src is populated by the JS so an
+   empty broken-image box never flashes. */
+.wpstream_portal_encoder_qr img:not([src]),
+.wpstream_portal_encoder_qr img[src=""] { display: none; }
+
+/* Keep device arrows equally inset from the control edges. */
+.wpstream_portal_broadcaster select.wpstream_portal_select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%23252936' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
+}
+
+/* Keep explicit camera-permission controls reachable on narrow editor embeds. */
+@media (max-width:600px) {
+ .wpstream_portal_bc_camera_gate .wpstream_portal_btn { max-width:100%; white-space:normal; height:auto; line-height:1.4; }
+ .wpstream_portal_bc_preview:has(.wpstream_portal_bc_camera_gate:not([hidden])),
+ .wpstream_portal_bc_preview:has([data-wpstream-portal-bc-show-preview]:not([hidden])) { min-height:320px; }
+}
+
+/* Markup modifiers replace the legacy inline layout declarations. */
+.wpstream-bc-share-compact { padding:8px 10px; }
+.wpstream-bc-gap-small { gap:8px; }
+.wpstream-bc-gap-tight { gap:6px; }
+.wpstream-bc-grow { flex:1; }
+.wpstream-bc-gap-medium { gap:10px; }
+.wpstream-bc-caption { font-size:13px; }
+.wpstream-bc-full-width { width:100%; }
+.wpstream-bc-no-margin { margin:0; }
+.wpstream-bc-field-spaced { margin-bottom:14px; }
+
+.wpstream-bc-hidden { display: none !important; }
+.wpstream-bc-display-flex { display: flex !important; }
+.wpstream-bc-display-block { display: block !important; }
+.wpstream-bc-display-inline { display: inline !important; }
+
+.wpstream-bc-share-value { font-size: 12px; }
+.wpstream-bc-external-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; z-index: 5; }
+.wpstream-bc-fading { opacity: 0; transition: opacity var(--dur-2) var(--ease-in-out); }
+.wpstream-bc-copy-buffer { position: fixed; opacity: 0; }

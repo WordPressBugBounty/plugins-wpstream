@@ -27,6 +27,8 @@ class Wpstream_Playback_Presentation {
 	public function __construct( $main ) {
 		$this->main = $main;
 		$this->playback_session = new Wpstream_Playback_Session();
+		// Serves a video's captions file to the hosted player; the VOD iframe points at it.
+		new Wpstream_Captions_Endpoint();
 	}
 
 	/**
@@ -552,15 +554,8 @@ class Wpstream_Playback_Presentation {
 				// Container the JS fills with the live viewer count.
 				echo '<div id="wpestream_live_counting" class="wpestream_live_counting" data-showviewercount="' . ( $show_viewer_count ? '1' : '0' ) . '"></div>';
 
-				// Show the "not live" overlay only while there is no playback URL yet.
-				$show_wpstream_not_live_mess = ' style="display:none;" ';
-				if ( trim( $hls_playback_url ) == '' ) {
-
-					$show_wpstream_not_live_mess = '';
-				}
-
-				// Default overlay carrying the configurable "we are not live" message.
-				$not_live_html = '<div class="wpstream_not_live_mess" ' . $show_wpstream_not_live_mess . ' style="display: none">
+				// CSS hides the initial overlay; the live-status controller reveals it.
+				$not_live_html = '<div class="wpstream_not_live_mess">
 						<div class="wpstream_not_live_mess_back"></div>
 						<div class="wpstream_not_live_mess_mess">' . esc_html( wpstream_not_live_message( $channel_id ) ) . '</div>
 					</div>';
@@ -637,18 +632,18 @@ class Wpstream_Playback_Presentation {
 				// When a trailer exists, render its play/mute/unmute button controls (SVG icons).
 				if ( $video_trailer ) {
 					print '<div class="wpstream_theme_trailer_wrapper">';
-					print '<div id="' . esc_attr( $play_trailer_button_element_id ) . '" style="display: none;" class="wpstream_video_on_demand_play_trailer">
+					print '<div id="' . esc_attr( $play_trailer_button_element_id ) . '" class="wpstream_video_on_demand_play_trailer">
 	                    <svg width="30" height="24" viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 	                        <path fill-rule="evenodd" clip-rule="evenodd" d="M26.6667 1.5H3.33337C2.50495 1.5 1.83337 2.17157 1.83337 3V21C1.83337 21.8284 2.50495 22.5 3.33338 22.5H26.6667C27.4951 22.5 28.1667 21.8284 28.1667 21V3C28.1667 2.17157 27.4951 1.5 26.6667 1.5ZM3.33337 0C1.67652 0 0.333374 1.34315 0.333374 3V21C0.333374 22.6569 1.67652 24 3.33338 24H26.6667C28.3236 24 29.6667 22.6569 29.6667 21V3C29.6667 1.34315 28.3236 0 26.6667 0H3.33337ZM4.83337 4C4.55723 4 4.33337 4.22386 4.33337 4.5V6.16667C4.33337 6.44281 4.55723 6.66667 4.83337 6.66667H6.50004C6.77618 6.66667 7.00004 6.44281 7.00004 6.16667V4.5C7.00004 4.22386 6.77618 4 6.50004 4H4.83337ZM23.5 4C23.2239 4 23 4.22386 23 4.5V6.16667C23 6.44281 23.2239 6.66667 23.5 6.66667H25.1667C25.4428 6.66667 25.6667 6.44281 25.6667 6.16667V4.5C25.6667 4.22386 25.4428 4 25.1667 4H23.5ZM4.33337 11.167C4.33337 10.8909 4.55723 10.667 4.83337 10.667H6.50004C6.77618 10.667 7.00004 10.8909 7.00004 11.167V12.8337C7.00004 13.1098 6.77618 13.3337 6.50004 13.3337H4.83337C4.55723 13.3337 4.33337 13.1098 4.33337 12.8337V11.167ZM23.5001 10.667C23.224 10.667 23.0001 10.8909 23.0001 11.167V12.8337C23.0001 13.1098 23.224 13.3337 23.5001 13.3337H25.1668C25.4429 13.3337 25.6668 13.1098 25.6668 12.8337V11.167C25.6668 10.8909 25.4429 10.667 25.1668 10.667H23.5001ZM4.33337 17.833C4.33337 17.5569 4.55723 17.333 4.83337 17.333H6.50004C6.77618 17.333 7.00004 17.5569 7.00004 17.833V19.4997C7.00004 19.7758 6.77618 19.9997 6.50004 19.9997H4.83337C4.55723 19.9997 4.33337 19.7758 4.33337 19.4997V17.833ZM23.5001 17.333C23.224 17.333 23.0001 17.5569 23.0001 17.833V19.4997C23.0001 19.7758 23.224 19.9997 23.5001 19.9997H25.1668C25.4429 19.9997 25.6668 19.7758 25.6668 19.4997V17.833C25.6668 17.5569 25.4429 17.333 25.1668 17.333H23.5001ZM19.0677 13.0997L13.4077 16.5087C13.0434 16.7281 12.6092 16.7094 12.2661 16.5091C11.9218 16.3081 11.6666 15.9224 11.6666 15.4086V8.59072C11.6666 8.07698 11.9218 7.69125 12.2661 7.49026C12.6092 7.28999 13.0434 7.27126 13.4077 7.49064L19.0677 10.8996C19.8663 11.3805 19.8663 12.6188 19.0677 13.0997Z"/>
 	                    </svg>
 	                    ' . esc_html__( 'Play Trailer', 'wpstream' ) . '</div>';
-					print '<div id="' . esc_attr( $mute_trailer_button_element_id ) . '" style="display: none;" class="wpstream_video_on_demand_mute_trailer">
+					print '<div id="' . esc_attr( $mute_trailer_button_element_id ) . '" class="wpstream_video_on_demand_mute_trailer">
 	                    <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
 	                    <path fill-rule="evenodd" clip-rule="evenodd" d="M1.32143 10.0789H8.69499L18.8964 0L21.1428 0.921053V35.1316L18.8964 36L8.69499 25.8684H1.32143L0 24.5526V11.3947L1.32143 10.0789ZM10.175 23.6842L18.5 31.9474V4.10526L10.175 12.3158L9.24999 12.7105H2.64286V23.2368H9.24999L10.175 23.6842ZM37 17.9737C37.0069 22.2216 35.5329 26.3401 32.8295 29.6263L30.9478 27.7579C33.1613 24.9734 34.3629 21.5249 34.3571 17.9737C34.3571 14.2895 33.0885 10.8974 30.9637 8.21053L32.8454 6.34211C35.5382 9.62494 37.0062 13.735 37 17.9737ZM31.7143 17.9737C31.7193 20.8255 30.7895 23.6011 29.0661 25.8789L27.1738 23.9947C28.4127 22.2295 29.0752 20.1272 29.0714 17.9737C29.0751 15.8287 28.4174 13.7344 27.1871 11.9737L29.0793 10.0895C30.7338 12.2868 31.7143 15.0158 31.7143 17.9737ZM26.4286 17.9737C26.4286 19.4842 26.0057 20.8947 25.2657 22.0947L23.3126 20.1526C23.6249 19.4729 23.7876 18.7345 23.7899 17.9869C23.7922 17.2394 23.634 16.5001 23.3258 15.8184L25.2789 13.8737C26.0083 15.0684 26.4286 16.4737 26.4286 17.9737Z" fill="white"/>
 	                    </svg>
 
 	                    </div>';
-					print '<div id="' . esc_attr( $unmute_trailer_button_element_id ) . '" style="display: none;" class="wpstream_video_on_demand_unmute_trailer">
+					print '<div id="' . esc_attr( $unmute_trailer_button_element_id ) . '" class="wpstream_video_on_demand_unmute_trailer">
 	                    <svg width="33" height="32" viewBox="0 0 33 32" fill="none" xmlns="http://www.w3.org/2000/svg">
 	                    <path fill-rule="evenodd" clip-rule="evenodd" d="M1.15625 8.85688H7.60813L16.5344 0L18.5 0.809375V30.8719L16.5344 31.635L7.60813 22.7319H1.15625L0 21.5756V10.0131L1.15625 8.85688ZM8.90313 20.8125L16.1875 28.0738V3.6075L8.90313 10.8225L8.09375 11.1694H2.3125V20.4194H8.09375L8.90313 20.8125ZM30.5967 11.3127L32.2316 12.9477L28.2287 16.9506L32.2316 20.9559L30.5967 22.5908L26.5938 18.5856L22.5885 22.5908L20.9536 20.9559L24.9588 16.9506L20.9513 12.95L22.5862 11.3151L26.5938 15.3157L30.5967 11.3127Z" fill="white"/>
 	                    </svg>
@@ -838,7 +833,7 @@ class Wpstream_Playback_Presentation {
 								data-wpstream-frame-role="trailer"
 								allowfullscreen
 								allow="autoplay; fullscreen"
-								style="display:none;"
+
 								aria-hidden="true"
 								tabindex="-1">
 							</iframe>';
@@ -877,14 +872,16 @@ class Wpstream_Playback_Presentation {
 	                return '';
 	            }
 
-	            // Baker's video/info answer is cached per video for 5 minutes; Baker is asked only on a miss.
+	            // Reuse an answer only for the same account and playback restrictions.
+	            // Otherwise enabling encryption/domain lock can serve an old open manifest.
 	            $transient_name        = 'wpstream_video_on_demand_' . $video_name;
+	            $curl_post_fields      = $this->vod_info_request_fields( $video_name );
+	            $request_context       = hash( 'sha256', wp_json_encode( array( wpstream_get_api_username(), $curl_post_fields ) ) );
 	            $curl_response_decoded = get_transient( $transient_name );
 
-	            if ( ! is_array( $curl_response_decoded ) ) {
+	            if ( ! is_array( $curl_response_decoded ) || ( $curl_response_decoded['_wpstream_request_context'] ?? '' ) !== $request_context ) {
 	                // Endpoint for video info; the auth token is injected by the transport.
 	                $url              = 'video/info';
-	                $curl_post_fields = $this->vod_info_request_fields( $video_name );
 
 	                // Perform the API call; a WP_Error (not-connected included) means no playable URL.
 	                $curl_response_decoded = $this->main->wpstream_live_connection->authorized_request( $url, $curl_post_fields );
@@ -900,7 +897,8 @@ class Wpstream_Playback_Presentation {
 	                /**
 	                 * Filter how long a VOD's HLS answer from the cloud is cached, in seconds.
 	                 *
-	                 * Clamped to [1, 3600]. The transient name and payload are frozen.
+	                 * Clamped to [1, 3600]. The transient name and API fields are preserved;
+	                 * a private request fingerprint keeps cached restrictions in sync.
 	                 *
 	                 * @since 4.14.0
 	                 *
@@ -908,6 +906,7 @@ class Wpstream_Playback_Presentation {
 	                 */
 	                $ttl = wpstream_tunable( 'wpstream_vod_hls_cache_ttl', 300, HOUR_IN_SECONDS );
 	                // Cache the whole answer so a later hit can apply the same product meta below.
+	                $curl_response_decoded['_wpstream_request_context'] = $request_context;
 	                set_transient( $transient_name, $curl_response_decoded, $ttl );
 	            }
 
@@ -1025,7 +1024,7 @@ class Wpstream_Playback_Presentation {
 	                $video_type             =   '';
 	                // Bare storage name of the recording (no bucket prefix); set only for cloud-hosted VOD.
 	                $video_path             =   '';
-	                if( (  $post_type  =='wpstream_product_vod' && $free_video_type==2 ) || get_post_type($product_id)=='product' ){
+	                if( (  $post_type  =='wpstream_product_vod' && $free_video_type==2 ) || ( $post_type === 'product' && $free_video_type !== 3 ) ){
 
 	                    /*
 	                    * IF vide is encrypted-  readed from vod,streaner
@@ -1042,14 +1041,14 @@ class Wpstream_Playback_Presentation {
 	                    $video_path_final = $this->wpstream_request_video_on_demand_hls_player($video_path,$product_id);
 
 
-	                }else if(   $post_type =='wpstream_product_vod'  && $free_video_type==3 ){
+	                }else if( in_array( $post_type, array( 'wpstream_product_vod', 'product' ), true ) && $free_video_type==3 ){
 
 	                    /* Video is unecrypted - read from local or youtube / vimeo
 	                    */
 
 	                    // Unencrypted VOD: use the stored external URL and load the YouTube tech.
 	                    $video_type         =   'video/mp4';
-	                    $video_path_final=esc_html(get_post_meta($product_id, 'wpstream_free_video_external', true));
+	                    $video_path_final=esc_url_raw(get_post_meta($product_id, $post_type === 'product' ? '_movie_url_external' : 'wpstream_free_video_external', true), array( 'http', 'https' ));
 	                    wp_enqueue_script('youtube.min');
 	                }
 
@@ -1273,6 +1272,9 @@ class Wpstream_Playback_Presentation {
 							'logoPosition'               => $player_logo_image ? $player_logo_position : '',
 							'logoOpacity'                => $player_logo_image ? $player_logo_opacity : '',
 							'isThemeActive'              => $current_active_theme->get('Name') === 'Hello WPStream',
+							// The player fetches captions cross-origin, so it gets the plugin's CORS-enabled endpoint, not the raw
+							// upload URL. add_query_arg() does not encode values, and this one carries its own query string.
+							'captions'                   => $captionsUrl ? rawurlencode( Wpstream_Captions_Endpoint::url( $product_id ) ) : '',
 						),
 						static function ( $v ) {
 							return $v !== null && $v !== '';
@@ -1321,7 +1323,7 @@ class Wpstream_Playback_Presentation {
 								data-wpstream-frame-role="trailer"
 								allowfullscreen
 								allow="autoplay; fullscreen"
-								style="display:none;"
+
 								aria-hidden="true"
 								tabindex="-1">
 							</iframe>';

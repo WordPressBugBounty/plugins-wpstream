@@ -232,6 +232,22 @@ class Wpstream_Channel_Settings {
 			return array( 'success' => true, 'state' => $this->read( $channel_id ) );
 		}
 
+		if ( 'save_recording' === $type ) {
+			if ( ! isset( $change['record'] ) || ! in_array( $change['record'], array( 0, 1 ), true ) ) {
+				return array( 'success' => false, 'error' => 'invalid_recording' );
+			}
+			$state = $this->read( $channel_id );
+			$options = $this->channel_values( $state['options'] );
+			$options['record'] = $change['record'];
+			$this->storage->write_customized( $channel_id, $options );
+			$this->storage->write_use_defaults( $channel_id, false );
+			if ( $options !== $this->storage->read_customized( $channel_id ) || $this->storage->read_use_defaults( $channel_id ) ) {
+				return array( 'success' => false, 'error' => 'storage_failed' );
+			}
+			do_action( 'wpstream_channel_settings_saved', $channel_id, $options, $this->channel_values( $state['options'] ) );
+			return $this->synchronize_after_save( $channel_id );
+		}
+
 		if ( 'select_mode' === $type ) {
 			$mode = $change['mode'] ?? '';
 			if ( ! in_array( $mode, array( 'defaults', 'customized' ), true ) ) {

@@ -11,8 +11,7 @@
  * onboarding bubble hints.
  *
  * Relies on the localized `wpstream_start_streaming_vars` object (admin URL,
- * i18n strings, feature flags) and reports onboarding telemetry via the
- * optional global wpstream_track_onboarding_step().
+ * i18n strings, feature flags).
  */
 // Registry of active setInterval poll timers, keyed by show id (and "stop"+id).
 // Namespaced (not a bare `counters`) so a co-loaded script can never clobber
@@ -57,22 +56,6 @@ jQuery(document).ready(function ($) {
     wpstream_adjust_settings_general();
 
 });
-
-/**
- * Fire an onboarding telemetry event, but only if the tracking helper exists.
- *
- * @param {string} action       Event/action name.
- * @param {string} step         Current onboarding step identifier.
- * @param {string} element_type Element kind that triggered it (default 'button').
- * @param {string} element_name Optional element name/detail.
- */
-function wpstream_safe_track_onboarding(action, step, element_type = 'button', element_name = '') {
-	// Guard: the onboarding tracker is only present during onboarding.
-	if (typeof wpstream_track_onboarding_step === 'function') {
-		// Forward the event to the tracker.
-		wpstream_track_onboarding_step(action, step, element_type, element_name);
-	}
-}
 
 /**
  * Determine the post type managed by this page from the ?branch= query param
@@ -261,9 +244,6 @@ function wpstream_bind_start_event(button){
    
     // On click:
     button.click(function(event){
-        // Telemetry: a stream start was attempted.
-        wpstream_safe_track_onboarding('stream_attempted', 'wpstream_' + post_type);
-		wpstream_safe_track_onboarding('start_stream_clicked', 'wpstream_' + post_type);
         // Basic-plan users get a usage warning before starting.
         if (wpstream_start_streaming_vars.is_basic_streaming) {
 	        // Warn about streaming-hours consumption...
@@ -345,14 +325,12 @@ function wpstream_bind_start_event(button){
              
                         // err1: generic start failure.
                         if(data.event_data==='err1'){
-							wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'err1');
-                        
+
                             wpstream_show_error_on_start(wpstream_start_streaming_vars.error1,parent)
                         
                         // Event creation failed on the backend.
                         }else if(data.event_data ==='failed event creation'){
-							wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'failed_event_creation');
-                        
+
                             wpstream_show_error_on_start(wpstream_start_streaming_vars.failed_event_creation,parent)
                         
                         // Success: begin polling this channel's status every 10s.
@@ -370,14 +348,12 @@ function wpstream_bind_start_event(button){
             
                 // API not connected: show the returned error.
                 }else{
-					wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'api_not_connected');
                     wpstream_show_error_on_start(data.error,parent)
                 }
                 
             },
-            // On transport error, report telemetry only.
-            error: function (jqXHR,textStatus,errorThrown) {             
-				wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'ajax_error');
+            // On transport error: nothing to do.
+            error: function (jqXHR,textStatus,errorThrown) {
             }
         });
         
@@ -401,9 +377,6 @@ function wpstream_bind_start_event(button){
 function wpstream_bind_stop_event(button){
     // On click:
     button.click(function(event){
-		// Telemetry: stop clicked.
-		wpstream_safe_track_onboarding( 'stop_stream_clicked', 'wpstream_' + post_type );
-
 
         // Confirm before stopping.
         if(!confirm(wpstream_start_streaming_vars.turn_off_confirm)){
@@ -619,9 +592,6 @@ function wpstream_check_live_connections_on_start( parent,show_id,server_id,data
 
             // Channel errored:
             }else if(server_status.status==='error' ){
-                // Telemetry: start failed with an error status.
-                wpstream_safe_track_onboarding('stream_start_failed', 'wpstream_' + post_type, 'system', 'status_error');
-               
                 // Stop the fast poll.
                 clearInterval( wpstream_poll_timers["stop"+show_id]);
                 // Show a failure message in the status area.
@@ -991,8 +961,6 @@ function wpstream_start_modal_actions(){
         jQuery('.wpstream_modal_background').show();
         // Which modal to open.
         var modal_class=jQuery(this).attr('data-modal');
-		// Telemetry: modal opened.
-		wpstream_safe_track_onboarding( 'open_modal', 'wpstream_' + post_type, 'button', modal_class );
         // Find the owning event row.
         var parent =jQuery(this).closest('.event_list_unit');
         // Show the backdrop.
@@ -1009,9 +977,9 @@ function wpstream_start_modal_actions(){
         var parent = jQuery(this).parent();
 
         // Hide all option panels...
-        parent.find('.external_software_streaming').hide();
+        parent.find('.external_software_streaming').removeClass('is-active');
         // ...then show the selected one.
-        parent.find('.'+new_option).show();
+        parent.find('.'+new_option).addClass('is-active');
     });
 
 
@@ -1178,8 +1146,6 @@ function wpstream_webcaster_actions(){
         if(jQuery(this).hasClass('wpstream_inactive_icon')){
             return;
         }
-		// Telemetry: webcaster opened.
-		wpstream_safe_track_onboarding( 'open_webcaster', 'wpstream_' + post_type );
         // Cache the launcher.
         var $this = jQuery(this);
         // admin-ajax.php endpoint.
@@ -1216,28 +1182,9 @@ function wpstream_webcaster_actions(){
 		                // Open the new broadcaster in a new window
 		                // New broadcaster page + channel id.
 		                var broadcasterUrl = wpstream_start_streaming_vars.broadcaster_url + channelId;
-						// During onboarding, pass an onboarding flag...
+						// During onboarding, pass an onboarding flag.
 						if ( wpstream_start_streaming_vars.is_onboarding == 'yes' ) {
 							broadcasterUrl += '/?onboarding=1';
-                            // ...and hand the popup an onboarding payload via its name.
-                            if (pendingPopup) {
-                                // Carry the current session id.
-                                var popupSessionId = (new URLSearchParams(window.location.search)).get('session_id') || '';
-                                // Payload the broadcaster reads from window.name.
-                                var popupPayload = {
-                                    wpstream_onboarding_popup_payload: {
-                                        session_id: popupSessionId,
-                                    }
-                                };
-
-                                // Stash it on the popup (JSON-encoded).
-                                try {
-                                    pendingPopup.name = JSON.stringify(popupPayload);
-                                // On failure, clear the name.
-                                } catch (e) {
-                                    pendingPopup.name = '';
-                                }
-                            }
 						}
 		                // window.open(broadcasterUrl, 'wpstream_broadcaster_' + channelId, 'fullscreen=yes');
 		                // Navigate the pre-opened popup to the broadcaster.
@@ -1256,7 +1203,7 @@ function wpstream_webcaster_actions(){
 	                // Legacy webcaster URL from the launcher.
 	                var caster_url = $this.attr('data-webcaster-url');
 	                // Collapse the external-software panel.
-	                $this.parent().find('.external_software_streaming').slideUp()
+	                $this.parent().find('.external_software_streaming').removeClass('is-active');
 	                // Open the legacy webcaster.
 	                window.open(caster_url, '_blank', 'location=yes,scrollbars=yes,status=yes');
                 }
@@ -1267,7 +1214,7 @@ function wpstream_webcaster_actions(){
                 // Legacy webcaster URL from the launcher.
                 var caster_url = $this.attr('data-webcaster-url');
                 // Collapse the external-software panel.
-                $this.parent().find('.external_software_streaming').slideUp()
+                $this.parent().find('.external_software_streaming').removeClass('is-active');
                 // Open the legacy webcaster.
                 window.open(caster_url, '_blank', 'location=yes,scrollbars=yes,status=yes');
             }

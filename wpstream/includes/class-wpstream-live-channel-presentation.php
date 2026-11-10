@@ -32,9 +32,7 @@ class Wpstream_Live_Channel_Presentation {
 	 * @return void
 	 */
 	public function render_channel( $post_id, $context = 'admin' ) {
-		$is_theme       = 'theme' === $context;
-		$legacy_context = $is_theme ? 'front' : ( 'admin' === $context ? '' : $context );
-		$this->render_live_channel( intval( $post_id ), $legacy_context, $is_theme );
+		Wpstream_Broadcaster_Host::frame( intval( $post_id ) );
 	}
 
 	/**
@@ -48,7 +46,8 @@ class Wpstream_Live_Channel_Presentation {
 			return;
 		}
 
-		$this->wpstream_new_general_set();
+		require_once WPSTREAM_PLUGIN_PATH . 'admin/class-wpstream-content-library.php';
+		( new Wpstream_Content_Library( $this->main ) )->render( 'channel' );
 	}
 
 	/**
@@ -255,7 +254,7 @@ class Wpstream_Live_Channel_Presentation {
                 print '</div>';
 
                 // Open the grid that will hold each channel card.
-                print '<div style="clear: both;"></div><div class="event_list_wrapper">';
+                print '<div class="wpstream-clear-float"></div><div class="event_list_wrapper">';
 
                     // Loop every matched PPV product.
                     while ($event_list->have_posts()): $event_list->the_post();
@@ -323,7 +322,7 @@ class Wpstream_Live_Channel_Presentation {
                 print '<a href="'.esc_url($link_new).'" class="wpstream_create_new_product_link">'.esc_html__('Create new Free-To-View channel.','wpstream').'</a>';
                 print '</div>';
                 // Open the free-channel grid.
-                print '<div style="clear: both;"></div><div class="event_list_wrapper">';
+                print '<div class="wpstream-clear-float"></div><div class="event_list_wrapper">';
 
                     // Loop each free channel.
                     while ($event_list_free->have_posts()): $event_list_free->the_post();
@@ -508,12 +507,11 @@ class Wpstream_Live_Channel_Presentation {
             }
             // The companion theme uses its labelled-card spinner; other contexts use WordPress's spinner.
             if ( $is_theme ) {
-                $spinner_url    = admin_url( 'images/spinner-2x.gif' );
                 $channel_status = '';
-                $button_status  = '<div class="spinner" style="background-image: url(' . $spinner_url . ')"></div>';
+                $button_status  = '<div class="spinner is-active"></div>';
             } else {
-                $channel_status = '<div class="spinner" style="visibility: visible"></div>';
-                $button_status  = '<div class="spinner" style="visibility: visible"></div>';
+                $channel_status = '<div class="spinner is-active"></div>';
+                $button_status  = '<div class="spinner is-active"></div>';
             }
             if(is_array($live_event_for_user) && isset($live_event_for_user[$the_id])) {
                 // Channel is live: reveal stream data and grab the QoS/stats URL.
@@ -543,15 +541,16 @@ class Wpstream_Live_Channel_Presentation {
             }
 
                 // Status line, notification slot, thumbnail and (trimmed) title with the channel ID.
-                $status_style = $is_theme && ! $channel_status ? ' style="display: none"' : '';
-                print '<div class="wpstream_channel_status"'.$status_style.'>'.$channel_status.'</div>';
+                // Empty theme labels remain hidden until polling supplies their text.
+                $status_class = $is_theme ? ' wpstream-channel-status-auto' : '';
+                print '<div class="wpstream_channel_status'.$status_class.'>'.$channel_status.'</div>';
 
                 print '<div class="server_notification"></div>';
 
                 if ( $is_theme ) {
                     print '<div class="wpstream_theme_event_thumb_wrapper">';
                 }
-                print '<div class="event_thumb_wrapper" style="background-image:url('.$thumb.')"></div>';
+                print '<img class="event_thumb_wrapper wpstream-channel-thumbnail" src="'.esc_url( $thumb ).'" alt="" />';
                 if ( $is_theme ) {
                     print '</div>';
                 }
@@ -1047,7 +1046,7 @@ class Wpstream_Live_Channel_Presentation {
          */
         private function wpstream_encoder_panel( $encoder, $obs_uri, $obs_stream, $visible = false ){
             // Panel container; the encoder 'value' is also the CSS class the JS toggle targets.
-            print '<div class="external_software_streaming '.esc_attr( $encoder['value'] ).'" style="display:'.( $visible ? 'block' : 'none' ).';">';
+            print '<div class="external_software_streaming '.esc_attr( $encoder['value'] ).( $visible ? ' is-active' : '' ).'">';
 
             if ( ! empty( $encoder['larix'] ) ) {
                 // Larix takes a single combined RTMP URL (server + key); the value
@@ -1104,25 +1103,25 @@ class Wpstream_Live_Channel_Presentation {
 
          private function wpstream_startstreaming_sidebar_meta() {
                 global $post;
-                $term_list                          =   wp_get_post_terms($post->ID, 'product_type');
-
-                // Always add the sidebar controls to the free channel post type.
-                add_meta_box(
-                    'wpstream-sidebar-meta',
-                    esc_html__('Live Streaming',  'wpstream'),
-                    array( $this, 'render_sidebar' ),
-                    'wpstream_product',
-                    'side',
-                    'high'
-                );
-
-                // For WooCommerce products, add it only for live channels / subscription-live events.
-                $is_subscription_live_event =   esc_html(get_post_meta($post->ID,'_subscript_live_event',true));
-                if(!is_wp_error( $term_list )){
-                    if( isset($term_list[0]->slug) ){
-                        if( $term_list[0]->slug=='live_stream' ||  ($term_list[0]->slug=='subscription' && $is_subscription_live_event=='yes' )  ){
-                            add_meta_box('wpstream-sidebar-meta',       esc_html__('Live Streaming',  'wpstream'), array( $this, 'render_sidebar' ), 'product', 'side', 'high');
-                        }
+                if ( ! $post ) { return; }
+                $live = 'wpstream_product' === $post->post_type || ( 'product' === $post->post_type && (
+                    has_term( 'live_stream', 'product_type', $post->ID ) ||
+                    ( has_term( array( 'subscription', 'variable-subscription' ), 'product_type', $post->ID ) && 'yes' === get_post_meta( $post->ID, '_subscript_live_event', true ) )
+                ) );
+                if ( $live ) {
+                    // The block editor draws its title inside a separate frame, so the tool goes in as a block directly under it.
+                    if ( function_exists( 'use_block_editor_for_post' ) && use_block_editor_for_post( $post ) ) {
+                        ob_start();
+                        $this->render_sidebar();
+                        $panel = '<div id="wpstream-sidebar-meta">' . ob_get_clean() . '</div>';
+                        wp_enqueue_script( 'wpstream-channel-broadcast-block', WPSTREAM_PLUGIN_DIR_URL . 'admin/js/wpstream-channel-broadcast-block.js', array( 'wp-blocks', 'wp-element', 'wp-data', 'wp-block-editor', 'wp-plugins' ), filemtime( WPSTREAM_PLUGIN_PATH . 'admin/js/wpstream-channel-broadcast-block.js' ), true );
+                        wp_localize_script( 'wpstream-channel-broadcast-block', 'wpstreamChannelBroadcast', array( 'html' => $panel ) );
+                    } else {
+                        add_action( 'edit_form_after_title', function () {
+                            echo '<div id="wpstream-sidebar-meta" class="postbox"><div class="inside">';
+                            $this->render_sidebar();
+                            echo '</div></div>';
+                        } );
                     }
                 }
 
@@ -1143,47 +1142,10 @@ class Wpstream_Live_Channel_Presentation {
         * @return void
         */
         private function wpstream_start_stream_meta(){
-            // Preload the current live-event map for the card renderer.
-            global $live_event_for_user;
-            $live_event_for_user    =    $this->main->wpstream_live_connection->wpstream_get_live_event_for_user();
-
-			global $post;
-            // Streaming controls only make sense once the channel is published.
-            if( get_post_status( $post->ID ) === 'publish' ) {
-                // Start-event nonce for the card's ON/OFF button.
-                $ajax_nonce = wp_create_nonce( "wpstream_start_event_nonce" );
-                print '<input type="hidden" id="wpstream_start_event_nonce" value="'.$ajax_nonce.'">';
-
-                 // Flag basic-streaming mode when the account has no data left.
-                 $pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_new_general_set' );
-            if( isset($pack_details['available_data_mb'])){
-                if ($pack_details['available_data_mb'] <= 0){
-                    print '<input type="hidden" id="wpstream_basic_streaming" value="true">';
-                }
-            }
-
-                // Render the channel card plus the shared modal background and error modal.
-                $this->render_channel($post->ID);
-                print '<div class="wpstream_modal_background"></div>';
-                print '<div class="wpstream_error_modal_notification"><div class="wpstream_error_content">er1</div>
-                <div class="wpstream_error_ok wpstream_button" type="button">'.esc_html__('Close','wpstream').'</div>
-                </div>';
-            } else {
-                // Not published yet.
-                esc_html_e('To Go Live, please publish your channel first !','wpstream');
-
-                // The block editor never redraws this metabox after Publish, so a
-                // small script reloads the editor once the publish has completed
-                // and the controls render. The classic editor reloads by itself.
-                if ( function_exists( 'use_block_editor_for_post' ) && use_block_editor_for_post( $post ) ) {
-                    wp_enqueue_script(
-                        'wpstream-channel-publish-reload',
-                        plugin_dir_url( __DIR__ ) . 'admin/js/wpstream-channel-publish-reload.js',
-                        array( 'wp-data', 'wp-editor' ),
-                        WPSTREAM_PLUGIN_VERSION,
-                        true
-                    );
-                }
+            global $post;
+            Wpstream_Broadcaster_Host::frame( $post->ID );
+            if ( 'auto-draft' === get_post_status( $post->ID ) && function_exists( 'use_block_editor_for_post' ) && use_block_editor_for_post( $post ) ) {
+                wp_enqueue_script( 'wpstream-channel-publish-reload', WPSTREAM_PLUGIN_DIR_URL . 'admin/js/wpstream-channel-publish-reload.js', array( 'wp-data', 'wp-editor' ), WPSTREAM_PLUGIN_VERSION, true );
             }
 
             /**

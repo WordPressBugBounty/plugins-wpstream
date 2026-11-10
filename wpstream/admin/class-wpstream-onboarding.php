@@ -7,15 +7,12 @@
  */
 
 /**
- * Owns the Quick Start wizard and its account/content actions.
+ * Owns the Quick Start entry screen and its account/content actions.
  */
 class Wpstream_Onboarding {
 
 	/** @var Wpstream Main plugin module. */
 	private $main;
-
-	/** @var bool Whether the wizard footer callback has been registered. */
-	private $footer_registered = false;
 
 	/**
 	 * @param Wpstream $main Main plugin module.
@@ -34,268 +31,207 @@ class Wpstream_Onboarding {
 			return '';
 		}
 
-		if ( ! $this->footer_registered ) {
-			add_action( 'admin_footer', function () {
-				if ( current_user_can( 'administrator' ) ) {
-					$this->render_wizard();
-				}
-			} );
-			$this->footer_registered = true;
-		}
-
 		ob_start();
 		$this->render_quick_start();
 		return (string) ob_get_clean();
 	}
 
 	/**
-	 * Render a named legacy fragment for compatibility forwarders.
+	 * Render the "connect your account" entry screen.
 	 *
-	 * @internal Only Wpstream_Admin compatibility methods should call this.
-	 *
-	 * @param string $part Fragment name.
-	 * @return mixed
+	 * A disconnected site sees the sign-in / create-account card and two intent
+	 * cards that look active but do nothing, with a tooltip asking to log in; a
+	 * connected site sees the confirmation notice and working cards. The connected state is decided server-side, so the page reloads
+	 * after a successful login or registration.
 	 */
-	public function render_part( $part ) {
-		$parts = array(
-			'quick_start'   => 'render_quick_start',
-			'wizard'        => 'render_wizard',
-			'wizard_header' => 'render_wizard_header',
-			'wizard_footer' => 'render_wizard_footer',
-			'account'       => 'render_account_step',
-			'password'      => 'random_password',
-			'path'          => 'render_path_step',
-			'live'          => 'render_live_step',
-			'live_free'     => 'render_live_free_step',
-			'live_ppv'      => 'render_live_ppv_step',
-			'woo_warning'   => 'render_woo_warning',
-			'vod'           => 'render_vod_step',
-			'vod_free'      => 'render_vod_free_step',
-			'file_warning'  => 'render_file_warning',
-			'vod_ppv'       => 'render_vod_ppv_step',
-			'dashboard_page'=> 'register_dashboard_page',
-			'standalone'    => 'load_standalone_wizard',
-			'page_footer'   => 'render_page_footer',
-		);
-
-		if ( ! isset( $parts[ $part ] ) ) {
-			return new WP_Error( 'unknown_onboarding_fragment', __( 'Unknown onboarding fragment.', 'wpstream' ) );
-		}
-
-		return $this->{$parts[ $part ]}();
-	}
-
-	/** Register the legacy hidden dashboard endpoint. */
-	private function register_dashboard_page() {
-		add_dashboard_page( '', '', 'administrator', 'wpstream-onboarding', '' );
-	}
-
-	/** Bootstrap the legacy standalone wizard context. */
-	private function load_standalone_wizard() {
-		if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
-			return;
-		}
-
-		set_current_screen();
-		remove_action( 'admin_print_styles', 'gutenberg_block_editor_admin_print_styles' );
-		echo $this->render();
-	}
-
-	/** Render the legacy page-footer entry point when Quick Start is active. */
-	private function render_page_footer() {
-		if ( current_user_can( 'administrator' )
-			&& isset( $_GET['page'] )
-			&& 'wpstream_onboard' === $_GET['page'] ) {
-			$this->render_wizard();
-		}
-	}
-
-	/** Render the Quick Start landing screen. */
 	private function render_quick_start() {
-		$pack_details = $this->main->quota_manager->get_live_quota_data( 'wpstream_pre_onboard_display' );
-		$this->main->show_user_data( $pack_details );
-		$thumb = plugin_dir_url( dirname( __FILE__ ) ) . 'img/logo_onboarding.svg';
-		?>
-		<div id="wpstream-onboarding-root"></div>
-			<div class="wpstream_quick_start_wrapper">
-				<img class="wpstream_onboarding_logo" src="<?php echo esc_url( $thumb ); ?>" />
-
-				<h1><?php print esc_html__( 'WpStream', 'wpstream' ) . ' <span class="header_special">' . esc_html__( 'Quick Start', 'wpstream' ) . '</span>'; ?></h1>
-
-				<p>
-					<?php esc_html_e( 'The quick start guide will help you set up Live Streaming, Video On Demand, and Monetization in a fun and interactive way. Give it a shot! ', 'wpstream' ); ?>
-				</p>
-
-				<div id="wpstream_trigger_quick_start" class="wpstream_button wpstream_button_action"><?php esc_html_e( 'Start the Guide', 'wpstream' ); ?></div>
-			</div>
-
-			<script type="text/javascript">
-				//<![CDATA[
-					jQuery(document).ready(function(){
-						jQuery(".wpstream_on_boarding_wrapper").show();
-						jQuery(".wpstream_modal_background_onboard").show();
-					});
-				//]]>
-			</script>
-		<?php
-	}
-
-	/** Render the complete onboarding wizard. */
-	private function render_wizard() {
-		/**
-		 * Filter the onboarding wizard steps.
-		 *
-		 * @since 4.14.0
-		 *
-		 * @param array $steps Step slug => callable, in display order.
-		 */
-		$steps = (array) apply_filters(
-			'wpstream_onboarding_steps',
-			array(
-				'account'   => array( $this->main->admin, 'wpstream_onboarding_step1' ),
-				'path'      => array( $this->main->admin, 'wpstream_onboarding_step2' ),
-				'live'      => array( $this->main->admin, 'wpstream_onboarding_step3_live_streaming' ),
-				'live_free' => array( $this->main->admin, 'wpstream_onboarding_step_3_A_live_streaming_free_view' ),
-				'live_ppv'  => array( $this->main->admin, 'wpstream_onboarding_step_3_B_live_streaming_pay_per_view' ),
-				'vod'       => array( $this->main->admin, 'wpstream_onboarding_step4_vod' ),
-				'vod_free'  => array( $this->main->admin, 'wpstream_onboarding_step_4_free_vod' ),
-				'vod_ppv'   => array( $this->main->admin, 'wpstream_onboarding_step_4_ppv_vod' ),
-			)
-		);
-
-		$this->render_wizard_header();
-		foreach ( $steps as $step ) {
-			if ( is_callable( $step ) ) {
-				call_user_func( $step );
-			}
+		// Existing installs saved the password as an autoloaded option; flip it
+		// to non-autoloaded so the secret is not loaded on every request.
+		if ( function_exists( 'wp_set_option_autoload' ) ) {
+			wp_set_option_autoload( 'wpstream_api_password', false );
 		}
-		$this->render_wizard_footer();
-	}
 
-	/** Open the wizard wrapper. */
-	private function render_wizard_header() {
-		$thumb = plugin_dir_url( dirname( __FILE__ ) ) . 'img/logo_onboarding.svg';
-		?>
-		<div class="wpstream_on_boarding_wrapper">
-			<div class="wpstream_close_onboarding wpstream_close_initial_onboarding"></div>
-			<img class="wpstream_onboarding_logo" src="<?php echo esc_url( $thumb ); ?>" />
-			<div class="wpstream_close_onboarding_warning"></div>
-		<?php
-	}
-
-	/** Close the wizard wrapper and render its backdrop. */
-	private function render_wizard_footer() {
-		?>
-			</div>
-			<div class="wpstream_modal_background_onboard"></div>
-		<?php
-	}
-
-	/** Render the account login and registration step. */
-	private function render_account_step() {
-		$options = array(
-			2 => array(
-				'label' => 'WpStream.net Username or Email',
-				'name'  => 'api_username',
-				'type'  => 'text',
-			),
-			3 => array(
-				'label' => 'WpStream.net Password',
-				'name'  => 'api_password',
-				'type'  => 'password',
-			),
-		);
+		require_once __DIR__ . '/class-wpstream-admin-header.php';
+		// Notices stay above the WpStream top bar, so the bar sits right above the page title.
+		echo '<hr class="wp-header-end">';
+		Wpstream_Admin_Header::render( $this->main, true, true );
+		echo '<input type="hidden" id="wpstream_onboarding_nonce" value="' . esc_attr( wp_create_nonce( 'wpstream_onboarding_nonce' ) ) . '">';
 		$connected = $this->main->wpstream_live_connection->is_connected();
 		?>
-		<div class="wpstream_step_wrapper wpstream_step_1" id="wpstream_step_1">
-			<div class="wpstream_has_credential">
-				<h1><?php esc_html_e( 'WpStream Account', 'wpstream' ); ?></h1>
-
-				<div class="wpstream_on_board_login_wrapper_explanations">
-					<?php esc_html_e( 'A WpStream account is required to make use of the plugin.', 'wpstream' ); ?>
-				</div>
-
-				<div class="wpstream_check_account_status">
-					<?php esc_html_e( 'Checking if you are already logged.....', 'wpstream' ); ?>
-				</div>
-
-				<div class="wpstream_onboarding_notification"></div>
-
-				<div class="wpstream_option_wrapper wpstream_on_board_login_wrapper">
-					<h2><?php esc_html_e( 'Login with your WpStream Account', 'wpstream' ); ?></h2>
-					<?php
-					foreach ( $options as $option ) {
-						print '<div class="wpstream_option">';
-						print '<label for="' . $option['name'] . '">' . $option['label'] . '</label>';
-						if ( 'password' === $option['type'] ) {
-							print '<input id="' . $option['name'] . '" type="password" size="36" name="' . $option['name'] . '" value="" autocomplete="current-password" />';
-						} else {
-							$value = esc_html( get_option( 'wpstream_' . $option['name'], '' ) );
-							print '<input id="' . $option['name'] . '" type="' . $option['type'] . '" size="36" name="' . $option['name'] . '" value="' . esc_html( $value ) . '" />';
-						}
-						print '</div>';
-					}
-					?>
-					<input type="submit" name="submit" class="wpstream_button wpstream_button_action wpstream_onboard_login" value="<?php esc_html_e( 'Login', 'wpstream' ); ?>" />
-				</div>
-
-				<div class="wpstream_on_board_register_wrapper">
-					<h2><?php esc_html_e( 'Register for  a WpStream Account', 'wpstream' ); ?></h2>
-					<div class="wpstream_option">
-						<label for="wpstream_register_email"><?php esc_html_e( 'Your Email', 'wpstream' ); ?></label>
-						<input id="wpstream_register_email" type="text" size="36" name="wpstream_register_email" value="<?php echo get_option( 'admin_email' ); ?>" />
-					</div>
-
-					<div class="wpstream_option">
-						<input id="wpstream_register_password" hidden type="text" size="36" name="wpstream_register_password" value="<?php echo $this->random_password(); ?>" />
-						<span><?php esc_html_e( 'We\'ll send the password to the email you attached. ', 'wpstream' ); ?></span>
-					</div>
-
-					<?php if ( isset( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) : ?>
-						<script async defer src="<?php echo esc_url( plugin_dir_url( __FILE__ ) . 'js/vendor/altcha.min.js?ver=3.2.1' ); ?>" type="module"></script>
-						<div class="wpstream_option" style="display:none;">
-							<altcha-widget
-								challengeurl="<?php echo esc_url( WPSTREAM_API . '/v2/user/getcaptcha' ); ?>"
-								name="altcha"
-								auto="onload"
-								hidefooter
-								hidelogo
-								strings='{"label": "<?php esc_html_e( 'I am not a robot', 'wpstream' ); ?>", "error": "<?php esc_html_e( 'Verification failed', 'wpstream' ); ?>", "wait": "<?php esc_html_e( 'Verifying...', 'wpstream' ); ?>"}'
-							></altcha-widget>
-						</div>
-					<?php endif; ?>
-
-					<div class="wpstream_option wpstream_terms_agreement">
-						<input id="wpstream_register_privacy" type="checkbox" name="wpstream_register_privacy" />
-						<label for="wpstream_register_privacy">
-							<?php
-							printf(
-								esc_html__( 'By registering you agree to the %sPrivacy Policy%s', 'wpstream' ),
-								'<a href="https://wpstream.net/privacy-policy/" target="_blank">',
-								'</a>'
-							);
-							?>
-						</label>
-					</div>
-					<input type="submit" name="submit" class="wpstream_button wpstream_button_action wpstream_onboard_register" value="<?php esc_html_e( 'register', 'wpstream' ); ?>" />
-				</div>
-
-				<div id="wpstream_onboarding_action_login"><?php esc_html_e( 'I already have a WpStream Account', 'wpstream' ); ?></div>
-				<div id="wpstream_onboarding_action_register"><?php esc_html_e( 'Back to Registration', 'wpstream' ); ?></div>
+		<div class="wpstream-screen wpstream-entry" id="entry">
+			<div class="intro">
+				<div class="eyebrow"><?php esc_html_e( 'VIDEO ON YOUR WORDPRESS SITE', 'wpstream' ); ?></div>
+				<?php if ( $connected ) : ?>
+					<h1 id="entry-heading"><?php esc_html_e( 'What would you like to create?', 'wpstream' ); ?></h1>
+				<?php else : ?>
+					<h1 id="entry-heading"><?php esc_html_e( 'Welcome to WpStream', 'wpstream' ); ?></h1>
+					<p id="entry-description"><?php esc_html_e( 'Connect your account to start live streaming or publish videos, free or paid.', 'wpstream' ); ?></p>
+				<?php endif; ?>
 			</div>
 
-			<?php $ajax_nonce = wp_create_nonce( 'wpstream_onboarding_nonce' ); ?>
-			<input type="hidden" id="wpstream_onboarding_nonce" value="<?php echo esc_html( $ajax_nonce ); ?>" />
-			<div id="wpstream_on_board" class="wpstream_action_next_step" data-nextthing="wpstream_step_2" style="display:none;">Move to step 2</div>
+			<?php
+			if ( $connected ) {
+				// Connected: confirmation notice replaces the connection card.
+				?>
+				<div class="connected-notice" id="connection-success" role="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><?php esc_html_e( 'WpStream account connected', 'wpstream' ); ?></span>
+					<?php if ( ! wpstream_api_credentials_from_constants() ) : ?>
+					<form method="post" class="connected-logout" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<?php wp_nonce_field( 'wpstream_logout' ); ?>
+						<input type="hidden" name="action" value="wpstream_logout">
+						<button type="submit" class="button secondary" id="logout-button"><?php esc_html_e( 'Log out', 'wpstream' ); ?></button>
+					</form>
+					<?php endif; ?>
+				</div>
+				<?php
+			} else {
+				$this->render_connection_card();
+			}
+			?>
+
+
+			<?php
+			// aria-disabled, because a disabled button shows no tooltip. wpstream-onboarding2.js blocks the click.
+			$login_tip = __( 'Log in to your WpStream account to use this.', 'wpstream' );
+			$card_lock = $connected ? '' : 'aria-disabled="true" aria-describedby="intent-login-tip" data-login-tip="' . esc_attr( $login_tip ) . '"';
+			if ( ! $connected ) {
+				echo '<span id="intent-login-tip" hidden>' . esc_html( $login_tip ) . '</span>';
+			}
+			?>
+			<div class="intent-grid" role="group" aria-label="<?php esc_attr_e( 'Choose what to create', 'wpstream' ); ?>">
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="wpstream-live-entry-form"><?php wp_nonce_field( 'wpstream_open_live' ); ?><input type="hidden" name="action" value="wpstream_open_live"><button type="submit" class="intent" id="choose-live" aria-pressed="false" <?php echo $card_lock; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped when built. ?>>
+					<span class="intent-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2"/></svg></span>
+					<span class="intent-title"><?php esc_html_e( 'Live streaming', 'wpstream' ); ?></span>
+					<span class="intent-description"><?php esc_html_e( 'Broadcast from your camera or streaming software.', 'wpstream' ); ?></span>
+					<span class="intent-action"><?php esc_html_e( 'Set up a live channel', 'wpstream' ); ?> <span aria-hidden="true">&rarr;</span></span>
+				</button></form>
+				<button type="button" class="intent" id="choose-video" aria-pressed="false" <?php echo $card_lock; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped when built. ?>>
+					<span class="intent-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5v15l12.5-7.5z"/></svg></span>
+					<span class="intent-title"><?php esc_html_e( 'Video on demand', 'wpstream' ); ?></span>
+					<span class="intent-description"><?php esc_html_e( 'Upload a video or publish an existing recording.', 'wpstream' ); ?></span>
+					<span class="intent-action"><?php esc_html_e( 'Create video', 'wpstream' ); ?> <span aria-hidden="true">&rarr;</span></span>
+				</button>
+			</div>
+
+			<?php $this->render_tutorials(); ?>
 		</div>
 		<?php
-
-		if ( $connected ) {
-			print '<div id="wpstream_have_token"></div>';
-		}
 	}
 
-	/** Generate the registration password used by the account step. */
+	/**
+	 * Render the Video tutorials card on the entry screen.
+	 *
+	 * @return void
+	 */
+	private function render_tutorials() {
+		echo '<section class="admin-card"><h2>' . esc_html__( 'Video tutorials', 'wpstream' ) . '</h2><ul class="tutorial-links">';
+		foreach ( array( 'https://youtu.be/9DQrxsKcpmQ' => __( 'Stream with OBS', 'wpstream' ), 'https://youtu.be/qMSjJCskAfM' => __( 'Stream from your browser', 'wpstream' ), 'https://youtu.be/h6myD_vhKcg' => __( 'Stream from your iPhone', 'wpstream' ) ) as $url => $label ) {
+			echo '<li><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $label ) . '</a></li>';
+		}
+		echo '</ul></section>';
+	}
+
+	/**
+	 * Render the connection card: explanatory copy plus the sign-in / create-account
+	 * form. The field ids are the ones wpstream-onboarding2.js submits from.
+	 * When wp-config.php owns the credentials the form is shown disabled, with a note.
+	 */
+	private function render_connection_card() {
+		$locked = wpstream_api_credentials_from_constants();
+		?>
+		<section class="connection" id="connection" aria-labelledby="connect-heading">
+			<div class="connection-copy">
+				<span class="eyebrow"><?php esc_html_e( 'CONNECT ONCE', 'wpstream' ); ?></span>
+				<h2 id="connect-heading"><?php esc_html_e( 'Get started with WpStream', 'wpstream' ); ?></h2>
+				<p id="connection-description"><?php esc_html_e( 'WpStream delivers your video to viewers on your site.', 'wpstream' ); ?></p>
+			</div>
+
+			<div class="connection-form">
+				<div class="account-tabs" role="group" aria-label="<?php esc_attr_e( 'Account action', 'wpstream' ); ?>">
+					<button type="button" id="signin" aria-pressed="true" <?php disabled( $locked ); ?>><?php esc_html_e( 'Sign in', 'wpstream' ); ?></button>
+					<button type="button" id="register" aria-pressed="false" <?php disabled( $locked ); ?>><?php esc_html_e( 'Create an account', 'wpstream' ); ?></button>
+				</div>
+
+				<?php if ( $locked ) : ?>
+				<p id="credentials-config-note" class="admin-notice"><?php esc_html_e( 'Your WpStream credentials are defined in wp-config.php. Update them there to change the connected account.', 'wpstream' ); ?></p>
+				<?php endif; ?>
+				<form id="account-form" class="wpstream-account-form" method="post" novalidate>
+					<?php // Sign-in fields (default tab). ?>
+					<div id="wpstream-signin-fields">
+						<label for="api_username"><?php esc_html_e( 'Username or email', 'wpstream' ); ?>
+							<input id="api_username" type="text" name="api_username" value="" autocomplete="username" <?php disabled( $locked ); ?> />
+						</label>
+						<label for="api_password"><?php esc_html_e( 'Password', 'wpstream' ); ?>
+							<input id="api_password" type="password" name="api_password" value="" autocomplete="current-password" <?php disabled( $locked ); ?> />
+						</label>
+					</div>
+					<?php if ( ! $locked ) { $this->render_register_fields(); } ?>
+
+					<div class="wpstream_onboarding_notification" role="status"></div>
+					<button type="submit" name="submit" class="button primary wide" id="connect-button" <?php disabled( $locked ); ?>><?php esc_html_e( 'Connect account', 'wpstream' ); ?></button>
+				</form>
+				<?php if ( ! $locked ) : ?>
+				<?php // Sign up opens the Create an account tab, and disappears once that tab is showing. ?>
+				<p class="signup-prompt" id="signup-prompt"><span><?php esc_html_e( 'New to WpStream?', 'wpstream' ); ?></span> <button type="button" class="button secondary" id="signup-button"><?php esc_html_e( 'Sign up', 'wpstream' ); ?></button></p>
+				<?php endif; ?>
+			</div>
+		</section>
+		<?php
+	}
+
+	/**
+	 * Render the "Create an account" fields, hidden until that tab is chosen.
+	 *
+	 * The entry screen submits these ids to the wpstream_on_board_register AJAX
+	 * handler via wpstream-onboarding2.js
+	 * (e-mail, a generated password the API e-mails back, the privacy consent box
+	 * and the Altcha captcha widget on HTTPS). The caller renders the
+	 * #wpstream_onboarding_nonce input the handler checks.
+	 *
+	 * @return void
+	 */
+	public function render_register_fields() {
+		?>
+		<div id="wpstream-register-fields" hidden>
+			<label for="wpstream_register_email"><?php esc_html_e( 'Your email', 'wpstream' ); ?>
+				<input id="wpstream_register_email" type="text" name="wpstream_register_email" value="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>" autocomplete="off" />
+			</label>
+			<input id="wpstream_register_password" hidden type="text" name="wpstream_register_password" value="<?php echo esc_attr( $this->random_password() ); ?>" />
+			<p class="field-help"><?php esc_html_e( 'This site connects as soon as your account is created. We\'ll email you the password, so you don\'t need to confirm anything first.', 'wpstream' ); ?></p>
+
+			<?php if ( isset( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) : ?>
+				<script async defer src="<?php echo esc_url( plugin_dir_url( __FILE__ ) . 'js/vendor/altcha.min.js?ver=3.2.1' ); ?>" type="module"></script>
+				<div class="wpstream-captcha-hidden">
+					<altcha-widget
+						challengeurl="<?php echo esc_url( WPSTREAM_API . '/v2/user/getcaptcha' ); ?>"
+						name="altcha"
+						auto="onload"
+						hidefooter
+						hidelogo
+						strings='{"label": "<?php esc_html_e( 'I am not a robot', 'wpstream' ); ?>", "error": "<?php esc_html_e( 'Verification failed', 'wpstream' ); ?>", "wait": "<?php esc_html_e( 'Verifying...', 'wpstream' ); ?>"}'
+					></altcha-widget>
+				</div>
+			<?php endif; ?>
+
+			<label class="checkbox" for="wpstream_register_privacy">
+				<input id="wpstream_register_privacy" type="checkbox" name="wpstream_register_privacy" />
+				<span>
+					<?php
+					printf(
+						/* translators: 1: opening link tag, 2: closing link tag. */
+						esc_html__( 'I agree to the %1$sPrivacy Policy%2$s.', 'wpstream' ),
+						'<a href="https://wpstream.net/privacy-policy/" target="_blank" rel="noopener">',
+						'</a>'
+					);
+					?>
+				</span>
+			</label>
+			<?php // Explains the pale button. wpstream-onboarding2.js hides it once the box is ticked. ?>
+			<p class="field-help" id="register-consent-cue"><?php esc_html_e( 'Accept the Privacy Policy to continue', 'wpstream' ); ?></p>
+		</div>
+		<?php
+	}
+
+	/** Generate a registration password. */
 	private function random_password() {
 		$alphabet     = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
 		$password     = array();
@@ -307,177 +243,7 @@ class Wpstream_Onboarding {
 		return implode( $password );
 	}
 
-	/** Render the live-or-VOD path choice. */
-	private function render_path_step() {
-		?>
-		<div class="wpstream_step_wrapper wpstream_step_2" id="wpstream_step_2">
-			<h1>Welcome to <span class="header_special">WpStream</span>! How would you like to start?</h1>
-			<div class="wpstream_accordion_header wpstream_action_next_step" data-nextthing="wpstream_step_3"><?php esc_html_e( 'Go LIVE!', 'wpstream' ); ?></div>
-			<div class="wpstram_or">or</div>
-			<div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_2_create_vod" data-nextthing="wpstream_step_4"><?php esc_html_e( 'Create a Video-On-Demand (VOD)', 'wpstream' ); ?></div>
-		</div>
-		<?php
-	}
-
-	/** Render the free-or-paid live choice. */
-	private function render_live_step() {
-		?>
-		<div class="wpstream_step_wrapper wpstream_step_3 wpstream_onboarding_live" id="wpstream_step_3">
-			<h1><?php esc_html_e( 'Do you want to charge a fee for watching?', 'wpstream' ); ?></h1>
-			<div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_3a" data-nextthing="wpstream_step_3a"><?php esc_html_e( 'No - Free-To-View (FTV)', 'wpstream' ); ?></div>
-			<div class="wpstram_or">or</div>
-			<div class="wpstream_accordion_header wpstream_action_next_step" data-nextthing="wpstream_step_3b"><?php esc_html_e( 'Yes - Pay-Per-View (PPV)', 'wpstream' ); ?></div>
-			<div class="wpstream_initial_onboarding_controls_wrapper">
-				<span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_2"><?php esc_html_e( 'Prev', 'wpstream' ); ?></span>
-			</div>
-		</div>
-		<?php
-	}
-
-	/** Render the free live-channel creation step. */
-	private function render_live_free_step() {
-		?>
-		<div class="wpstream_step_wrapper wpstream_step_3a wpstream_onboarding_live" id="wpstream_step_3a">
-			<h1><?php esc_html_e( 'Let’s create your first FTV live channel', 'wpstream' ); ?></h1>
-			<div id="wpstream_onboard_live_notice" class="wpstream_onboarding_notification"></div>
-			<div id="wpstream_onboard_live" class="wpstream_accordion_container">
-				<label>Name your first Free-To-View channel</label>
-				<input type="text" name="channel_name" id="wpstream_onboarding_channel_name" class="wpstream_onboarding_channel_name" value="<?php esc_html_e( 'My first FTV channel', 'wpstream' ); ?>">
-				<input type="submit" name="submit" id="wpstream_on_board_create_channel" class="wpstream_button wpstream_button_action wpstream_onboard_live_action" value="<?php esc_html_e( 'Create Channel', 'wpstream' ); ?>" />
-			</div>
-			<div class="wpstream_initial_onboarding_controls_wrapper">
-				<span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_2"><?php esc_html_e( 'Prev', 'wpstream' ); ?></span>
-			</div>
-		</div>
-		<?php
-	}
-
-	/** Render the paid live-channel creation step. */
-	private function render_live_ppv_step() {
-		?>
-		<div class="wpstream_step_wrapper wpstream_step_3b wpstream_onboarding_live" id="wpstream_step_3b">
-			<h1><?php esc_html_e( 'Make your live stream Pay Per View', 'wpstream' ); ?></h1>
-			<?php if ( class_exists( 'WooCommerce' ) ) : ?>
-				<div id="wpstream_onboard_live_ppv_notice" class="wpstream_onboarding_notification"></div>
-				<div id="wpstream_onboard_live_ppv" class="wpstream_accordion_container">
-					<label><?php esc_html_e( 'Choose a name for your channel', 'wpstream' ); ?></label>
-					<input type="text" name="channel_name" id="wpstream_onboarding_channel_name_ppv" class="wpstream_onboarding_channel_name" value="<?php esc_html_e( 'My First PPV Channel', 'wpstream' ); ?>">
-					<label><?php esc_html_e( 'Pay-Per-View Price ($)', 'wpstream' ); ?></label>
-					<input type="text" name="channel_name" id="wpstream_onboarding_event_price_ppv" class="wpstream_onboarding_event_price" value="10">
-					<input type="submit" name="submit" id="wpstream_onboard_live_ppv_action" class="wpstream_button wpstream_button_action wpstream_onboard_live_ppv_action" value="<?php esc_html_e( 'Create Channel', 'wpstream' ); ?>" />
-				</div>
-			<?php else : ?>
-				<?php $this->render_woo_warning(); ?>
-			<?php endif; ?>
-			<div class="wpstream_initial_onboarding_controls_wrapper">
-				<span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_2"><?php esc_html_e( 'Prev', 'wpstream' ); ?></span>
-			</div>
-		</div>
-		<?php
-	}
-
-	/** Render the missing-WooCommerce warning. */
-	private function render_woo_warning() {
-		print '<div class="wpstream_warning_onboarding">
-			' . esc_html__( 'Pay-Per-View streaming requires WooCommerce. Please install the WooCommerce plugin and try again.', 'wpstream' ) . '
-			</br>
-			<div class="wpstream_install_plugin">' . esc_html__( 'Install WooCommerce', 'wpstream' ) . '</div>
-			<div class="wpstream_onboarding_tryagain">' . esc_html__( 'Try Again', 'wpstream' ) . '</div>
-		</div>';
-	}
-
-	/** Render the free-or-paid VOD choice. */
-	private function render_vod_step() {
-		?>
-		<div class="wpstream_step_wrapper wpstream_step_4 wpstream_onboarding_vod" id="wpstream_step_4">
-			<h1><?php esc_html_e( 'Do you want to charge a fee for watching?', 'wpstream' ); ?></h1>
-			<div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_4a" data-control="wpstream_onboard_vod_free" data-nextthing="wpstream_step_4a"><?php esc_html_e( 'No - Free-To-View (FTV)', 'wpstream' ); ?></div>
-			<div class="wpstram_or">or</div>
-			<input type="hidden" id="wpstream_onboarding_video_list_nonce" value="<?php echo wp_create_nonce( 'wpstream_onboarding_video_list_nonce' ); ?>">
-			<div class="wpstream_accordion_header wpstream_action_next_step wpstream_step_4b" data-control="wpstream_onboard_vod_ppv" data-nextthing="wpstream_step_4b"><?php esc_html_e( 'Yes - Pay-Per-View (PPV)', 'wpstream' ); ?></div>
-			<div class="wpstream_initial_onboarding_controls_wrapper">
-				<span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_2"><?php esc_html_e( 'Prev', 'wpstream' ); ?></span>
-			</div>
-		</div>
-		<?php
-	}
-
-	/** Render the free VOD creation step. */
-	private function render_vod_free_step() {
-		$current_screen = get_current_screen();
-		if ( ! $current_screen || 'wpstream_page_wpstream_onboard' !== $current_screen->base ) {
-			return;
-		}
-		?>
-		<div class="wpstream_step_wrapper wpstream_step_4a wpstream_onboarding_live" id="wpstream_step_4a">
-			<h1><?php esc_html_e( 'Let’s create your first Free-To-View VOD', 'wpstream' ); ?></h1>
-			<div id="wpstream_onboard_vod_free_notice" class="wpstream_onboarding_notification"></div>
-			<div id="wpstream_onboard_vod_free" class="wpstream_accordion_container">
-				<div class="spinner"></div>
-				<div class="wpstream-step-container" style="display: none">
-					<label><?php esc_html_e( 'Name your FTV Video-On-Demand', 'wpstream' ); ?></label>
-					<input type="text" name="channel_name" class="wpstream_onboarding_vod_name" id="wpstream_onboarding_vod_name" value="<?php esc_html_e( 'My First FTV VOD', 'wpstream' ); ?>">
-					<div id="wpstream_free_vod_dropdown_videos_list"></div>
-					<input type="submit" name="submit" class="wpstream_button wpstream_button_action wpstream_onboard_vod_free_action" id="wpstream_onboard_vod_free_action" value="Create FTV VOD">
-				</div>
-			</div>
-			<?php $this->render_file_warning(); ?>
-			<div class="wpstream_initial_onboarding_controls_wrapper">
-				<span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_4"><?php esc_html_e( 'Prev', 'wpstream' ); ?></span>
-			</div>
-		</div>
-		<?php
-	}
-
-	/** Render the missing-recording warning. */
-	private function render_file_warning() {
-		print '<div class="wpstream_warning_onboarding" style="display: none">
-			' . esc_html__( 'A recording is needed to create a VOD from. There are no recordings under your account. You can create new recordings by recording a live channel or uploading video files directly.', 'wpstream' ) . '
-			</br>
-			<div class="wpstream_upload_video">' . esc_html__( 'Upload Video', 'wpstream' ) . '</div>
-			<div class="wpstream_onboarding_tryagain">' . esc_html__( 'Try Again', 'wpstream' ) . '</div>
-		</div>';
-	}
-
-	/** Render the paid VOD creation step. */
-	private function render_vod_ppv_step() {
-		$current_screen = get_current_screen();
-		if ( ! $current_screen || 'wpstream_page_wpstream_onboard' !== $current_screen->base ) {
-			return;
-		}
-		?>
-		<div class="wpstream_step_wrapper wpstream_step_4b wpstream_onboarding_live" id="wpstream_step_4b">
-			<h1><?php esc_html_e( 'Let\'s create your first Pay-Per-View VOD', 'wpstream' ); ?></h1>
-			<div id="wpstream_onboard_vod_ppv_notice" class="wpstream_onboarding_notification"></div>
-			<?php if ( class_exists( 'WooCommerce' ) ) : ?>
-				<div id="wpstream_onboard_vod_ppv" class="wpstream_accordion_container">
-					<div class="spinner"></div>
-					<div class="wpstream-step-container" style="display: none">
-						<label><?php esc_html_e( 'Name your PPV Video-On-Demand', 'wpstream' ); ?></label>
-						<input type="text" name="channel_name" class="wpstream_onboarding_ppv_vod_name" id="wpstream_onboarding_ppv_vod_name" value="<?php esc_html_e( 'My First PPV VOD', 'wpstream' ); ?>">
-						<div id="wpstream_ppv_vod_dropdown_videos_list"></div>
-						<label><?php esc_html_e( 'Pay-Per-View Price', 'wpstream' ); ?></label>
-						<input type="text" name="channel_name" class="wpstream_onboarding_vod_price" id="wpstream_onboarding_vod_price" value="10">
-						<input type="submit" name="submit" class="wpstream_button wpstream_button_action wpstream_onboard_vod_ppv_action" id="wpstream_onboard_vod_ppv_action" value="<?php esc_html_e( 'Create PPV VOD', 'wpstream' ); ?>" />
-					</div>
-				</div>
-				<?php $this->render_file_warning(); ?>
-			<?php else : ?>
-				<?php $this->render_woo_warning(); ?>
-			<?php endif; ?>
-			<div class="wpstream_initial_onboarding_controls_wrapper">
-				<span class="wpstream_onboard_initial_bubble_prev" data-step="wpstream_step_4"><?php esc_html_e( 'Prev', 'wpstream' ); ?></span>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Dispatch an onboarding AJAX action through the workflow interface.
-	 *
-	 * @param string $action WordPress AJAX action name.
-	 * @return mixed
-	 */
+	/** Dispatch authenticated account and content actions. */
 	public function handle_ajax( $action ) {
 		$handlers = array(
 			'wpstream_on_board_login'              => 'handle_login',
@@ -496,22 +262,79 @@ class Wpstream_Onboarding {
 		return $this->{$handlers[ $action ]}();
 	}
 
+	/**
+	 * Log out of the WpStream account and return to the entry screen, which then
+	 * offers sign in and create account. Clears the saved account and every cached
+	 * token and quota, so nothing keeps working under the old account. A site whose
+	 * credentials come from wp-config.php has nothing here to clear.
+	 *
+	 * @return void
+	 */
+	public function handle_logout() {
+		if ( ! current_user_can( 'administrator' ) ) {
+			wp_die( esc_html__( 'Only for administrators', 'wpstream' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( 'wpstream_logout' );
+
+		if ( ! wpstream_api_credentials_from_constants() ) {
+			$previous_username = (string) get_option( 'wpstream_api_username', '' );
+			update_option( 'wpstream_api_username', '' );
+			delete_option( 'wpstream_api_password' );
+
+			// Drop the cached login and usage data of the old account.
+			update_option( 'wpstream_token_expire', 0 );
+			update_option( 'wpstream_current_token', ' ' );
+			delete_transient( 'wpstream_token_api' );
+			delete_transient( 'wpstream_token_request_30' );
+			$this->main->quota_manager->invalidate();
+
+			if ( '' !== $previous_username ) {
+				/**
+				 * Fires after the WpStream account was logged out.
+				 *
+				 * @since 4.14.0
+				 *
+				 * @param string $username The username that was removed.
+				 */
+				do_action( 'wpstream_account_disconnected', $previous_username );
+			}
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=wpstream_onboard' ) );
+		exit;
+	}
+
 	/** Log in to WpStream during onboarding. */
 	private function handle_login() {
 		check_ajax_referer( 'wpstream_onboarding_nonce', 'security' );
 
 		if ( current_user_can( 'administrator' ) ) {
-			$username = sanitize_text_field( $_POST['api_username'] );
-			$password = $_POST['api_password'];
+			// WordPress slashes every $_POST value. Unslash first, or a username or password
+			// with a quote is stored wrong and the correct password gets refused.
+			$username = sanitize_text_field( wp_unslash( $_POST['api_username'] ) );
+			// Never sanitized: the password is a secret sent verbatim to the API.
+			$password = wp_unslash( $_POST['api_password'] );
+			$previous_username = (string) get_option( 'wpstream_api_username', '' );
+			$previous_password = (string) get_option( 'wpstream_api_password', '' );
 			update_option( 'wpstream_api_username', $username );
 			update_option( 'wpstream_api_password', $password, false );
-			delete_transient( 'wpstream_token_api' );
 
-			$connected = $this->main->wpstream_live_connection->is_connected();
+			// A refused sign-in must not replace the account already saved.
+			$connected = $this->main->wpstream_live_connection->keep_signin_if_accepted( $previous_username, $previous_password );
 			$this->main->wpstream_live_connection->wpstream_get_videos();
 			ob_end_clean();
 
 			if ( $connected ) {
+				// Logged-out page loads leave a failed quota fetch behind, which would blank the header.
+				$this->main->quota_manager->invalidate();
+				/**
+				 * Fires after WpStream account credentials were accepted and saved.
+				 *
+				 * @since 4.14.0
+				 *
+				 * @param string $username WpStream.net username or e-mail.
+				 */
+				do_action( 'wpstream_account_connected', $username );
 				echo json_encode( array( 'success' => true ) );
 			} else {
 				$text = get_option( 'wpstream_curl_failed' )
@@ -555,6 +378,12 @@ class Wpstream_Onboarding {
 	private function handle_register() {
 		check_ajax_referer( 'wpstream_onboarding_nonce', 'security' );
 		if ( current_user_can( 'administrator' ) ) {
+			// The browser checks this too, but only the server can make it a requirement.
+			if ( empty( $_POST['wpstream_register_privacy'] ) ) {
+				ob_end_clean();
+				echo json_encode( array( 'success' => false, 'message' => esc_html__( 'You must agree to the Privacy Policy to continue.', 'wpstream' ) ) );
+				die();
+			}
 			$email    = sanitize_text_field( $_POST['wpstream_register_email'] );
 			$password = $_POST['wpstream_register_password'];
 			$validate = $this->validate_registration( $email, $password );
@@ -593,6 +422,8 @@ class Wpstream_Onboarding {
 					update_option( 'wpstream_api_username', $email );
 					update_option( 'wpstream_api_password', $password, false );
 					$connected = $this->main->wpstream_live_connection->is_connected();
+					// Logged-out page loads leave a failed quota fetch behind, which would blank the header.
+					$this->main->quota_manager->invalidate();
 					ob_end_clean();
 					echo json_encode(
 						array(
@@ -861,7 +692,6 @@ class Wpstream_Onboarding {
 	 * @return void
 	 */
 	public function enqueue_assets() {
-		$branch = isset( $_GET['branch'] ) ? sanitize_text_field( wp_unslash( $_GET['branch'] ) ) : '';
 
 		wp_enqueue_style(
 			'wpstream-on-boarding-css',
@@ -874,7 +704,7 @@ class Wpstream_Onboarding {
 			'wpstream-on-boarding-js',
 			plugin_dir_url( __FILE__ ) . 'js/wpstream-onboarding2.js',
 			array(),
-			WPSTREAM_PLUGIN_VERSION,
+			filemtime( __DIR__ . '/js/wpstream-onboarding2.js' ),
 			true
 		);
 		wp_localize_script(
@@ -883,28 +713,8 @@ class Wpstream_Onboarding {
 			array(
 				'admin_url'  => get_admin_url(),
 				'plugin_url' => get_dashboard_url() . '/plugins.php',
-				'upload_url' => get_dashboard_url() . 'admin.php?page=wpstream_recordings',
-				'branch'     => $branch,
-			)
-		);
-
-		wp_enqueue_script(
-			'wpstream-on-boarding-page-js',
-			plugin_dir_url( __FILE__ ) . 'js/wpstream-onboarding-page.js',
-			array(),
-			WPSTREAM_PLUGIN_VERSION,
-			true
-		);
-		wp_localize_script(
-			'wpstream-on-boarding-page-js',
-			'wpstream_onboarding_page_vars',
-			array(
-				'admin_url'      => get_admin_url(),
-				'request_url'    => WPSTREAM_CLICK,
-				'wps_user'       => get_option( 'wpstream_api_username_from_token' ),
-				'current_page'   => isset( $_GET['onboard'] ) && 'yes' === $_GET['onboard'] ? 'post_edit' : 'onboarding',
-				'plugin_version' => WPSTREAM_PLUGIN_VERSION,
-				'branch'         => $branch,
+				'upload_url' => admin_url( 'admin.php?page=wpstream_recordings&library_upload=1#library-new-video' ),
+				'channel_url' => admin_url( 'admin.php?page=wpstream_live_channels&library_new=channel' ),
 			)
 		);
 	}

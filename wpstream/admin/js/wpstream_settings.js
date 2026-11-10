@@ -1,11 +1,10 @@
 /*
  * WpStream admin settings page behaviour.
  *
- * Handles the "WpStream Settings" admin screen: it auto-saves the Default
- * Channel Settings tab and the individual setting controls (checkboxes, text
- * inputs, selects, range sliders) to admin-ajax.php as the user changes them,
- * shows a transient error message when a save fails, and drives the "update
- * plugin" button on the support tab. wpstream_broadcaster_bind() is a helper
+ * Handles settings dependencies and the support-tab update button. The current
+ * settings tab saves through its explicit form submission. Legacy AJAX helpers
+ * remain available to existing callers but are not bound to this screen.
+ * wpstream_broadcaster_bind() is a helper
  * (currently not called) that opens the browser broadcaster window.
  */
 
@@ -14,17 +13,53 @@ var debounceTimer;
 
 // Wire up all settings-page handlers once the DOM is ready.
 jQuery(document).ready(function($) {
-    // Save default channel options
-    wpstream_save_default_channel_options();
+    // The blueprint saves the current tab explicitly through its nonce-protected form.
+    $('.wpstream-settings-page .wpstream_event_option_item').on('change', function () {
+        wpstream_settings_apply_exclusion($(this));
+    });
 
-    // Save settings
-    wpstream_save_settings();
+    // Keep the fields that depend on another field in step with it.
+    wpstream_settings_bind_dependent_fields($);
 
     // Bind the "update plugin" button on the support tab.
     wpstream_update_plugin_support_tab();
 
     // wpstream_broadcaster_bind();
 });
+
+/**
+ * Show only the General Options fields that apply to the current choices.
+ *
+ * The price applies to Pay-Per-View channels and the logo position to a chosen
+ * logo. A hidden field still posts its value, so saving never clears it. Slug
+ * inputs also update the page address shown beneath them.
+ *
+ * @param {jQuery} $ The jQuery instance.
+ * @return {void}
+ */
+function wpstream_settings_bind_dependent_fields($) {
+    var page    = $('.wpstream-settings-page');
+    var type    = page.find('#user_streaming_channel_type');
+    var logo    = page.find('#player_logo');
+
+    // Show the price only for Pay-Per-View channels.
+    type.on('change', function () {
+        page.find('.wpstream-option-user_streaming_default_price').toggle(type.val() === 'paid');
+    }).trigger('change');
+
+    // Show the logo position only while a logo is chosen.
+    logo.on('change', function () {
+        page.find('.wpstream-option-player_logo_position').toggle(logo.val() !== '');
+    }).trigger('change');
+
+    // Mirror each slug into its address preview; an empty slug falls back to the default the server uses.
+    page.find('.wpstream-url-preview').each(function () {
+        var slug = $(this).find('strong');
+        $(this).closest('.wpstream_option').find('input[type=text]').on('input', function () {
+            slug.text($.trim($(this).val()) || slug.attr('data-default-slug'));
+        });
+    });
+}
 
 /**
  * Show the encryption / speed-feature exclusion on the settings screen.
@@ -86,7 +121,7 @@ function wpstream_save_default_channel_options() {
         var nonce               =   jQuery('#wpstream-settings-nonce').val();
 
         // Show the saving spinner.
-        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','visible');
+        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').addClass('is-active');
         // Brief delay so the toggle's checked state settles before we read it.
         var timer = setTimeout(function() {
             // Collect every option in the group into name => 1/0 pairs.
@@ -108,7 +143,7 @@ function wpstream_save_default_channel_options() {
                 },
                 success: function (data) {
                     // Hide the spinner once the save completes.
-                    jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','hidden');
+                    jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').removeClass('is-active');
                 },
                 error: function (jqXHR,textStatus,errorThrown) {
                     // Show a transient error message on failure.
@@ -137,7 +172,7 @@ function wpstream_save_settings() {
         var checkedState = e.target.checked ? 1 : 0;
 
         // Show the saving spinner.
-        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','visible');
+        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').addClass('is-active');
         // Persist this single checkbox setting.
         jQuery.ajax({
             type: 'POST',
@@ -152,7 +187,7 @@ function wpstream_save_settings() {
             },
             success: function (data) {
                 // Hide the spinner once the save completes.
-                jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','hidden');
+                jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').removeClass('is-active');
             },
             error: function (jqXHR,textStatus,errorThrown) {
                 // Show a transient error message on failure.
@@ -172,7 +207,7 @@ function wpstream_save_settings() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout( function() {
             // Show the saving spinner.
-            jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','visible');
+            jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').addClass('is-active');
             // Persist this text setting.
             jQuery.ajax({
                 type: 'POST',
@@ -187,7 +222,7 @@ function wpstream_save_settings() {
                 },
                 success: function (data) {
                     // Hide the spinner once the save completes.
-                    jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','hidden');
+                    jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').removeClass('is-active');
                 },
                 error: function (jqXHR,textStatus,errorThrown) {
                     // Show a transient error message on failure.
@@ -206,7 +241,7 @@ function wpstream_save_settings() {
         var option_type = jQuery(this).prop('multiple') ? 'multiple-select' : 'select';
 
         // Show the saving spinner.
-        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','visible');
+        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').addClass('is-active');
         // Persist this select setting.
         jQuery.ajax({
             type: 'POST',
@@ -221,7 +256,7 @@ function wpstream_save_settings() {
             },
             success: function (data) {
                 // Hide the spinner once the save completes.
-                jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','hidden');
+                jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').removeClass('is-active');
             },
             error: function (jqXHR,textStatus,errorThrown) {
                 // Show a transient error message on failure.
@@ -238,7 +273,7 @@ function wpstream_save_settings() {
         var option_type = jQuery(this).attr('type');
 
         // Show the saving spinner.
-        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','visible');
+        jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').addClass('is-active');
         // Persist this range setting.
         jQuery.ajax({
             type: 'POST',
@@ -253,7 +288,7 @@ function wpstream_save_settings() {
             },
             success: function (data) {
                 // Hide the spinner once the save completes.
-                jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').css('visibility','hidden');
+                jQuery('.theme_options_tab_wpstream .wpstream-save-settings').find('.spinner').removeClass('is-active');
             },
             error: function (jqXHR,textStatus,errorThrown) {
                 // Show a transient error message on failure.
@@ -276,7 +311,7 @@ function wpstream_save_settings() {
  */
 function wpstream_show_error_message(container) {
     // Hide the spinner (the save has failed, not still running).
-    container.find('.spinner').css('visibility', 'hidden');
+    container.find('.spinner').removeClass('is-active');
     // Append the localized error message.
     container.append('<div class="wpstream-error-message">' + wpstream_settings_vars.error_message + '</div>');
     // Fade the message in, hold it briefly, then fade out and remove it.
@@ -297,7 +332,7 @@ function wpstream_update_plugin_support_tab() {
     jQuery('.wpstream-update-plugin-button').on('click', function(e) {
         e.preventDefault();
         // Replace the button with an "Updating..." indicator.
-        jQuery(this).parents('.update-button-wrapper').html('Updating... <span class="spinner" style="visibility: visible;"></span>');
+        jQuery(this).parents('.update-button-wrapper').html('Updating... <span class="spinner is-active"></span>');
         // Ask the server to run the plugin update.
         jQuery.ajax({
             type: 'POST',

@@ -248,7 +248,7 @@ class Wpstream_Media_List {
 		$permalink = get_permalink();
 		$title     = wp_kses_post( get_the_title() );
 		$html      = '<li class="wpstream_product_unit">'
-			. '<a href="' . esc_url( $permalink ) . '" class="product_title" ><div class="product_image" style="background-image:url(' . esc_url( $source ) . ')"></div></a>'
+			. '<a href="' . esc_url( $permalink ) . '" class="product_title" ><img class="product_image" src="' . esc_url( $source ) . '" alt="" loading="lazy"></a>'
 			. '<a href="' . esc_url( $permalink ) . '" class="product_title" >' . $title . '</a>';
 		if ( '' !== $free_label ) {
 			$html .= '<a href="' . esc_url( $permalink ) . '"class="see_product">' . $free_label . '</a>';
