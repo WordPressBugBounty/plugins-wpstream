@@ -212,8 +212,19 @@ class Wpstream_Drm_Key_Delivery {
 		set_transient( $cache_key, $value, $ttl );
 	}
 
+	/**
+	 * Fetch a live channel's DRM key for one key identifier, cached for 30 s.
+	 *
+	 * The cache is per identifier: after a restart or key rotation the player
+	 * asks for a new identifier and must get the new key, not the old one.
+	 * The name keeps the `_api20_streamName` suffix that uninstall clears.
+	 *
+	 * @param int    $channel_id Channel or product post ID.
+	 * @param string $identifier Key identifier from the player's request.
+	 * @return string The key, or '' when the key server gave none.
+	 */
 	private function fetch_live_key( $channel_id, $identifier ) {
-		$cache_key = $channel_id . '_api20_streamName';
+		$cache_key = $channel_id . '_' . md5( $identifier ) . '_api20_streamName';
 		$key       = get_transient( $cache_key );
 		if ( false !== $key ) {
 			return (string) $key;
@@ -268,9 +279,17 @@ class Wpstream_Drm_Key_Delivery {
 			return $this->denied( 'vod - no item', 'vod', 0, 'unknown_item' );
 		}
 
-		$product_id = intval( $post_ids[0] );
-		if ( ! wpstream_user_entitled_for_product( $product_id ) ) {
-			return $this->denied( 'vod - no ticket ', 'vod', $product_id, 'not_entitled' );
+		// Several products can sell the same recording (same key index); owning
+		// any one of them unlocks the key.
+		$product_id = 0;
+		foreach ( $post_ids as $candidate_id ) {
+			if ( wpstream_user_entitled_for_product( intval( $candidate_id ) ) ) {
+				$product_id = intval( $candidate_id );
+				break;
+			}
+		}
+		if ( 0 === $product_id ) {
+			return $this->denied( 'vod - no ticket ', 'vod', intval( $post_ids[0] ), 'not_entitled' );
 		}
 
 		$encoded = get_post_meta( $product_id, 'hlsDecryptionKey', true );

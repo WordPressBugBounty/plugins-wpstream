@@ -93,11 +93,14 @@ class Wpstream_Player{
         // or touching unrelated posts' meta.
         $channel_post = get_post( $channel_id );
         $is_valid_channel = false;
-        if ( $channel_post instanceof WP_Post && 'publish' === $channel_post->post_status ) {
+        // A published channel is open to everyone; a draft or private one only to
+        // a viewer who may read it (the owner previewing), as the player itself.
+        if ( $channel_post instanceof WP_Post
+            && ( 'publish' === $channel_post->post_status || current_user_can( 'read_post', $channel_id ) ) ) {
             if ( in_array( $channel_post->post_type, array( 'wpstream_product', 'wpstream_product_vod' ), true ) ) {
                 $is_valid_channel = true;
             } elseif ( 'product' === $channel_post->post_type
-                && has_term( array( 'live_stream', 'video_on_demand', 'subscription' ), 'product_type', $channel_post ) ) {
+                && has_term( array( 'live_stream', 'video_on_demand', 'subscription', 'variable-subscription' ), 'product_type', $channel_post ) ) {
                 $is_valid_channel = true;
             }
         }
@@ -371,11 +374,10 @@ class Wpstream_Player{
 
 
         }else{
-            // Logged-out branch. Stable type slug is '' when the product has no term.
-            $product_type_slug = wpstream_get_product_type_slug($product_id);
-
-            if( get_post_type($product_id) == 'product' && ($product_type_slug=='live_stream' || $product_type_slug=='video_on_demand') ){
-                // Paid live/VOD product requires login: show a "must log in" notice.
+            // Logged-out branch.
+            if( get_post_type($product_id) == 'product' ){
+                // Every paid product (live, video, subscription, bundle) requires
+                // login: show a "must log in" notice instead of an empty area.
                 $message = (string) get_option( 'wpstream_product_not_login', 'You must be logged in to watch this video.' );
                 echo $this->not_entitled_notice( 'nolog', $product_id, $message, 'wpstream_player_shortcode' );
             }elseif( get_post_type($product_id) == 'wpstream_product' ){

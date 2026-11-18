@@ -4,7 +4,7 @@ Tags: live streaming, video streaming, video on demand, pay per view, live shopp
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.1
-Stable tag: 4.15
+Stable tag: 4.15.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -145,6 +145,13 @@ Please report security bugs found in the source code of the WpStream plugin thro
 
 
 == Changelog ==
+
+= 4.15.1 =
+* Fix - A customer who cancels a subscription keeps watching until the paid period ends, instead of losing access the moment they cancel
+* Fix - The owner of a paid channel or video, and editors, can watch it without buying it
+* Fix - Live events sold as variable subscriptions now show the player on their product page
+* Fix - The browser broadcaster can reconnect after a long broadcast, instead of failing once the page session expires
+* Fix - With several players on one page, each player's trailer, play and mute buttons control that player, not the first one on the page
 
 = 4.15 =
 * Added - Redesigned WpStream admin. All Channels and All Videos are one content library with image tiles, row menus and in-row editing; each row keeps one main action, Broadcast for a channel and View for a video. Recordings are merged into All Videos, and "Publish as video" opens New Video with the recording selected

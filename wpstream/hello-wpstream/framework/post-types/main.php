@@ -192,16 +192,21 @@ function wpstream_custom_metabox_save( $post_id ) {
 		// Load the previously saved selection so we can clear its back-references.
 		$before_saving_items       = get_post_meta( $post_id, 'wpstream_bundle_selection', true );
 		$before_saving_items_array = explode( ',', $before_saving_items );
-		// Clear the "part of bundle" pointer on every previously bundled item.
+		// An item can sit in several bundles, so it keeps one "part of bundle"
+		// row per bundle. Remove only this bundle's row from the old selection.
 		foreach ( $before_saving_items_array as $item_id ) {
-			update_post_meta( $item_id, 'wpstream_part_of_bundle', '' );
+			if ( absint( $item_id ) ) {
+				delete_post_meta( absint( $item_id ), 'wpstream_part_of_bundle', $post_id );
+			}
 		}
 
 		// save the new id's.
-		// Point each newly selected item back at this bundle post.
+		// Add this bundle's row to each newly selected item.
 		$custom_field_value_array = explode( ',', $custom_field_value );
 		foreach ( $custom_field_value_array as $item_id ) {
-			update_post_meta( $item_id, 'wpstream_part_of_bundle', $post_id );
+			if ( absint( $item_id ) ) {
+				add_post_meta( absint( $item_id ), 'wpstream_part_of_bundle', $post_id );
+			}
 		}
 		// Store the new selection list on the bundle post itself.
 		update_post_meta( $post_id, 'wpstream_bundle_selection', $custom_field_value );

@@ -171,8 +171,28 @@ class Wpstream_Baker_Streaming_Content_Provisioning implements Wpstream_Streamin
 		$this->connection = $connection;
 	}
 
+	/**
+	 * Create the channel on the cloud and return its cloud ID.
+	 *
+	 * When the cloud already has this channel (an earlier create succeeded but
+	 * its reply never arrived), the cloud refuses with CHANNEL_EXISTS; the
+	 * existing channel's ID is then read back from channel/info.
+	 *
+	 * @param int $channel_id Local Live Channel ID.
+	 * @return array|false Create response, or a success with the existing cloud ID.
+	 */
 	public function provision( $channel_id ) {
-		return $this->connection->wpstream_create_channel( $channel_id );
+		$result = $this->connection->wpstream_create_channel( $channel_id );
+		if ( ! is_array( $result ) || 'CHANNEL_EXISTS' !== ( $result['error'] ?? '' ) ) {
+			return $result;
+		}
+
+		// The cloud names the channel global_id in its channel/info answer.
+		$info = $this->connection->wpstream_check_event_status_api_call( $channel_id, 'provisioning' );
+		if ( is_array( $info ) && ! empty( $info['success'] ) && ! empty( $info['global_id'] ) ) {
+			return array( 'success' => true, 'channel_id' => $info['global_id'] );
+		}
+		return $result;
 	}
 }
 
@@ -384,8 +404,11 @@ class Wpstream_Streaming_Content_Creation {
 				}
 
 				try {
-					$product = wc_get_product( $content_id );
-					if ( ! $product ) {
+					// Build the product with its own class: wc_get_product() reads a cached
+					// type, and a hook that loaded this post during insert caches 'simple',
+					// which save() would then write back over the term set above.
+					$product = $is_live ? new WC_Product_Live_Stream( $content_id ) : new WC_Product_Video_On_Demand( $content_id );
+					if ( ! $product->get_id() ) {
 						throw new RuntimeException( 'WooCommerce product was not created.' );
 					}
 					$product->set_price( $price );
@@ -478,6 +501,40 @@ class Wpstream_Streaming_Content_Creation {
 	}
 
 	/**
+	 * Whether a post is a Live Channel, whatever its publication status.
+	 *
+	 * A Live Channel is a free `wpstream_product`, a paid product of the
+	 * `live_stream` type, or a product sold as its own subscription that is
+	 * marked as a live event (`_subscript_live_event` = yes). Every check of
+	 * "is this a channel" uses this one rule.
+	 *
+	 * @param int|WP_Post $post Post ID or object.
+	 * @return bool
+	 */
+	public static function is_live_channel_post( $post ) {
+		if ( ! $post instanceof WP_Post ) {
+			$post = get_post( $post );
+		}
+		if ( ! $post instanceof WP_Post ) {
+			return false;
+		}
+
+		// Free channels have their own post type.
+		if ( 'wpstream_product' === $post->post_type ) {
+			return true;
+		}
+		if ( 'product' !== $post->post_type ) {
+			return false;
+		}
+
+		// Paid channels: the Live Channel product type, or an own-subscription
+		// product flagged as a live event.
+		return has_term( 'live_stream', 'product_type', $post )
+			|| ( has_term( array( 'subscription', 'variable-subscription' ), 'product_type', $post )
+				&& 'yes' === get_post_meta( $post->ID, '_subscript_live_event', true ) );
+	}
+
+	/**
 	 * Ensure a Created Live Channel has one persisted cloud identity.
 	 *
 	 * @param int $content_id Local Live Channel ID.
@@ -485,10 +542,7 @@ class Wpstream_Streaming_Content_Creation {
 	 */
 	public function ensure_provisioned( $content_id ) {
 		$content_id = intval( $content_id );
-		$post       = get_post( $content_id );
-		$is_live    = $post instanceof WP_Post
-			&& ( 'wpstream_product' === $post->post_type || ( 'product' === $post->post_type && has_term( 'live_stream', 'product_type', $content_id ) ) );
-		if ( ! $is_live ) {
+		if ( ! self::is_live_channel_post( $content_id ) ) {
 			return array( 'success' => false, 'error' => 'not_live_channel', 'provisioning_status' => 'not_applicable' );
 		}
 
@@ -644,7 +698,8 @@ class Wpstream_Streaming_Content_Creation {
 
 		$kind   = '';
 		$access = '';
-		$is_paid_live = 'product' === $post->post_type && has_term( 'live_stream', 'product_type', $content_id );
+		// Any product that is a Live Channel (its own type, or an own-subscription live event).
+		$is_paid_live = 'product' === $post->post_type && self::is_live_channel_post( $post );
 		$is_paid_vod  = 'product' === $post->post_type && has_term( 'video_on_demand', 'product_type', $content_id );
 		if ( $is_paid_live && $is_paid_vod ) {
 			error_log( 'WpStream inconsistent existing Streaming Content: ' . $content_id );

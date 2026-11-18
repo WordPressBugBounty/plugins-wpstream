@@ -191,13 +191,14 @@ if ( ! function_exists( 'wpestream_theme_slider_items' ) ) :
 		// Map of attribute name => taxonomy for the supported filters.
 		$wpstream_item_list_shortcodes_input_to_tax = wpstream_item_list_shortcodes_input_to_tax();
 
-		// For every provided filter, add a term clause to the tax_query.
+		// For every provided filter, add a term clause listing each picked term id.
 		foreach ( $wpstream_item_list_shortcodes_input_to_tax as $input => $taxonomy ) :
-			if ( isset( $attributes[ $input ] ) && !empty($attributes[ $input ]) ) {
+			$term_ids = isset( $attributes[ $input ] ) ? wpstream_item_list_term_ids( $attributes[ $input ] ) : array();
+			if ( ! empty( $term_ids ) ) {
 				$tax_array         = array(
 					'taxonomy' => $taxonomy,
 					'field'    => 'term_id',
-					'terms'    => array( $attributes[ $input ] ),
+					'terms'    => $term_ids,
 				);
 				$tax_query_array[] = $tax_array;
 
@@ -278,6 +279,12 @@ if ( ! function_exists( 'wpstream_theme_list_items_by_id_function' ) ) :
 		if ( isset( $attributes['video_ids'] ) && is_array( $attributes['video_ids'] ) ) {
 			$video_ids        = $attributes['video_ids'];
 			$video_ids_string = implode( '_', $video_ids );
+		}
+
+		// Keep only real post ids; with nothing selected there is nothing to list.
+		$video_ids = array_values( array_filter( array_map( 'intval', $video_ids ) ) );
+		if ( empty( $video_ids ) ) {
+			return '';
 		}
 
 		// Items per row, defaulting to 3 when not supplied.
@@ -371,8 +378,8 @@ if ( ! function_exists( 'wpstream_item_list_shortcodes' ) ) {
 
 		// Core query inputs from the attributes; the type is limited to what the item-list widgets offer.
 		$item_post_type = wpstream_item_list_allowed_post_type( sanitize_text_field( $attributes['type'] ) );
-		// Items per page, capped so a request cannot force an unbounded query.
-		$posts_per_page = wpstream_item_list_page_size( $attributes['number'] );
+		// Items per page: the widget's saved size is kept; only a guest AJAX request is capped.
+		$posts_per_page = wpstream_item_list_page_size( $attributes['number'], ! empty( $attributes['is_ajax_request'] ) );
 		$paged          = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
 
 		// The page query-var is suffixed with the widget uid so multiple lists paginate independently.
@@ -401,13 +408,14 @@ if ( ! function_exists( 'wpstream_item_list_shortcodes' ) ) {
 		// Map of attribute name => taxonomy for the supported filters.
 		$wpstream_item_list_shortcodes_input_to_tax = wpstream_item_list_shortcodes_input_to_tax();
 
-		// For every provided filter, add a term clause to the tax_query.
+		// For every provided filter, add a term clause listing each picked term id.
 		foreach ( $wpstream_item_list_shortcodes_input_to_tax as $input => $taxonomy ) :
-			if ( isset( $attributes[ $input ] ) && !empty($attributes[ $input ]) ) {
+			$term_ids = isset( $attributes[ $input ] ) ? wpstream_item_list_term_ids( $attributes[ $input ] ) : array();
+			if ( ! empty( $term_ids ) ) {
 				$tax_array         = array(
 					'taxonomy' => $taxonomy,
 					'field'    => 'term_id',
-					'terms'    => array( $attributes[ $input ] ),
+					'terms'    => $term_ids,
 				);
 				$tax_query_array[] = $tax_array;
 
@@ -537,11 +545,17 @@ if ( ! function_exists( 'wpstream_theme_return_all_taxomy_array' ) ) {
  * @return string Buffered HTML for the featured card.
  */
 function wpstream_theme_featured_video( $attributes ) { //phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	// Card inputs; $preview_video is consumed by the included template.
+	$postId = intval( $attributes['id'] );
+
+	// No pick, or a pick that was deleted or unpublished: render nothing instead of the host page.
+	if ( ! $postId || 'publish' !== get_post_status( $postId ) ) {
+		return '';
+	}
+
 	// Player assets (scripts + styles) required to play the featured item.
 	wpstream_enqueue_player_assets();
 
-	// Card inputs; $preview_video is consumed by the included template.
-	$postId = intval( $attributes['id'] );
 	$type   = sanitize_text_field( $attributes['type'] );
    	$preview_video = $attributes['show_video'];
 

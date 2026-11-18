@@ -644,7 +644,8 @@ class wpstream_theme_Social_Login {
 		$info['user_login']    = $social_username;
 		$info['user_password'] = $openid_identity_code;
 		$info['remember']      = true;
-		$user_signon           = wp_signon( $info, true );
+		// No secure-cookie flag: WordPress picks the secure cookie only on https, so http sites still log in.
+		$user_signon           = wp_signon( $info );
 
 		// Redirect home on failure, or to the configured landing page on success.
 		if ( is_wp_error( $user_signon ) ) {

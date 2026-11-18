@@ -24,10 +24,10 @@ if ( ! function_exists( 'wpstream_theme_return_sending_email' ) ) {
 	 * @return string A formatted "Name <email>" sender string.
 	 */
 	function wpstream_theme_return_sending_email() {
-		// Placeholder sender address; intended to be customised per install.
-		$from_email = 'noreply@changeme.net';
-		// Placeholder display name shown as the sender.
-		$name_email = 'changeME';
+		// The site's own admin address is the sender address.
+		$from_email = get_option( 'admin_email' );
+		// The site name is the sender's display name (decoded: header text is not HTML).
+		$name_email = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 
 		// Assemble the RFC-style "Name  <email>" header value.
 		return $name_email . '  <' . $from_email . '>';
@@ -144,7 +144,9 @@ if( !function_exists('wpstream_ajax_contact_function') ):
         $comment        =   '';
         // Reject the request unless the contact-form nonce is valid.
         if ( !wp_verify_nonce( $_POST['nonce'] ?? '', 'ajax-property-contact')) {
-            exit("No naughty business please");
+            // Answer in JSON (the form script expects it) so the button comes back and the visitor is told to reload.
+            echo json_encode(array('sent'=>false, 'response'=>esc_html__( 'Your session has expired. Please reload the page and try again.','hello-wpstream') ) );
+            wp_die();
         }
 
         // Flag: 1 when the submission comes from the Elementor contact widget.
@@ -236,12 +238,18 @@ if( !function_exists('wpstream_ajax_contact_function') ):
 
       
 		// Send the composed contact email to the site admin.
-		wpstream_theme_send_emails( $receiver_email, $subject, $message, '' );
+		// Replies go to the visitor, not the site's own sender address (only when their address is valid).
+		$reply_to = '';
+		$visitor_email = wpstream_theme_post_text('email');
+		if ( is_email( $visitor_email ) ) {
+			$reply_to = $visitor_email;
+		}
+		wpstream_theme_send_emails( $receiver_email, $subject, $message, '', $reply_to );
 
 
         // Report success back to the AJAX caller and stop execution.
         echo json_encode(array('sent'=>true,'data'=>true, 'response'=>esc_html__( 'The message was sent !','hello-wpstream') ) );
-    die();
+    wp_die();
 }
 
 endif; // end   wpstream_theme_ajax_agent_contact_form

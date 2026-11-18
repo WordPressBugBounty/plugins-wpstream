@@ -12,9 +12,12 @@
  *
  * The rule (see docs/adr/0001-unified-entitlement-rule.md):
  *  - free WpStream post types are watchable by anyone, guests included;
- *  - subscription-type products need an ACTIVE subscription — the completed
- *    order a subscription purchase leaves behind never grants by itself, so
- *    cancelling revokes access everywhere;
+ *  - whoever may manage a paid item (its author, or an admin/editor, per
+ *    wpstream_can_manage_channel) may watch it without buying it;
+ *  - subscription-type products need a PAID subscription (active, or cancelled
+ *    but paid to the end of the term) — the completed order a subscription
+ *    purchase leaves behind never grants by itself, so once the subscription
+ *    ends access is revoked everywhere;
  *  - other WooCommerce products are unlocked by an active subscription
  *    covering them, a completed direct purchase, or a completed purchase of
  *    the bundle they belong to;
@@ -28,6 +31,28 @@
 // Block direct file access outside of WordPress.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
+
+if ( ! function_exists( 'wpstream_user_has_paid_subscription' ) ) {
+	/**
+	 * Whether a user holds a subscription to a product that is still paid for.
+	 *
+	 * Paid means active, or cancelled but paid to the end of the term
+	 * (pending-cancel). Once WooCommerce ends it (cancelled, expired, on-hold)
+	 * it no longer counts.
+	 *
+	 * @param int $user_id    User to check.
+	 * @param int $product_id Subscription product ID.
+	 * @return bool True when such a subscription exists.
+	 */
+	function wpstream_user_has_paid_subscription( $user_id, $product_id ) {
+		// Without WooCommerce Subscriptions there are no subscriptions to hold.
+		if ( ! function_exists( 'wcs_user_has_subscription' ) ) {
+			return false;
+		}
+
+		return wcs_user_has_subscription( $user_id, $product_id, array( 'active', 'pending-cancel' ) );
+	}
 }
 
 if ( ! function_exists( 'wpstream_user_entitled_for_product' ) ) {
@@ -115,12 +140,17 @@ if ( ! function_exists( 'wpstream_user_entitled_for_product_rule' ) ) {
 
 		$current_user = wp_get_current_user();
 
+		// Whoever may manage this item (its author, or an admin/editor) may
+		// watch it without buying it — same rule that guards start/stop.
+		if ( wpstream_can_manage_channel( $current_user->ID, $product_id ) ) {
+			return true;
+		}
+
 		// Leg 1: an ACTIVE subscription covering this product grants in any mode.
 		// For subscription-type products this is the ONLY per-product leg — the
 		// completed order the subscription purchase left behind must never grant,
 		// otherwise cancelling would not revoke access.
-		if ( function_exists( 'wcs_user_has_subscription' )
-			&& wcs_user_has_subscription( $current_user->ID, $product_id, 'active' ) ) {
+		if ( wpstream_user_has_paid_subscription( $current_user->ID, $product_id ) ) {
 			return true;
 		}
 
@@ -128,7 +158,7 @@ if ( ! function_exists( 'wpstream_user_entitled_for_product_rule' ) ) {
 		// The global mode still controls only the site-wide fallback plan below.
 		if ( function_exists( 'wcs_user_has_subscription' ) ) {
 			foreach ( (array) get_post_meta( $product_id, '_wpstream_parent_sub', true ) as $parent_id ) {
-				if ( absint( $parent_id ) && wcs_user_has_subscription( $current_user->ID, absint( $parent_id ), 'active' ) ) {
+				if ( absint( $parent_id ) && wpstream_user_has_paid_subscription( $current_user->ID, absint( $parent_id ) ) ) {
 					return true;
 				}
 			}
@@ -141,10 +171,13 @@ if ( ! function_exists( 'wpstream_user_entitled_for_product_rule' ) ) {
 				return true;
 			}
 
-			$possible_bundle = intval( get_post_meta( $product_id, 'wpstream_part_of_bundle', true ) );
-			if ( 0 !== $possible_bundle
-				&& wc_customer_bought_product( $current_user->user_email, $current_user->ID, $possible_bundle ) ) {
-				return true;
+			// The product keeps one row per bundle it belongs to; buying any of them grants.
+			foreach ( (array) get_post_meta( $product_id, 'wpstream_part_of_bundle', false ) as $possible_bundle ) {
+				$possible_bundle = intval( $possible_bundle );
+				if ( 0 !== $possible_bundle
+					&& wc_customer_bought_product( $current_user->user_email, $current_user->ID, $possible_bundle ) ) {
+					return true;
+				}
 			}
 		}
 
@@ -193,13 +226,13 @@ if ( ! function_exists( 'wpstream_user_has_qualifying_global_subscription' ) ) {
 		if ( is_array( $selected_sub ) ) {
 			// Entitled if the user actively subscribes to any linked parent subscription.
 			foreach ( $selected_sub as $subscription_id ) {
-				if ( wcs_user_has_subscription( $current_user->ID, $subscription_id, 'active' ) ) {
+				if ( wpstream_user_has_paid_subscription( $current_user->ID, $subscription_id ) ) {
 					return true;
 				}
 			}
 		} elseif ( 0 !== $main_subscription ) {
 			// No per-product parents: entitled via the single site-wide main subscription.
-			if ( wcs_user_has_subscription( $current_user->ID, $main_subscription, 'active' ) ) {
+			if ( wpstream_user_has_paid_subscription( $current_user->ID, $main_subscription ) ) {
 				return true;
 			}
 		}

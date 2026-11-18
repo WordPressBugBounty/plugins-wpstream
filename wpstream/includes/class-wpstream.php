@@ -428,6 +428,8 @@ class Wpstream {
 		        // Mirror of the publish hooks above: a permanently deleted Live
 		        // Channel is deleted at the service too (trash is untouched).
 		        $this->loader->add_action( 'before_delete_post', $plugin_admin, 'wpstream_delete_remote_channel_on_delete', 10, 2 );
+		        // A cloud delete the service refused is retried hourly from cron.
+		        $this->loader->add_action( 'wpstream_retry_remote_channel_delete', $plugin_admin, 'wpstream_delete_remote_channel', 10, 2 );
 		        $this->loader->add_action( 'before_delete_post', $plugin_admin, 'wpstream_invalidate_vod_drm_on_delete', 5, 2 );
 		        $this->loader->add_action( 'transition_post_status', $plugin_admin, 'wpstream_invalidate_vod_drm_on_status_change', 10, 3 );
 		        // WooCommerce restores products to their previous published status.
@@ -1054,6 +1056,12 @@ class Wpstream {
         */
         public function wpstream_retrieve_front_end_channel(){
 
+            // A visitor without an account has no channel; never hand them
+            // the site's fallback channel or create one.
+            if ( ! is_user_logged_in() ) {
+                return 0;
+            }
+
             // Current user plus the site-wide channel type and default price.
             $current_user   = wp_get_current_user();
             $channel_type   = get_option ('wpstream_user_streaming_channel_type');
@@ -1125,42 +1133,56 @@ class Wpstream {
 
 
         /**
-        * Find the first channel/event id owned by a given author.
+        * Find the newest channel owned by a given author.
         *
-        * @param int    $userID       Author user id.
+        * With an author, any saved status counts (a draft channel is still the
+        * user's channel, so none is created on top of it). Without one (the
+        * player shortcode's fallback) it is the site's newest published
+        * channel. In paid mode only products that sell a channel qualify,
+        * never an ordinary shop product.
+        *
+        * @param int    $userID       Author user id, or 0/'' for any author.
         * @param string $channel_type 'paid' for a WooCommerce product, else free.
-        * @return int Post id of the author's first matching channel, or 0.
+        * @return int Post id of the newest matching channel, or 0.
         */
         public function wpstream_get_current_event_per_author($userID,$channel_type){
+            global $wpdb;
 
             // Free channels are CPTs; paid channels are WooCommerce products.
-            $post_type='wpstream_product';
-            if($channel_type=='paid'){
-                $post_type='product';
+            $post_type = 'paid' === $channel_type ? 'product' : 'wpstream_product';
+            $userID    = intval( $userID );
+
+            if ( $userID > 0 ) {
+                // The author's posts of that type in any saved status, newest first.
+                $ids = $wpdb->get_col(
+                    $wpdb->prepare(
+                        "SELECT ID FROM {$wpdb->posts}
+                         WHERE post_author = %d AND post_type = %s
+                           AND post_status IN ( 'publish', 'draft', 'private', 'pending', 'future' )
+                         ORDER BY post_date DESC, ID DESC",
+                        $userID,
+                        $post_type
+                    )
+                );
+            } else {
+                // No author: the site's published posts of that type, newest first.
+                $ids = $wpdb->get_col(
+                    $wpdb->prepare(
+                        "SELECT ID FROM {$wpdb->posts}
+                         WHERE post_type = %s AND post_status = 'publish'
+                         ORDER BY post_date DESC, ID DESC",
+                        $post_type
+                    )
+                );
             }
 
-            // Query for a single post id owned by this author.
-            $args = array(
-
-                'post_type'         =>  $post_type,
-                'author'            =>  $userID,
-                'posts_per_page'    =>  1,
-                'fields'            =>  'ids'
-            )
-                    ;
-            $author_posts = new WP_Query( $args );
-            // Use the found id, or 0 when the author has no channel.
-            if( $author_posts->have_posts() ) {
-                $author_posts->the_post();
-                $the_id= get_the_ID();
-            }else{
-                 $the_id= 0;
+            // The first one that is a live channel (always true for the CPT).
+            foreach ( $ids as $id ) {
+                if ( Wpstream_Streaming_Content_Creation::is_live_channel_post( intval( $id ) ) ) {
+                    return intval( $id );
+                }
             }
-
-            // Restore global post/query state after the custom query.
-            wp_reset_query();
-            wp_reset_postdata();
-            return $the_id;
+            return 0;
         }
 
 		/**

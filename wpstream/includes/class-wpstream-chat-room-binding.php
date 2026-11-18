@@ -38,8 +38,8 @@ class Wpstream_Chat_Room_Binding {
 	}
 
 	/**
-	 * Add the metabox to every edit screen that can render chat (channels, VODs,
-	 * WooCommerce products) when Better Messages is active.
+	 * Add the metabox to every edit screen that can render chat (free channels and
+	 * VODs; WooCommerce products never render this chat) when Better Messages is active.
 	 */
 	public function register_metabox() {
 		if ( ! function_exists( 'better_messages' ) ) {
@@ -49,7 +49,7 @@ class Wpstream_Chat_Room_Binding {
 			'wpstream-chat-room-binding',
 			esc_html__( 'Chat Room', 'wpstream' ),
 			array( $this, 'render' ),
-			array( 'wpstream_product', 'wpstream_product_vod', 'product' ),
+			array( 'wpstream_product', 'wpstream_product_vod' ),
 			'side',
 			'default'
 		);
@@ -76,7 +76,7 @@ class Wpstream_Chat_Room_Binding {
 	 */
 	public function save( $post_id ) {
 		// Only the screens that carry the metabox.
-		if ( ! in_array( get_post_type( $post_id ), array( 'wpstream_product', 'wpstream_product_vod', 'product' ), true ) ) {
+		if ( ! in_array( get_post_type( $post_id ), array( 'wpstream_product', 'wpstream_product_vod' ), true ) ) {
 			return;
 		}
 
@@ -101,6 +101,8 @@ class Wpstream_Chat_Room_Binding {
 			return;
 		}
 
+		// A hand-picked room belongs to whoever binds it: drop any recorded creator.
+		delete_post_meta( $room_id, 'wpstream_chat_owner_post_id' );
 		update_post_meta( $post_id, self::META_KEY, $room_id );
 	}
 }

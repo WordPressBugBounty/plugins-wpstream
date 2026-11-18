@@ -169,8 +169,8 @@ class WpStream_Login_Register {
 
 					// Subject and body actually sent (body is overwritten with a placeholder here).
 					$subject    = esc_html__( 'Password Reseted', 'hello-wpstream' );
-					$message    = 'Text will be editable from theme admin :your new pass ' . $new_password;
-					$email_type = 'html';
+					// The body built above is plain text with line breaks, so send it as plain text.
+					$email_type = 'text';
 					wpstream_theme_send_emails( $user_email, $subject, $message, $email_type );
 
 					// Success notice (assigned but not printed; the generic notice below is shown instead).
@@ -273,8 +273,15 @@ class WpStream_Login_Register {
 
 		// Email the reset link to the account owner.
 		$subject    = esc_html__( 'Password Reset Request', 'hello-wpstream' );
-		$message    = 'Text will be editable from theme admin - > your reset link ' . $reset_link;
-		$email_type = 'html';
+		// Plain-text body: who asked, the reset link, and what to do if it was not them.
+		$message    = esc_html__( 'Someone requested a password reset for your account at:', 'hello-wpstream' ) . "\r\n\r\n";
+		$message   .= get_bloginfo( 'name' ) . "\r\n\r\n";
+		// translators: Username placeholder in email message.
+		$message   .= sprintf( esc_html__( 'Username: %s', 'hello-wpstream' ), $user_login ) . "\r\n\r\n";
+		$message   .= esc_html__( 'To reset your password, visit this link:', 'hello-wpstream' ) . "\r\n";
+		$message   .= $reset_link . "\r\n\r\n";
+		$message   .= esc_html__( 'If this was a mistake, ignore this email and nothing will happen.', 'hello-wpstream' ) . "\r\n";
+		$email_type = 'text';
 		wpstream_theme_send_emails( $user_email, $subject, $message, $email_type, $reply_to = '', $extra_headers = '' );
 
 		// Report success to the client.
@@ -602,7 +609,8 @@ class WpStream_Login_Register {
 		$info['user_login']    = $login_user;
 		$info['user_password'] = $login_pwd;
 		$info['remember']      = false;
-		$user_signon           = wp_signon( $info, true );
+		// No secure-cookie flag: WordPress picks the secure cookie only on https, so http sites still log in.
+		$user_signon           = wp_signon( $info );
 
 		// On bad credentials return an error; otherwise finalize the login.
 		if ( is_wp_error( $user_signon ) ) {

@@ -252,7 +252,8 @@ class Wpstream_Playback_Presentation {
 		if ( 'video_on_demand' === $product_type ) {
 			return 'vod';
 		}
-		if ( 'subscription' === $product_type ) {
+		// A subscription (simple or variable) is live or video by its own flag.
+		if ( in_array( $product_type, array( 'subscription', 'variable-subscription' ), true ) ) {
 			$subscription_mode = get_post_meta( $content_id, '_subscript_live_event', true );
 			if ( 'yes' === $subscription_mode ) {
 				return 'live';
@@ -542,8 +543,17 @@ class Wpstream_Playback_Presentation {
 
 			// if embedUrl is set, we are using the new player
 			if ( !$live_channel_embed_url ) {
+				// This channel's own ABR, watermark and plan, so a channel embedded on
+				// another page does not take the host page's settings.
+				$live_logo_data  = $this->wpstream_get_player_logo_data( $channel_id );
+				$live_player_own = ' data-abr="' . ( isset( $event_settings['adaptive_bitrate'] ) && 1 === intval( $event_settings['adaptive_bitrate'] ) ? '1' : '0' ) . '"'
+					. ' data-streamify="' . ( $this->wpstream_is_streamify_user( $channel_id ) ? '1' : '0' ) . '"'
+					. ' data-player-logo-image="' . esc_attr( $live_logo_data['player_logo_src'] ) . '"'
+					. ' data-player-logo-position="' . esc_attr( $live_logo_data['player_logo_position'] ) . '"'
+					. ' data-player-logo-opacity="' . esc_attr( $live_logo_data['player_logo_opacity'] ) . '"';
+
 				// Legacy Video.js path: emit the wrapper carrying all bootstrap data-* attributes.
-				echo '<div class="wpstream_live_player_wrapper function_wpstream_live_event_player" data-now="' . $now . '" data-me="' . esc_attr( $usernamestream ) . '" data-product-id="' . $channel_id . '" id="wpstream_live_player_wrapper' . $now . '" data-nonce="' . $player_nonce . '" data-wpstream-bootstrap="live" data-instance-id="wpstream-live-' . esc_attr( $now ) . '" data-video-element-id="' . esc_attr( $now ) . '" data-title-overlay-element-id="' . esc_attr( $overlay_video_div_id ) . '" data-content-url="' . esc_attr( $live_content_uri ) . '" data-stats-uri="' . esc_attr( $live_stats_uri ) . '" data-chat-url="' . esc_attr( $live_chat_uri ) . '" data-trailer-url="' . esc_attr( $video_trailer ) . '" data-autoplay="' . ( $autoplay ? '1' : '0' ) . '" data-muted="' . ( $bootstrap_is_muted ? '1' : '0' ) . '" data-play-trailer-button-element-id="' . esc_attr( $play_trailer_button_element_id ) . '" data-mute-trailer-button-element-id="' . esc_attr( $mute_trailer_button_element_id ) . '" data-unmute-trailer-button-element-id="' . esc_attr( $unmute_trailer_button_element_id ) . '" > ';
+				echo '<div class="wpstream_live_player_wrapper function_wpstream_live_event_player" data-now="' . $now . '" data-me="' . esc_attr( $usernamestream ) . '" data-product-id="' . $channel_id . '" id="wpstream_live_player_wrapper' . $now . '" data-nonce="' . $player_nonce . '" data-wpstream-bootstrap="live" data-instance-id="wpstream-live-' . esc_attr( $now ) . '" data-video-element-id="' . esc_attr( $now ) . '" data-title-overlay-element-id="' . esc_attr( $overlay_video_div_id ) . '" data-content-url="' . esc_attr( $live_content_uri ) . '" data-stats-uri="' . esc_attr( $live_stats_uri ) . '" data-chat-url="' . esc_attr( $live_chat_uri ) . '" data-trailer-url="' . esc_attr( $video_trailer ) . '" data-autoplay="' . ( $autoplay ? '1' : '0' ) . '" data-muted="' . ( $bootstrap_is_muted ? '1' : '0' ) . '" data-play-trailer-button-element-id="' . esc_attr( $play_trailer_button_element_id ) . '" data-mute-trailer-button-element-id="' . esc_attr( $mute_trailer_button_element_id ) . '" data-unmute-trailer-button-element-id="' . esc_attr( $unmute_trailer_button_element_id ) . '"' . $live_player_own . ' > ';
 
 				// Show the live viewer count unless the setting explicitly disables it.
 				$show_viewer_count = (
@@ -820,7 +830,7 @@ class Wpstream_Playback_Presentation {
 								class="wpstream_live_channel_iframe"
 								title="' . esc_attr__( 'Embedded content', 'wpstream' ) . '"
 								src="' . esc_url( add_query_arg( $live_channel_query_args, $live_channel_frame_base ) ) . '"
-								data-wpstream-frame-role="content"
+								data-wpstream-frame-role="content"' . $this->session_product_attribute( $wpstream_live_channel_validate_url, $channel_id ) . '
 								allowfullscreen
 								allow="autoplay; fullscreen">
 						</iframe>';
@@ -830,7 +840,7 @@ class Wpstream_Playback_Presentation {
 								class="wpstream_live_channel_iframe wpstream_live_channel_iframe_trailer"
 								title="' . esc_attr__( 'Embedded trailer content', 'wpstream' ) . '"
 								src="' . esc_url( add_query_arg( $live_channel_trailer_iframe_query_args, WPSTREAM_PLAYER . "/player/vod?" ) ) . '"
-								data-wpstream-frame-role="trailer"
+								data-wpstream-frame-role="trailer"' . $this->session_product_attribute( $wpstream_live_channel_validate_url, $channel_id ) . '
 								allowfullscreen
 								allow="autoplay; fullscreen"
 
@@ -935,6 +945,25 @@ class Wpstream_Playback_Presentation {
 
 	        }
 
+	/**
+	 * Build the attribute that ties a hosted-player iframe to its playback session.
+	 *
+	 * Several players can share one page, so the session script cannot rely on
+	 * one global product id: each iframe names the product its session belongs to.
+	 * Empty when no validation URL was built, i.e. no session is required.
+	 *
+	 * @param string $validate_url Playback-session validation URL, or '' when sessions are off.
+	 * @param int    $product_id   Channel or video post ID the iframe plays.
+	 * @return string Attribute string with a leading space, or ''.
+	 */
+	private function session_product_attribute( $validate_url, $product_id ) {
+		// No validation URL means this player needs no playback session.
+		if ( '' === $validate_url ) {
+			return '';
+		}
+		return ' data-wpstream-session-product="' . (int) $product_id . '"';
+	}
+
 	public function wpstream_get_player_theme( $channel_id = null ) {
 				// Configured theme name and whether this is a streamify (basic) user.
 				$player_theme = get_option('wpstream_video_player_theme');
@@ -1036,7 +1065,8 @@ class Wpstream_Playback_Presentation {
 	                    $video_path         =   get_post_meta($product_id,'_movie_url',true);
 	                    if(get_post_type($product_id)=='wpstream_product_vod'){
 	                        // Free-VOD post type stores the source under a different meta key.
-	                        $video_path =    esc_html(get_post_meta($product_id, 'wpstream_free_video', true));
+	                        // Raw name: it is a cloud lookup key, not output; escaping would change it.
+	                        $video_path =    (string) get_post_meta($product_id, 'wpstream_free_video', true);
 	                    }
 	                    $video_path_final = $this->wpstream_request_video_on_demand_hls_player($video_path,$product_id);
 
@@ -1112,8 +1142,10 @@ class Wpstream_Playback_Presentation {
 	            $video_type = intval( get_post_meta($product_id, 'wpstream_product_type', true));
 
 
-	            // Render the player only when the quota allows VOD streaming, or the video is unencrypted (type 3).
-	            if ( $this->main->quota_manager->can_stream_vod( $pack ) || $video_type === 3 ) {
+	            // Render the player when the quota allows VOD streaming, when the quota is unknown
+	            // (the last quota call failed: viewers are not blocked by an outage), or when the
+	            // video is unencrypted (type 3). Only a real empty balance blocks playback.
+	            if ( false === $pack || $this->main->quota_manager->can_stream_vod( $pack ) || $video_type === 3 ) {
 
 	                if($video_path_final==''){
 	                    // Empty source: show a "missing video" notice, except for unencrypted VODs.
@@ -1245,9 +1277,8 @@ class Wpstream_Playback_Presentation {
 					$vod_embed            = $this->hosted_embed_key( $product_id, 'vod', $uri_details['video_name'], $vod_validate_url, $vod_embed_ancestor );
 					$vod_iframe_embed_key = $vod_embed['key'];
 
-					// Poster image and active theme (used for the isThemeActive flag).
+					// Poster image for the iframe query.
 					$vod_poster_image = $this->poster_url( $product_id, 'full' );
-					$current_active_theme = wp_get_theme();
 
 					// Map the Video.js theme name to a bare skin slug for the iframe player.
 					$vod_iframe_skin_slug = '';
@@ -1271,7 +1302,7 @@ class Wpstream_Playback_Presentation {
 							'logoImage'                  => $player_logo_image,
 							'logoPosition'               => $player_logo_image ? $player_logo_position : '',
 							'logoOpacity'                => $player_logo_image ? $player_logo_opacity : '',
-							'isThemeActive'              => $current_active_theme->get('Name') === 'Hello WPStream',
+							'isThemeActive'              => get_template() == 'hello-wpstream',
 							// The player fetches captions cross-origin, so it gets the plugin's CORS-enabled endpoint, not the raw
 							// upload URL. add_query_arg() does not encode values, and this one carries its own query string.
 							'captions'                   => $captionsUrl ? rawurlencode( Wpstream_Captions_Endpoint::url( $product_id ) ) : '',
@@ -1310,7 +1341,7 @@ class Wpstream_Playback_Presentation {
 								class="wpstream_video_on_demand_iframe"
 								title="' . esc_attr__( 'Embedded content', 'wpstream' ) . '"
 								src="' . esc_url( add_query_arg( $vod_iframe_query_args, $vod_iframe_base ) ) . '"
-								data-wpstream-frame-role="content"
+								data-wpstream-frame-role="content"' . $this->session_product_attribute( $vod_validate_url, $product_id ) . '
 								allowfullscreen
 								allow="autoplay; fullscreen">
 						</iframe>';
@@ -1320,7 +1351,7 @@ class Wpstream_Playback_Presentation {
 								class="wpstream_video_on_demand_iframe wpstream_video_on_demand_iframe_trailer"
 								title="' . esc_attr__( 'Embedded trailer content', 'wpstream' ) . '"
 								src="' . esc_url( add_query_arg( $vod_trailer_iframe_query_args, $vod_iframe_base ) ) . '"
-								data-wpstream-frame-role="trailer"
+								data-wpstream-frame-role="trailer"' . $this->session_product_attribute( $vod_validate_url, $product_id ) . '
 								allowfullscreen
 								allow="autoplay; fullscreen"
 

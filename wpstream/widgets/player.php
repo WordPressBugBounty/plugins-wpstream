@@ -168,9 +168,9 @@ class Wpstream_Player_Base extends Widget_Base {
 	 */
 	protected function content_template() {
 		?>
-		<div class="title">
-			<!-- Backbone/Underscore template token echoed as the live editor preview. -->
-			{{{ settings.title }}}
+		<div class="wpstream_elementor_widget_placeholder">
+			<!-- Editor preview: the widget name and the product id picked in the control. -->
+			<?php echo esc_html__( 'WpStream Player', 'wpstream' ); ?> {{ settings.item_id }}
 		</div>
 		<?php
 	}

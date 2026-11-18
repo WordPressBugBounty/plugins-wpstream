@@ -106,33 +106,43 @@ if (!defined('ABSPATH')) exit;
      * Post-import setup run by OCDI after a demo finishes importing.
      *
      * Assigns the imported menus to theme menu locations, sets the static front
-     * page and blog page, and disables WooCommerce coming-soon mode.
+     * page and blog page, and disables WooCommerce coming-soon mode. Demos do
+     * not all ship every menu or page, so each setting is changed only when the
+     * menu or page it points at was actually imported.
      */
     function wpstream_ocdi_after_import_setup() {
-        // Assign menus to their locations.
-        // Look up the imported menus by name.
-        $main_menu = get_term_by( 'name', 'Main Menu', 'nav_menu' );
-        $main_menu2 = get_term_by( 'name', 'First Menu', 'nav_menu' );
-        $main_menu3 = get_term_by( 'name', 'Third menu', 'nav_menu' );
+        global $wpdb;
 
-        // Map each imported menu to a theme menu location.
-        set_theme_mod( 'nav_menu_locations', array(
-            'main-menu'  => $main_menu->term_id,
-            'main-menu2' => $main_menu2->term_id,
-            'main-menu3' => $main_menu3->term_id
-            )
-        );
+        // Assign each imported menu (looked up by name) to its theme location,
+        // keeping the locations whose menu this demo does not have.
+        $locations = (array) get_theme_mod( 'nav_menu_locations', array() );
+        foreach ( array( 'main-menu' => 'Main Menu', 'main-menu2' => 'First Menu', 'main-menu3' => 'Third menu' ) as $location => $menu_name ) {
+            $menu = get_term_by( 'name', $menu_name, 'nav_menu' );
+            if ( $menu ) {
+                $locations[ $location ] = $menu->term_id;
+            }
+        }
+        set_theme_mod( 'nav_menu_locations', $locations );
 
+        // Resolve the imported Homepage and Blog pages by title (newest published one).
+        $find_page = function ( $title ) use ( $wpdb ) {
+            return (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status = 'publish' AND post_title = %s ORDER BY ID DESC LIMIT 1",
+                $title
+            ) );
+        };
+        $front_page_id = $find_page( 'Homepage' );
+        $blog_page_id  = $find_page( 'Blog' );
 
-        // Assign front page and posts page (blog page).
-        // Resolve the imported Homepage and Blog pages by title.
-        $front_page_id = get_page_by_title( 'Homepage' );
-        $blog_page_id  = get_page_by_title( 'Blog' );
-
-        // Configure a static front page with a separate posts page.
-        update_option( 'show_on_front', 'page' );
-        update_option( 'page_on_front', $front_page_id->ID );
-        update_option( 'page_for_posts', $blog_page_id->ID );
+        // A static front page only when the demo brought one; otherwise the
+        // site keeps the front page it already had.
+        if ( $front_page_id ) {
+            update_option( 'show_on_front', 'page' );
+            update_option( 'page_on_front', $front_page_id );
+        }
+        if ( $blog_page_id ) {
+            update_option( 'page_for_posts', $blog_page_id );
+        }
 
 		// disable coming soon mode of WooCommerce
 	    // so users can see the paid channels/VODs after demo import

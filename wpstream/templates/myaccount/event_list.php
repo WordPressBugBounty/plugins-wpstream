@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $wpstream_account_user_id = get_current_user_id();
 // On global-subscription sites the tab is the customer's subscription, not a list of events.
-$wpstream_account_global_sub = function_exists( 'wpstream_is_global_subscription' ) && wpstream_is_global_subscription();
+$wpstream_account_global_sub = 1 === (int) get_option( 'wpstream_global_sub' ); // The "Use Global Subscription Mode" setting.
 ?>
 <h3><?php echo $wpstream_account_global_sub ? esc_html__( 'Your Subscription', 'wpstream' ) : esc_html__( 'Event list', 'wpstream' ); ?></h3>
 <?php

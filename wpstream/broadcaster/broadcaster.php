@@ -1230,12 +1230,12 @@ function wpstream_plugin_render_broadcaster( array $args ) {
                 ),
             );
 
-            /* Larix combined RTMP string — obs_uri concatenated with
-               obs_stream (no slash inserted; obs_uri already ends in '/').
-               Matches plugin/public/js/start_streaming.js:388. Recomputed
+            /* Larix combined RTMP string — the full ingest URL. obs_uri is
+               broadcast_url up to (not including) its last '/', so the slash
+               goes back between it and the stream key. Recomputed
                client-side on channel change, but seeded here so the modal
                shows a real value on first open without a round-trip. */
-            $larix_rtmp_initial = ( $obs_uri !== '' || $obs_stream !== '' ) ? ( $obs_uri . $obs_stream ) : '';
+            $larix_rtmp_initial = ( $obs_uri !== '' && $obs_stream !== '' ) ? ( $obs_uri . '/' . $obs_stream ) : '';
             ?>
             <div data-wpstream-portal-modal="wpstream_portal_encoder_setup_modal"
                  class="wpstream-bc-hidden wpstream_portal_modal_backdrop"

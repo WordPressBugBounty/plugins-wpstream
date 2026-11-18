@@ -38,6 +38,27 @@ class WPStream_Theme_Notice {
 	public function __construct() {
 		// Print the notice (if applicable) whenever WordPress renders admin notices.
 		add_action( 'admin_notices', array( $this, 'display_admin_notice' ) );
+		// Remember the dismissal sent by the notice's close button.
+		add_action( 'wp_ajax_wpstream_dismiss_notice', array( $this, 'dismiss_notice' ) );
+	}
+
+	/**
+	 * AJAX handler for the notice's close button: records the dismissal so
+	 * the notice stops appearing on every admin page.
+	 *
+	 * @return void Ends the request with a JSON answer.
+	 */
+	public function dismiss_notice() {
+		// CSRF gate: the notice prints this nonce next to its close button.
+		if ( ! check_ajax_referer( $this->nonce_action, 'nonce', false ) ) {
+			wp_send_json_error( null, 403 );
+		}
+		// Only users who are shown the notice may dismiss it for the site.
+		if ( ! current_user_can( 'update_themes' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+		update_option( $this->notice_option, 1, false );
+		wp_send_json_success();
 	}
 
 	/**

@@ -43,7 +43,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		$attributes['wpstream_category_ids'] = isset( $_POST['wpstream_category_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['wpstream_category_ids'] ) ) : '';
 		$attributes['movie_ratings_ids']     = isset( $_POST['movie_ratings_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['movie_ratings_ids'] ) ) : '';
 		$attributes['actors_ids']            = isset( $_POST['actors_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['actors_ids'] ) ) : '';
-		$attributes['number']                = isset( $_POST['number'] ) ? intval( $_POST['number'] ) : 0;
+		$attributes['number']                = wpstream_item_list_page_size( isset( $_POST['number'] ) ? $_POST['number'] : 0, true ); // A guest request: always capped.
 		$attributes['rownumber']             = isset( $_POST['rownumber'] ) ? intval( $_POST['rownumber'] ) : 0;
 		$attributes['sort_by']               = isset( $_POST['sort_by'] ) ? intval( $_POST['sort_by'] ) : 0;
 		$attributes['pagination_type']       = isset( $_POST['pagination_type'] ) ? intval( $_POST['pagination_type'] ) : 0;
@@ -90,7 +90,7 @@ if ( ! function_exists( 'wpstream_shortcode_load_more_function' ) ) {
 		$attributes['wpstream_category_ids'] = isset( $_POST['wpstream_category_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['wpstream_category_ids'] ) ) : '';
 		$attributes['movie_ratings_ids']     = isset( $_POST['movie_ratings_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['movie_ratings_ids'] ) ) : '';
 		$attributes['actors_ids']            = isset( $_POST['actors_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['actors_ids'] ) ) : '';
-		$attributes['number']                = isset( $_POST['number'] ) ? intval( $_POST['number'] ) : 0;
+		$attributes['number']                = wpstream_item_list_page_size( isset( $_POST['number'] ) ? $_POST['number'] : 0, true ); // A guest request: always capped.
 		$attributes['rownumber']             = isset( $_POST['rownumber'] ) ? intval( $_POST['rownumber'] ) : 0;
 		$attributes['sort_by']               = isset( $_POST['sort_by'] ) ? intval( $_POST['sort_by'] ) : 0;
 		$attributes['pagination_type']       = isset( $_POST['pagination_type'] ) ? intval( $_POST['pagination_type'] ) : 0;
@@ -134,7 +134,7 @@ if ( ! function_exists( 'wpstream_shortcode_load_more_function' ) ) {
 		 $attributes['paged']                 = isset( $_POST['paged'] ) ? intval( $_POST['paged'] ) : 0;
 		 $attributes['type']                  = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : '';
 		 $attributes['category_ids']          = isset( $_POST['category_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['category_ids'] ) ) : '';
-		 $attributes['number']                = isset( $_POST['number'] ) ? intval( $_POST['number'] ) : 0;
+		 $attributes['number']                = wpstream_item_list_page_size( isset( $_POST['number'] ) ? $_POST['number'] : 0, true ); // A guest request: always capped.
 		 $attributes['rownumber']             = isset( $_POST['rownumber'] ) ? intval( $_POST['rownumber'] ) : 0;
 		 $attributes['sort_by']               = isset( $_POST['sort_by'] ) ? intval( $_POST['sort_by'] ) : 0;
 		 $attributes['pagination_type']       = isset( $_POST['pagination_type'] ) ? intval( $_POST['pagination_type'] ) : 0;
@@ -271,15 +271,77 @@ if ( ! function_exists( 'wpstream_add_pagination' ) ) {
 		// Type 1: a single "Load More" button.
 		if ( 1 === intval($pagination) ) {
 			$return_string = '<div class="wpstream_load_more_wrapper wpstream-pagination"><button type="button" class="btn btn-primary wpstream_load_more">' . esc_html__( 'Load More', 'hello-wpstream' ) . '</button></div>';
-		// Type 2: numbered pagination (the generating call is currently commented out, so output is empty).
+		// Type 2: numbered pagination, the current page read from this list's own query var.
 		} elseif ( 2 === intval($pagination) ) {
-			ob_start();
-//			wpstream_shortcode_pagination( $query->max_num_pages ,2,'',$uid);
-			$return_string = ob_get_contents();
-			ob_end_clean();
+			$query_var_name = ( '' !== (string) $uid ) ? 'paged_' . $uid : 'paged';
+			$current_page   = isset( $_GET[ $query_var_name ] ) ? max( 1, intval( $_GET[ $query_var_name ] ) ) : 1; //phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$return_string  = wpstream_numbers_pagination( $query->max_num_pages, $current_page, $query_var_name, get_permalink() );
 		}
 
 		return $return_string;
+	}
+}
+
+if ( ! function_exists( 'wpstream_numbers_pagination' ) ) {
+	/**
+	 * Build the numbered page links of an item list.
+	 *
+	 * Each link carries the page number in the list's own query var, so several
+	 * lists on one page paginate independently.
+	 *
+	 * @param int    $max_pages      Total number of pages.
+	 * @param int    $current_page   Page being shown.
+	 * @param string $query_var_name Query var that holds this list's page number.
+	 * @param string $base_url       Page the links point to.
+	 * @return string Pager HTML, or '' when there is a single page.
+	 */
+	function wpstream_numbers_pagination( $max_pages, $current_page, $query_var_name, $base_url ) {
+		// One page (or none) needs no pager.
+		if ( intval( $max_pages ) < 2 ) {
+			return '';
+		}
+
+		// Link base: the page URL without this list's page var, then ?var=%#% filled in per page.
+		$base = remove_query_arg( $query_var_name, $base_url );
+		$base = $base . ( false === strpos( $base, '?' ) ? '?' : '&' ) . $query_var_name . '=%#%';
+
+		// paginate_links escapes each URL and builds the prev / numbers / next list.
+		$links = paginate_links(
+			array(
+				'base'      => $base,
+				'format'    => '',
+				'current'   => max( 1, intval( $current_page ) ),
+				'total'     => intval( $max_pages ),
+				'mid_size'  => 2,
+				'type'      => 'list',
+				'prev_text' => '&laquo;',
+				'next_text' => '&raquo;',
+			)
+		);
+
+		return '<div class="wpstream-pagination wpstream_numbers_pagination">' . $links . '</div>';
+	}
+}
+
+if ( ! function_exists( 'wpstream_theme_pagination_ajax' ) ) {
+	/**
+	 * Build the numbered pager that goes back in an AJAX page answer.
+	 *
+	 * @param array $attributes The list request (uid, paged, current_page).
+	 * @param int   $max_pages  Total number of pages.
+	 * @param int   $range      Pages shown each side of the current one (accepted for the existing call, unused).
+	 * @return string Pager HTML, or '' when there is a single page.
+	 */
+	function wpstream_theme_pagination_ajax( $attributes, $max_pages, $range = 2 ) { //phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+		// The page var follows the list's uid, as on the first page load.
+		$uid            = isset( $attributes['uid'] ) ? (string) $attributes['uid'] : '';
+		$query_var_name = ( '' !== $uid ) ? 'paged_' . $uid : 'paged';
+
+		// The request is admin-ajax, so point the links back at the page that holds the list.
+		$page_id  = isset( $attributes['current_page'] ) ? intval( $attributes['current_page'] ) : 0;
+		$base_url = $page_id ? get_permalink( $page_id ) : home_url( '/' );
+
+		return wpstream_numbers_pagination( $max_pages, isset( $attributes['paged'] ) ? intval( $attributes['paged'] ) : 1, $query_var_name, $base_url );
 	}
 }
 
@@ -366,17 +428,43 @@ if ( ! function_exists( 'wpstream_item_list_page_size' ) ) {
 	/**
 	 * Limit how many items one page of a list may hold.
 	 *
-	 * The page size can arrive from a guest request, so a huge value or the
-	 * "all items" value (-1) would let anyone force an unbounded query.
+	 * A size saved by the site owner in the widget is used as set, "all items"
+	 * (-1) included. A size that arrives from a guest request is never trusted:
+	 * a huge value or -1 would let anyone force an unbounded query.
 	 *
-	 * @param mixed $number Requested items per page.
-	 * @return int The requested size, or 100 when it is negative or above 100.
+	 * @param mixed $number       Requested items per page.
+	 * @param bool  $from_request True when the size came from a guest AJAX request.
+	 * @return int The size to use; guest sizes that are negative or above 100 become 100.
 	 */
-	function wpstream_item_list_page_size( $number ) {
+	function wpstream_item_list_page_size( $number, $from_request = false ) {
 		$number = intval( $number );
 
-		// Out-of-range requests get the maximum page; in-range requests are kept as asked.
+		// Owner-saved sizes are honoured as they are.
+		if ( ! $from_request ) {
+			return $number;
+		}
+
+		// Out-of-range guest requests get the maximum page; in-range ones are kept as asked.
 		return ( $number < 0 || $number > 100 ) ? 100 : $number;
+	}
+}
+
+if ( ! function_exists( 'wpstream_item_list_term_ids' ) ) {
+	/**
+	 * Turn a filter value such as "3, 5" into a list of term ids.
+	 *
+	 * The widgets hand several picked terms over as one comma-separated string;
+	 * a tax_query needs them as separate ids.
+	 *
+	 * @param mixed $value Comma-separated term ids (or an array of ids).
+	 * @return int[] The positive term ids found, empty when there are none.
+	 */
+	function wpstream_item_list_term_ids( $value ) {
+		// Accept an array as given, otherwise split the string on commas.
+		$parts = is_array( $value ) ? $value : explode( ',', (string) $value );
+
+		// Keep only positive integers.
+		return array_values( array_filter( array_map( 'absint', $parts ) ) );
 	}
 }
 /*
@@ -487,7 +575,7 @@ if ( ! function_exists( 'wpstream_taxonomy_terms_dropdown' ) ) {
 		if ( isset( $attributes[ 'label_' . $taxonomy ] ) ) {
 			$output .= $attributes[ 'label_' . $taxonomy ];
 		} else {
-			$output .= esc_html_e( 'Select term', 'hello-wpstream' );
+			$output .= esc_html__( 'Select term', 'hello-wpstream' );
 		}
 
 		$output .= '</option>';
@@ -567,7 +655,7 @@ if ( ! function_exists( 'wpstream_taxonomy_terms_dropdown_bootstrap' ) ) {
 		if ( isset( $attributes[ 'label_' . $taxonomy ] ) ) {
 			$label .= $attributes[ 'label_' . $taxonomy ];
 		} else {
-			$label .= esc_html_e( 'Select term', 'hello-wpstream' );
+			$label .= esc_html__( 'Select term', 'hello-wpstream' );
 		}
 
 		
@@ -628,7 +716,7 @@ if ( ! function_exists( 'wpstream_taxonomy_terms_dropdown_blog_post_list' ) ) {
 		if ( isset( $attributes[ 'label_' . $taxonomy ] ) ) {
 			$output .= $attributes[ 'label_' . $taxonomy ];
 		} else {
-			$output .= esc_html_e( 'Select term', 'hello-wpstream' );
+			$output .= esc_html__( 'Select term', 'hello-wpstream' );
 		}
 
 		$output .= '</option>';
@@ -699,7 +787,7 @@ if ( ! function_exists( 'wpstream_taxonomy_terms_dropdown_blog_post_list_with_bo
 		if ( isset( $attributes[ 'label_' . $taxonomy ] ) ) {
 			$label .= $attributes[ 'label_' . $taxonomy ];
 		} else {
-			$label .= esc_html_e( 'Select term', 'hello-wpstream' );
+			$label .= esc_html__( 'Select term', 'hello-wpstream' );
 		}
 
 		// Check if we have any terms.

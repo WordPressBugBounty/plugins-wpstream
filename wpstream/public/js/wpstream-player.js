@@ -152,6 +152,8 @@ class WpstreamPlayer {
     // Product/channel id read off the wrapper's data attribute; used for status AJAX.
     this.channelId = this.wrapper.attr("data-product-id");
     wpstream_player_log("channelId: ", this.channelId);
+    // This channel's own ABR, plan and watermark (not the host page's).
+    this.channelOwn = wpstreamReadChannelOwn(this.wrapper);
     // Playback engine (owns the Video.js instance).
     this.playback = new WpstreamPlayback(this, this.id, this.autoplay);
     // Live viewer-count badge.
@@ -600,7 +602,7 @@ class WpstreamPlayback {
     // Enable HLS quality selector (Video.js 8 compatible)
     try {
       // Only install the ABR quality menu when the helper exists and ABR is enabled.
-      if (typeof window.wpstreamInstallQualitySelector === 'function' && wpstream_player_vars.is_abr_enabled == 1) {
+      if (typeof window.wpstreamInstallQualitySelector === 'function' && this.master.channelOwn.abr) {
         window.wpstreamInstallQualitySelector(this.player);
       }
     } catch (e) {
@@ -608,19 +610,19 @@ class WpstreamPlayback {
     }
 
 	  // Apply the configured skin theme for non-Streamify users.
-	  if ( !wpstream_player_vars.wpstream_is_streamify_user ) {
+	  if ( !this.master.channelOwn.streamify ) {
 		  this.applyTheme(wpstream_player_vars.wpstream_player_theme);
 	  }
 
       // Overlay the configured watermark/logo when the logo plugin is present.
-      if ( typeof this.player.logo === 'function' && wpstream_player_vars.playerLogoSettings ) {
+      if ( typeof this.player.logo === 'function' && this.master.channelOwn.logo ) {
           this.player.logo({
-              image: wpstream_player_vars.playerLogoSettings.imageUrl,
-              position: wpstream_player_vars.playerLogoSettings.position,
+              image: this.master.channelOwn.logo.imageUrl,
+              position: this.master.channelOwn.logo.position,
               width: 100,
               height: 'auto',
-              // Opacity is stored 0-100 in settings; convert to a 0-1 fraction.
-              opacity: parseFloat(wpstream_player_vars.playerLogoSettings.opacity)/100,
+              // Already a 0-1 fraction (see wpstreamReadChannelOwn).
+              opacity: this.master.channelOwn.logo.opacity,
               padding: 10,
           });
       }
@@ -1743,7 +1745,7 @@ class LiveConnect {
       switch (json.type) {
         case "viewerCount":
 			// Update the viewer counter (suppressed for Streamify users).
-			if ( !wpstream_player_vars.wpstream_is_streamify_user ) {
+			if ( !this.master.channelOwn.streamify ) {
 				this.master.updateViewerCount(json.data);
 			}
           break;
@@ -2262,6 +2264,36 @@ function wpstream_player_initialize_vod(settings) {
 }
 
 /**
+ * Read a live channel's own player settings off its wrapper: adaptive bitrate,
+ * basic plan (streamify) and watermark. A channel embedded on another page must
+ * not take that page's settings. Markup without these attributes (an older
+ * cached page) falls back to the page-level wpstream_player_vars.
+ *
+ * @param {jQuery} wrapper The .wpstream_live_player_wrapper element.
+ * @return {{abr: boolean, streamify: boolean, logo: ?{imageUrl: string, position: string, opacity: number}}}
+ */
+function wpstreamReadChannelOwn(wrapper) {
+  const vars = window.wpstream_player_vars || {};
+  // Older markup: use the page-level values (logo opacity there is 0-100).
+  if (!wrapper || wrapper.attr("data-abr") === undefined) {
+    const pageLogo = vars.playerLogoSettings || null;
+    return {
+      abr: vars.is_abr_enabled == 1,
+      streamify: !!vars.wpstream_is_streamify_user,
+      logo: pageLogo ? { imageUrl: pageLogo.imageUrl, position: pageLogo.position, opacity: parseFloat(pageLogo.opacity) / 100 } : null,
+    };
+  }
+  // The channel's own values; no watermark when it has no logo image.
+  const image = wrapper.attr("data-player-logo-image") || "";
+  const opacity = parseFloat(wrapper.attr("data-player-logo-opacity"));
+  return {
+    abr: wrapper.attr("data-abr") === "1",
+    streamify: wrapper.attr("data-streamify") === "1",
+    logo: image ? { imageUrl: image, position: wrapper.attr("data-player-logo-position") || "top-left", opacity: Number.isFinite(opacity) ? opacity : 1 } : null,
+  };
+}
+
+/**
  * Build a Video.js source descriptor, inferring the MIME type from the URL:
  * HLS (.m3u8), YouTube, or null (let Video.js auto-detect).
  *
@@ -2271,8 +2303,9 @@ function wpstream_player_initialize_vod(settings) {
 function getSrc(url) {
   return {
     src: url,
-    // .m3u8 → HLS; youtube/youtu.be → YouTube tech; otherwise unknown (null).
-    type: url.endsWith(".m3u8") ? "application/x-mpegURL" : url.includes("www.youtube") || url.includes("youtu.be") ? "video/youtube" : null,
+    // .m3u8 → HLS; a YouTube host (youtube.com with or without www./m.,
+    // youtube-nocookie.com, youtu.be) → YouTube tech; otherwise unknown (null).
+    type: url.endsWith(".m3u8") ? "application/x-mpegURL" : /^(https?:)?\/\/(www\.|m\.)?(youtube\.com|youtube-nocookie\.com|youtu\.be)\//i.test(url) ? "video/youtube" : null,
   };
 }
 

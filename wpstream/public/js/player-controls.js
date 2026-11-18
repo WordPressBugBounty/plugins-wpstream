@@ -103,28 +103,28 @@
 	 * @return {HTMLIFrameElement|null} The best-matching VOD iframe, or null.
 	 */
 	function findVodIframe(relatedNode) {
-		// Fast path: a harness/dev page exposes the iframe by id.
-		const playerFrame = document.getElementById("playerFrame");
-		if (playerFrame) {
-			return playerFrame;
-		}
-		// Otherwise, try to find an iframe within the related node's enclosing section.
+		// First the player inside the related node's own section: every player
+		// shares the id "playerFrame", so with several players on a page only
+		// the nearby search finds the one a clicked control belongs to.
 		if (relatedNode && relatedNode.closest) {
 			const section = relatedNode.closest(
 				".wpstream_featured_banner_vod, .wpstream-featured-player-wrapper, .woocommerce, .single-product, #page"
 			);
 			if (section) {
-				// Look for a VOD iframe inside that section.
+				// The content iframe (live or VOD) inside that section.
 				const inside = section.querySelector(
-					"iframe.wpstream_video_on_demand_iframe"
+					'iframe[data-wpstream-frame-role="content"], iframe.wpstream_video_on_demand_iframe'
 				);
 				if (inside) {
 					return inside;
 				}
 			}
 		}
-		// Last resort: first VOD iframe anywhere on the page.
-		return document.querySelector("iframe.wpstream_video_on_demand_iframe");
+		// Otherwise the page's player by id, then the first VOD iframe anywhere.
+		return (
+			document.getElementById("playerFrame") ||
+			document.querySelector("iframe.wpstream_video_on_demand_iframe")
+		);
 	}
 
 	/**
@@ -220,17 +220,17 @@
 	 * @return {{content: ?HTMLIFrameElement, trailer: ?HTMLIFrameElement}} Frame set.
 	 */
 	function findVodFrameSet(relatedNode) {
-		// Fast path: harness/dev page exposes both frames by id.
-		const contentById = document.getElementById("playerFrame");
-		const trailerById = document.getElementById("playerFrameTrailer");
-		if (contentById) {
-			return {
-				content: contentById,
-				trailer: trailerById,
-			};
-		}
-		// Otherwise locate the content iframe near the related node.
-		const contentFrame = findVodIframe(relatedNode);
+		// Locate the content iframe, preferring the one near the related node.
+		return frameSetFor(findVodIframe(relatedNode));
+	}
+
+	/**
+	 * Pair a content iframe with the trailer iframe in its own wrap.
+	 *
+	 * @param {HTMLIFrameElement|null} contentFrame The player's content iframe.
+	 * @return {{content: ?HTMLIFrameElement, trailer: ?HTMLIFrameElement}} Frame set.
+	 */
+	function frameSetFor(contentFrame) {
 		// Without a content frame there is no usable set.
 		if (!contentFrame) {
 			return {
@@ -247,6 +247,23 @@
 			content: contentFrame,
 			trailer: trailerFrame,
 		};
+	}
+
+	/**
+	 * Frame sets for every hosted player on the page.
+	 *
+	 * Players share the iframe ids, so each one is found by its content-role
+	 * iframe instead. Markup without roles falls back to the page's player.
+	 *
+	 * @return {Array<{content: ?HTMLIFrameElement, trailer: ?HTMLIFrameElement}>} One set per player.
+	 */
+	function findAllFrameSets() {
+		const contents = document.querySelectorAll('iframe[data-wpstream-frame-role="content"]');
+		// No role-tagged players: keep the single-player lookup.
+		if (!contents.length) {
+			return [findVodFrameSet(null)];
+		}
+		return Array.prototype.map.call(contents, frameSetFor);
 	}
 
 	/**
@@ -793,23 +810,26 @@
 	/**
 	 * Listen for the trailer iframe's `ended` event and restore the UI.
 	 *
-	 * Same message filtering as iframe_test.html, wired to findVodFrameSet(…).trailer.
+	 * Same message filtering as iframe_test.html, wired to every player's trailer frame.
 	 *
 	 * @return {void}
 	 */
 	function initTrailerIframeEndedFromHost() {
-		// Resolve the trailer frame; require a real src to listen to.
-		const trailerFrame = findVodFrameSet(null).trailer;
-		if (!trailerFrame || !trailerFrame.src) {
-			return;
-		}
-		// Subscribe and act only on the "ended" event.
-		receivePlayerEvent(trailerFrame, function (eventName) {
-			if (eventName !== "ended") {
+		// One listener per player's trailer frame.
+		findAllFrameSets().forEach(function (frames) {
+			const trailerFrame = frames.trailer;
+			// Require a real src to listen to.
+			if (!trailerFrame || !trailerFrame.src) {
 				return;
 			}
-			// Trailer finished: put the surrounding chrome back.
-			restoreUiAfterTrailerEnded(trailerFrame);
+			// Subscribe and act only on the "ended" event.
+			receivePlayerEvent(trailerFrame, function (eventName) {
+				if (eventName !== "ended") {
+					return;
+				}
+				// Trailer finished: put the surrounding chrome back.
+				restoreUiAfterTrailerEnded(trailerFrame);
+			});
 		});
 	}
 
@@ -819,9 +839,12 @@
 	 * @return {void}
 	 */
 	function initIframeHoverOverlayFromHost() {
-		// Resolve both frames and wire hover handling on each present one.
-		const frames = findVodFrameSet(null);
-		[frames.content, frames.trailer].forEach(function (iframe) {
+		// Every player's frames get hover handling.
+		const iframes = [];
+		findAllFrameSets().forEach(function (frames) {
+			iframes.push(frames.content, frames.trailer);
+		});
+		iframes.forEach(function (iframe) {
 			// Skip absent frames or ones without a src.
 			if (!iframe || !iframe.src) {
 				return;
@@ -846,8 +869,18 @@
 	 * @return {void}
 	 */
 	function initLiveUpdateEventsFromHost() {
-		// Resolve frames; require a content frame with a src to subscribe.
-		const frames = findVodFrameSet(null);
+		// One subscription per player on the page.
+		findAllFrameSets().forEach(wireLiveUpdateEvents);
+	}
+
+	/**
+	 * Route one player's live-stream events to that player's own UI.
+	 *
+	 * @param {{content: ?HTMLIFrameElement, trailer: ?HTMLIFrameElement}} frames The player's frame set.
+	 * @return {void}
+	 */
+	function wireLiveUpdateEvents(frames) {
+		// Require a content frame with a src to subscribe.
 		if (!frames.content || !frames.content.src) {
 			return;
 		}
@@ -864,7 +897,7 @@
 					hideActionsWrapperNearby(frames.content);
 					dispatchPlaybackState(frames.content, "playing_content");
 					// this is added so that when the streaming is currently live, the status message get hidden
-					changeStatusMessage("onair");
+					changeStatusMessage("onair", frames.content);
 					break;
 				case "live_update":
 					// here we check for status update
@@ -875,7 +908,7 @@
 							: null;
 					// Only forward non-empty string statuses to the UI.
 					if (typeof status === "string" && status) {
-						changeStatusMessage(status);
+						changeStatusMessage(status, frames.content);
 					}
 					break;
 				case "live_update_ended":
@@ -900,10 +933,11 @@
 	/**
 	 * Update the live-channel status message/overlay for a given stream status.
 	 *
-	 * @param {string} status Live status ("stopped", "init", "startup", "onair", "paused").
+	 * @param {string} status            Live status ("stopped", "init", "startup", "onair", "paused").
+	 * @param {HTMLIFrameElement} frame  The player the status belongs to.
 	 * @return {void}
 	 */
-	function changeStatusMessage(status) {
+	function changeStatusMessage(status, frame) {
 		// Use the localized strings config if present, otherwise an empty object.
 		const liveStrings =
 			window.wpstreamLiveUiConfig &&
@@ -914,9 +948,15 @@
 		if ( !liveStrings.isThemeActive ) {
 			return;
 		}
+		// The status box lives in the player's own page section; a player
+		// outside one (e.g. a shortcode further down) has no status box.
+		const scope = getFeaturedVodSection(frame);
+		if ( !scope ) {
+			return;
+		}
 		// Locate the status container and its message element.
-		const statusEl = document.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status');
-		const messageEl = document.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status .wpstream_live_channel_status_message');
+		const statusEl = scope.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status');
+		const messageEl = scope.querySelector('.wpstream_live_channel_actions_wrapper .wpstream_live_channel_status .wpstream_live_channel_status_message');
 		// Both must exist to show a status.
 		if ( !statusEl || !messageEl ) {
 			return;
@@ -946,7 +986,7 @@
 				break;
 			case "onair":
 				// Live on air: hide posters/pre-play chrome across the featured wrapper.
-				document.querySelectorAll('.wpstream-featured-player-wrapper .wpstream_hide_on_play, .wpstream-featured-player-wrapper .wpstream_video_poster_holder.wpstream_hide_on_trailer').forEach(function (el) {
+				scope.querySelectorAll('.wpstream_hide_on_play, .wpstream_video_poster_holder.wpstream_hide_on_trailer').forEach(function (el) {
 					el.classList.add('hide_on_play');
 				});
 				// Hide the status message itself while live.
@@ -954,7 +994,7 @@
 				break;
 			case "paused":
 				// Paused: bring back the posters/pre-play chrome...
-				document.querySelectorAll('.wpstream-featured-player-wrapper .wpstream_hide_on_play, .wpstream-featured-player-wrapper .wpstream_video_poster_holder.wpstream_hide_on_trailer').forEach(function (el) {
+				scope.querySelectorAll('.wpstream_hide_on_play, .wpstream_video_poster_holder.wpstream_hide_on_trailer').forEach(function (el) {
 					el.classList.remove('hide_on_play');
 				});
 				// ...re-show the status message and set the "paused" text.
@@ -1082,8 +1122,61 @@
 	}
 
 	/**
-	 * When the server requires it, fetch a playback-session token and deliver
-	 * it to the content and trailer iframes.
+	 * Ask the server to issue a playback-session token for one product.
+	 *
+	 * @param {Object} cfg        Localized session config (needs ajaxUrl).
+	 * @param {string} productId  Channel or video post ID the session is for.
+	 * @return {Promise<string>}  The token, or "" when none could be issued.
+	 */
+	async function fetchPlaybackSession(cfg, productId) {
+		// Build the AJAX request body for the issue-session action.
+		// No nonce: pages can be served from a cache where a rendered nonce would be
+		// stale; issuance is entitlement-gated server-side instead.
+		const body = new URLSearchParams();
+		body.set("action", "wpstream_issue_playback_session");
+		body.set("productId", String(productId));
+
+		try {
+			// POST to the WordPress AJAX endpoint with same-origin credentials.
+			const res = await fetch(cfg.ajaxUrl, {
+				method: "POST",
+				credentials: "same-origin",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+				},
+				body: body.toString(),
+			});
+			// Parse the JSON response.
+			const payload = await res.json();
+			if (!payload || !payload.success) {
+				return "";
+			}
+			// Prefer the token nested under payload.data, else top-level.
+			const fromData =
+				payload.data &&
+				typeof payload.data === "object" &&
+				payload.data.playbackSession
+					? payload.data.playbackSession
+					: "";
+			const token =
+				(typeof fromData === "string" && fromData) ||
+				(typeof payload.playbackSession === "string"
+					? payload.playbackSession
+					: "");
+			// Normalise whatever token we ended up with.
+			return String(token || "").trim();
+		} catch (_err) {
+			// Network/parse failure: give up silently.
+			return "";
+		}
+	}
+
+	/**
+	 * When the server requires it, fetch one playback-session token per player
+	 * on the page and deliver each to that player's content and trailer iframes.
+	 *
+	 * Each iframe names its own product (data-wpstream-session-product), so
+	 * several players on one page never share a session or an iframe id lookup.
 	 *
 	 * @return {Promise<void>}
 	 */
@@ -1106,61 +1199,30 @@
 		if (!cfg || !cfg.requirePlaybackSession) {
 			return;
 		}
-		// Build the AJAX request body for the issue-session action.
-		// No nonce: pages can be served from a cache where a rendered nonce would be
-		// stale; issuance is entitlement-gated server-side instead.
-		const body = new URLSearchParams();
-		body.set("action", "wpstream_issue_playback_session");
-		body.set("productId", String(cfg.productId));
 
-		// Will hold the resolved session token.
-		let playbackSession = "";
-		try {
-			// POST to the WordPress AJAX endpoint with same-origin credentials.
-			const res = await fetch(cfg.ajaxUrl, {
-				method: "POST",
-				credentials: "same-origin",
-				headers: {
-					"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-				},
-				body: body.toString(),
+		// Group the session-protected iframes by the product they belong to.
+		const framesByProduct = {};
+		document
+			.querySelectorAll("iframe[data-wpstream-session-product]")
+			.forEach(function (frame) {
+				const productId = frame.getAttribute("data-wpstream-session-product");
+				(framesByProduct[productId] = framesByProduct[productId] || []).push(
+					frame
+				);
 			});
-			// Parse the JSON response.
-			const payload = await res.json();
-			if (payload && payload.success) {
-				// Prefer the token nested under payload.data, else top-level.
-				const fromData =
-					payload.data &&
-					typeof payload.data === "object" &&
-					payload.data.playbackSession
-						? payload.data.playbackSession
-						: "";
-				playbackSession =
-					(typeof fromData === "string" && fromData) ||
-					(typeof payload.playbackSession === "string"
-						? payload.playbackSession
-						: "");
-			}
-			// Normalise whatever token we ended up with.
-			playbackSession = String(playbackSession || "").trim();
-		} catch (_err) {
-			// Network/parse failure: give up silently.
-			return;
-		}
-		// No token means nothing to deliver.
-		if (!playbackSession) {
-			return;
-		}
 
-		// Deliver the token to the content frame...
-		wirePlaybackSessionAfterLoad(
-			document.getElementById("playerFrame"),
-			playbackSession
-		);
-		// ...and to the trailer frame.
-		wirePlaybackSessionAfterLoad(
-			document.getElementById("playerFrameTrailer"),
-			playbackSession
+		// One token per product, delivered to that product's frames only.
+		await Promise.all(
+			Object.keys(framesByProduct).map(async function (productId) {
+				const playbackSession = await fetchPlaybackSession(cfg, productId);
+				// No token means nothing to deliver for this player.
+				if (!playbackSession) {
+					return;
+				}
+				framesByProduct[productId].forEach(function (frame) {
+					wirePlaybackSessionAfterLoad(frame, playbackSession);
+				});
+			})
 		);
 	}
 

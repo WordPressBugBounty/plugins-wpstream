@@ -87,7 +87,9 @@ if ( ! function_exists( 'wpstream_theme_featured_image' ) ) {
 			// No preview clip: render a still image card instead.
 			// Blog posts and non-video products use the "blog hover" icon; video products
 			// (VOD/live) use the white play icon.
-			if( get_post_type($post_id) === 'post' || !wpstream_is_woo_video_product( $post_id ) ){
+			// Free channels, free videos and bundles are WpStream post types, not Woo products, so they count as video here too.
+			$is_video_item = in_array( get_post_type( $post_id ), array( 'wpstream_product', 'wpstream_product_vod', 'wpstream_bundles' ), true ) || wpstream_is_woo_video_product( $post_id );
+			if( get_post_type($post_id) === 'post' || ! $is_video_item ){
 				$play_button =  '<div class="wpstream_video_unit_video_play">' . wpstream_theme_get_svg_icon('bloghover.svg') . '</div>';
 			}else{
 				$play_button =  '<div class="wpstream_video_unit_video_play">' . wpstream_theme_get_svg_icon('play_icon_white.svg') . '</div>';

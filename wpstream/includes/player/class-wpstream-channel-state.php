@@ -135,6 +135,18 @@ class Wpstream_Channel_State {
 	}
 
 	/**
+	 * Drop a channel's cached status so the next read asks Baker again.
+	 * Called when the channel is stopped, so viewers stop seeing it as live
+	 * at once instead of after the cache runs out.
+	 *
+	 * @param int $channel_id Channel/post id.
+	 * @return void
+	 */
+	public static function forget( $channel_id ) {
+		delete_transient( self::TRANSIENT_PREFIX . intval( $channel_id ) );
+	}
+
+	/**
 	 * Cache miss: fetch the channel status from Baker, cache it, and — when a
 	 * live payload just arrived — sync the stream name / HLS key retrieval URL
 	 * onto the channel post and drop the free-event stream-name lookup cache.

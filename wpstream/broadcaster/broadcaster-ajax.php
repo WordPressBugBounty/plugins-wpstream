@@ -11,11 +11,7 @@ function wpstream_broadcaster_is_channel( $id ) {
     $post = get_post( $id );
     // A channel saved in any status can broadcast; an auto-draft has never been saved.
     if ( ! $post || ! in_array( $post->post_status, array( 'publish', 'draft', 'private', 'pending', 'future' ), true ) ) { return false; }
-    if ( 'wpstream_product' === $post->post_type ) { return true; }
-    return 'product' === $post->post_type && (
-        has_term( 'live_stream', 'product_type', $id ) ||
-        ( has_term( array( 'subscription', 'variable-subscription' ), 'product_type', $id ) && 'yes' === get_post_meta( $id, '_subscript_live_event', true ) )
-    );
+    return Wpstream_Streaming_Content_Creation::is_live_channel_post( $post );
 }
 
 function wpstream_broadcaster_authorized( $id ) {
@@ -49,10 +45,18 @@ function wpstream_broadcaster_status( $id ) {
     return $result;
 }
 
-/** Strict validation shared by every authenticated module action. */
-function wpstream_broadcaster_request_channel() {
+/**
+ * Strict validation shared by every authenticated module action.
+ *
+ * @param bool $check_nonce False only for the read-only status check: a long
+ *                          broadcast outlives the page nonce, and the reconnect
+ *                          must still read the status. Login, domain and channel
+ *                          ownership are checked either way.
+ * @return int The validated channel id (every refusal ends the request).
+ */
+function wpstream_broadcaster_request_channel( $check_nonce = true ) {
     if ( ! is_user_logged_in() ) { wp_send_json( array( 'success' => false, 'connected' => false, 'error' => 'NOT_LOGGED_IN' ), 401 ); }
-    if ( ! check_ajax_referer( WPSTREAM_PLUGIN_BC_NONCE, 'nonce', false ) ) {
+    if ( $check_nonce && ! check_ajax_referer( WPSTREAM_PLUGIN_BC_NONCE, 'nonce', false ) ) {
         wp_send_json( array( 'success' => false, 'connected' => false, 'error' => __( 'Your session has expired. Reload this page and try again.', 'wpstream' ) ), 403 );
     }
     $id = filter_var( $_POST['channel_id'] ?? '', FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 1 ) ) );
@@ -67,7 +71,8 @@ function wpstream_broadcaster_request_channel() {
 }
 
 function wpstream_broadcaster_ajax_status() {
-    wp_send_json( wpstream_broadcaster_status( wpstream_broadcaster_request_channel() ) );
+    // Read-only: no nonce, so a reconnect after the page nonce expired still works.
+    wp_send_json( wpstream_broadcaster_status( wpstream_broadcaster_request_channel( false ) ) );
 }
 function wpstream_broadcaster_ajax_start() {
     global $wpstream_plugin;

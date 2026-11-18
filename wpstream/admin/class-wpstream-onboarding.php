@@ -304,6 +304,20 @@ class Wpstream_Onboarding {
 		exit;
 	}
 
+	/**
+	 * Throw away stray output (notices, theme echoes) printed before a JSON answer.
+	 *
+	 * Only closes a buffer that is open: closing none raises a PHP notice that,
+	 * on a site displaying errors, would itself break the JSON the form expects.
+	 *
+	 * @return void
+	 */
+	private function discard_output() {
+		if ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+	}
+
 	/** Log in to WpStream during onboarding. */
 	private function handle_login() {
 		check_ajax_referer( 'wpstream_onboarding_nonce', 'security' );
@@ -322,7 +336,7 @@ class Wpstream_Onboarding {
 			// A refused sign-in must not replace the account already saved.
 			$connected = $this->main->wpstream_live_connection->keep_signin_if_accepted( $previous_username, $previous_password );
 			$this->main->wpstream_live_connection->wpstream_get_videos();
-			ob_end_clean();
+			$this->discard_output();
 
 			if ( $connected ) {
 				// Logged-out page loads leave a failed quota fetch behind, which would blank the header.
@@ -380,7 +394,7 @@ class Wpstream_Onboarding {
 		if ( current_user_can( 'administrator' ) ) {
 			// The browser checks this too, but only the server can make it a requirement.
 			if ( empty( $_POST['wpstream_register_privacy'] ) ) {
-				ob_end_clean();
+				$this->discard_output();
 				echo json_encode( array( 'success' => false, 'message' => esc_html__( 'You must agree to the Privacy Policy to continue.', 'wpstream' ) ) );
 				die();
 			}
@@ -389,7 +403,7 @@ class Wpstream_Onboarding {
 			$validate = $this->validate_registration( $email, $password );
 
 			if ( ! $validate['success'] ) {
-				ob_end_clean();
+				$this->discard_output();
 				echo json_encode( $validate );
 				die();
 			}
@@ -424,7 +438,7 @@ class Wpstream_Onboarding {
 					$connected = $this->main->wpstream_live_connection->is_connected();
 					// Logged-out page loads leave a failed quota fetch behind, which would blank the header.
 					$this->main->quota_manager->invalidate();
-					ob_end_clean();
+					$this->discard_output();
 					echo json_encode(
 						array(
 							'success' => true,
@@ -435,7 +449,7 @@ class Wpstream_Onboarding {
 					die();
 				}
 
-				ob_end_clean();
+				$this->discard_output();
 				echo json_encode(
 					array(
 						'success' => false,
@@ -446,7 +460,7 @@ class Wpstream_Onboarding {
 				die();
 			}
 
-			ob_end_clean();
+			$this->discard_output();
 			echo json_encode(
 				array(
 					'success' => false,
@@ -456,7 +470,7 @@ class Wpstream_Onboarding {
 			die();
 		}
 
-		ob_end_clean();
+		$this->discard_output();
 		echo json_encode(
 			array(
 				'success' => false,

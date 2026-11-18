@@ -133,65 +133,55 @@ if ( ! function_exists( 'wpstream_get_channels_for_metaboxes' ) ) :
 /**
  * Get channels for metaboxes.
  *
- * Builds an id => title option list of channel-like posts for the VOD
- * attachment selector. When WooCommerce is active it queries products of the
- * live_stream type (or with no product_type term); otherwise it queries the
- * standalone wpstream_product post type.
+ * Builds an id => title option list of every channel-like post for the VOD
+ * attachment selector, straight from the posts table. Channels are posts of the
+ * standalone wpstream_product type and, when WooCommerce is active, products of
+ * the live_stream type (or with no product_type term). Drafts, pending, scheduled
+ * and private channels are listed too, so an attachment to one is not lost when
+ * the video is saved.
  *
  * @return array Map of post ID => escaped post title.
  */
 function wpstream_get_channels_for_metaboxes() {
-	// With WooCommerce active, channels are products; narrow to live streams.
-	if ( class_exists( 'WooCommerce' ) ) {
-		$post_type      = array( 'product', 'wpstream_product' );
-		// Match live_stream products OR products with no product_type term at all.
-		$taxonomy_array = array(
-			'relation' => 'OR',
-			array(
-				'taxonomy' => 'product_type',
-				'field'    => 'slug',
-				'terms'    => array( 'live_stream' ),
-			),
-			array(
-				'taxonomy' => 'product_type',
-				'operator' => 'NOT EXISTS',
-			),
-		);
+	global $wpdb;
 
-	} else {
-		// Without WooCommerce, only the standalone channel post type exists.
-		$post_type      = 'wpstream_product';
-		$taxonomy_array = array();
+	// Channels are always the standalone post type; products join in only with WooCommerce.
+	$post_types = array( 'wpstream_product' );
+	if ( class_exists( 'WooCommerce' ) ) {
+		$post_types[] = 'product';
 	}
 
-	// Query up to 50 candidate channels.
-	$args = array(
-		'post_type'      => $post_type,
-		'posts_per_page' => 50,
-		'tax_query'      => $taxonomy_array, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+	// Placeholders for the post-type list; the statuses are fixed literals.
+	$type_placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
 
+	// A post qualifies when it has no product_type term, or the live_stream one.
+	$rows = $wpdb->get_results( //phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->prepare(
+			"SELECT p.ID, p.post_title FROM {$wpdb->posts} p
+			WHERE p.post_type IN ( {$type_placeholders} )
+			AND p.post_status IN ( 'publish', 'draft', 'pending', 'future', 'private' )
+			AND (
+				NOT EXISTS (
+					SELECT 1 FROM {$wpdb->term_relationships} tr
+					INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					WHERE tr.object_id = p.ID AND tt.taxonomy = 'product_type'
+				)
+				OR EXISTS (
+					SELECT 1 FROM {$wpdb->term_relationships} tr
+					INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+					WHERE tr.object_id = p.ID AND tt.taxonomy = 'product_type' AND t.slug = 'live_stream'
+				)
+			)
+			ORDER BY p.post_title ASC", //phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			$post_types
+		)
 	);
-	$query_list = new WP_Query( $args );
-	// Accumulator for the id => title option list.
-	$options    = array();
 
-	// Walk the results and build the option map.
-	if ( $query_list->have_posts() ) {
-		while ( $query_list->have_posts() ) :
-			$query_list->the_post();
-			// Current post ID and its title/type.
-			$the_id       = get_the_ID();
-			$the_title    = get_the_title( $the_id );
-			$post_type    = get_post_type( $the_id );
-			$product_type = '';
-			// For WooCommerce products, read the product type meta (currently informational only).
-			if ( get_post_type( $the_id ) === 'product' ) {
-				$product_type = get_post_meta( $the_id, '_product_type', true );
-			}
-
-			// Add this channel to the option list, keyed by integer ID.
-			$options[ intval( $the_id ) ] = esc_html( $the_title );
-		endwhile;
+	// Build the id => escaped title option map.
+	$options = array();
+	foreach ( (array) $rows as $row ) {
+		$options[ intval( $row->ID ) ] = esc_html( get_the_title( $row->ID ) );
 	}
 
 	return $options;

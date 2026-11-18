@@ -45,7 +45,11 @@ class Wpstream_Activator {
             // Register the custom post types (channels, VODs, etc.).
             $plugin_post_types->create_custom_post_type();
 
-            // Rebuild rewrite rules now that new post types exist, so their URLs resolve.
+            // Register the My Account endpoints too: on activation 'init' has already run without them,
+            // so without this the flush below would save rewrite rules that lack them.
+            Wpstream_Public::wpstream_my_custom_endpoints();
+
+            // Rebuild rewrite rules now that new post types and endpoints exist, so their URLs resolve.
             flush_rewrite_rules();
 
 //

@@ -227,8 +227,8 @@ if ( ! function_exists( 'wpstream_theme_recent_items_top_bar' ) ) :
 
 		// Post type to query, limited to the types the item-list widgets offer.
 		$item_post_type = wpstream_item_list_allowed_post_type( sanitize_text_field( $attributes['type'] ) );
-		// Items per page, capped so a request cannot force an unbounded query.
-		$posts_per_page = wpstream_item_list_page_size( $attributes['number'] );
+		// Items per page: the widget's saved size is kept; only a guest AJAX request is capped.
+		$posts_per_page = wpstream_item_list_page_size( $attributes['number'], ! empty( $attributes['is_ajax_request'] ) );
 		// Current page from the main query, defaulting to 1.
 		$paged          = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
 
@@ -250,11 +250,13 @@ if ( ! function_exists( 'wpstream_theme_recent_items_top_bar' ) ) :
 
 		// Add a taxonomy clause for each supplied filter input.
 		foreach ( $wpstream_item_list_shortcodes_input_to_tax as $input => $taxonomy ) :
-			if ( isset( $attributes[ $input ] ) && ! empty( $attributes[ $input ] ) ) {
+			// Split a multi-pick value such as "3, 5" into separate term ids.
+			$term_ids = isset( $attributes[ $input ] ) ? wpstream_item_list_term_ids( $attributes[ $input ] ) : array();
+			if ( ! empty( $term_ids ) ) {
 				$tax_array         = array(
 					'taxonomy' => $taxonomy,
 					'field'    => 'term_id',
-					'terms'    => array( $attributes[ $input ] ),
+					'terms'    => $term_ids,
 				);
 				$tax_query_array[] = $tax_array;
 

@@ -820,8 +820,7 @@ class Wpstream_Live_Api_Connection  {
 			return false;
 		}
 
-		return 'wpstream_product' === $post->post_type
-			|| ( 'product' === $post->post_type && has_term( 'live_stream', 'product_type', $post ) );
+		return Wpstream_Streaming_Content_Creation::is_live_channel_post( $post );
 	}
 
 	/** Preserve the legacy disconnected response emitted by settings AJAX Adapters. */
@@ -1222,6 +1221,9 @@ class Wpstream_Live_Api_Connection  {
         // server-side (no JS consumer reads it, and it can carry API internals).
         if ( ! is_wp_error( $response ) && isset( $response['success'] ) && $response['success'] === true ) {
 
+            // The cached "live" status is now wrong; the next read asks Baker.
+            Wpstream_Channel_State::forget( $channel_id );
+
             // End-of-stream hook: fire once per live session. The stored
             // status is the guard — only a channel still marked active
             // transitions here, and persisting 'stopped' immediately keeps
@@ -1422,7 +1424,7 @@ class Wpstream_Live_Api_Connection  {
      *
      * Endpoint: channel/start. Assembles domain/CORS/key-access/metadata and the
      * feature flags, gated by $basic_streaming (advanced flags are forced off
-     * when the user is not in basic-streaming mode).
+     * when the account is in Basic Streaming mode).
      *
      * @param int    $schannel_id       Channel post ID.
      * @param string $is_autostart      Autostart flag (unused; 'true' is sent literally).
@@ -1433,7 +1435,7 @@ class Wpstream_Live_Api_Connection  {
      * @param int    $request_by_userid Requesting user id (unused in the body).
      * @param string $corsorigin        Allowed origin ('*' or scheme://host).
      * @param string $on_boarding       Non-empty adds on_boarding metadata.
-     * @param bool   $basic_streaming   Whether advanced flags are permitted.
+     * @param bool   $basic_streaming   True in Basic Streaming mode: advanced flags are sent off.
      * @return array|null Decoded channel/start response.
      * @since 3.0.1
      */
@@ -1488,8 +1490,6 @@ class Wpstream_Live_Api_Connection  {
                 $low_latency = false;
             }
 
-            // Normalise basic-streaming to a string flag used as the gate below.
-            $basic_streaming = $basic_streaming ? 'true' : 'false';
 
             // Endpoint; the auth token is injected by the transport.
             $url            =   'channel/start';
@@ -1521,15 +1521,16 @@ class Wpstream_Live_Api_Connection  {
              */
             $metadata_array = (array) apply_filters( 'wpstream_channel_start_metadata', $metadata_array, (int) $schannel_id );
 
-            // Build the channel/start body; advanced flags gated by $basic_streaming.
+            // Build the channel/start body. Basic Streaming (account out of
+            // quota) turns recording, encryption, low latency and ABR off.
             $curl_post_fields=array(
                 'channel_id'            =>  $schannel_id,
                 'domain'                =>  $domain['host'],
                 'allow_access_from'     =>  $corsorigin,
-                'record'                =>  $basic_streaming ? $is_record : 'false',
-                'encrypt'               =>  $basic_streaming ? $is_encrypt : 'false',
-                'low_latency'           =>  $basic_streaming ? $low_latency : 'false',
-                'abr'                   =>  $basic_streaming ? $abr : 'none',
+                'record'                =>  $basic_streaming ? 'false' : $is_record,
+                'encrypt'               =>  $basic_streaming ? 'false' : $is_encrypt,
+                'low_latency'           =>  $basic_streaming ? 'false' : $low_latency,
+                'abr'                   =>  $basic_streaming ? 'none' : $abr,
                 'hls_keys_url_prefix'   =>  $this->hls_keys_url_prefix( $schannel_id ),
                 'allow_key_access_from' =>  $this->allow_key_access_from( $schannel_id ),
                 'metadata'              =>  json_encode($metadata_array),
@@ -2005,8 +2006,8 @@ class Wpstream_Live_Api_Connection  {
             exit('not admin on get_download_link');
         }
 
-        // Target video name from the request.
-        $video_name                 =   sanitize_text_field($_POST['video_name']);
+        // Target video name from the request, without the slashes WordPress adds to $_POST.
+        $video_name                 =   isset( $_POST['video_name'] ) && is_scalar( $_POST['video_name'] ) ? sanitize_text_field( wp_unslash( $_POST['video_name'] ) ) : '';
 
         // POST to video/download; the token is injected by the transport.
         // Not-connected keeps the legacy silent return (no JSON emitted).
@@ -2047,8 +2048,9 @@ class Wpstream_Live_Api_Connection  {
             exit('not admin on get_delete_file');
         }
 
-        // Target video name from the request.
-        $video_name                 =   esc_html($_POST['video_name']);
+        // Target video name from the request, without the slashes WordPress adds to $_POST.
+        // Not HTML-escaped: the cloud must receive the file's real name.
+        $video_name                 =   isset( $_POST['video_name'] ) && is_scalar( $_POST['video_name'] ) ? sanitize_text_field( wp_unslash( $_POST['video_name'] ) ) : '';
 
 
         // POST to video/delete and return the outcome payload as JSON; the

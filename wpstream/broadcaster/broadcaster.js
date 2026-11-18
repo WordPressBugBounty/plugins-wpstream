@@ -3700,7 +3700,10 @@ document.addEventListener("DOMContentLoaded", function () {
 			// inside proceedWithStreaming() (Phase 4).
 			var isTurningOn = bcTurningOn || turnOnPollInterval !== null || turnOnAbortController !== null;
 			log( '[broadcaster] Stop: dispatch decision', { streamingStarted: streamingStarted, isTurningOn: isTurningOn, will_stop: streamingStarted || isTurningOn } );
-			if ( streamingStarted || isTurningOn ) {
+			// considerReconnect stays true through the reconnect gap after the
+			// pending-reconnect timer has fired (status check + delayed
+			// createInput), when streamingStarted is already false.
+			if ( streamingStarted || isTurningOn || considerReconnect ) {
 				stopStreaming();
 			}
 		});
@@ -4485,6 +4488,12 @@ document.addEventListener("DOMContentLoaded", function () {
 			// envelope it resolves is already the decoded object.
 			ajaxPost( ACTIONS.check_event_status, { channel_id: channelId, domain: domain } )
 				.then(function (parsedResponse) {
+					// A reply with no status is a failed request (expired nonce, lost
+					// login, backend error), not a channel that went inactive. Reject
+					// with the server's own message so the catch below shows it.
+					if ( ! parsedResponse || ! parsedResponse.status ) {
+						throw ( parsedResponse && parsedResponse.error ) || 'No status returned.';
+					}
 					var isViewedTarget = Number( channelId ) === Number( resolveSelectedChannelId() ) && ( ! domain || domain === resolveSelectedChannelDomain() );
 					if ( broadcastTarget && broadcastTarget.channelId === channelId && broadcastTarget.domain === domain ) {
 						broadcastTarget.status = parsedResponse && parsedResponse.status || '';
@@ -4824,6 +4833,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			// are in scope. Returns nothing; resolve/reject ends the
 			// caller's wait.
 			var tickCount = 0;
+			var stoppedReads = 0; // consecutive 'stopped' readings
 			function tick() {
 				tickCount += 1;
 				log( '[broadcaster] Phase 3 tick', { n: tickCount, channelId: channelId } );
@@ -4877,6 +4887,16 @@ document.addEventListener("DOMContentLoaded", function () {
 							emitFunnel( 'whip_ready', { attempt_id: currentAttemptId, mode: bcTelemetryMode(), phase: '3', value_ms: tWhip - tAccepted } );
 							startMaintenancePoll( channelId, domain );
 							resolve( response );
+							return;
+						}
+
+						// A single 'stopped' right after Start can be a stale read from
+						// before the backend flipped the channel, so it only counts as
+						// terminal when two ticks in a row report it. 'error' stays
+						// immediate. Any other status resets the run.
+						stoppedReads = ( status === 'stopped' ) ? stoppedReads + 1 : 0;
+						if ( status === 'stopped' && stoppedReads < 2 ) {
+							log( '[broadcaster] Phase 3: first "stopped" reading ignored, confirming on next tick' );
 							return;
 						}
 
@@ -5155,10 +5175,6 @@ document.addEventListener("DOMContentLoaded", function () {
 				return;
 			}
 			if (pendingWhipAttempt !== attempt) return;
-			if ( input ) {
-				// TODO: check why input is sometimes null here
-				log('something was wrong' );
-			}
 			// updateStatus("connected");
 			if ( isReconnect ) {
 				log('Reconnected successfully!');
@@ -5170,6 +5186,12 @@ document.addEventListener("DOMContentLoaded", function () {
 			// failed, so the channel is ours (not external-live) â†’ ungated
 			// re-enable so the user can retry.
 			bcTeardownControls( false );
+			// streamingStarted and the publishing channel were set above, before
+			// the input/WHIP check; nothing is publishing, so clear them or the
+			// LIVE panel keeps treating this channel as live.
+			streamingStarted = false;
+			publishingChannelId = 0;
+			publishingChannelDomain = '';
 			// Funnel telemetry â€” Phase 4 terminal failure (missing input or WHIP
 			// URL â†’ OvenLiveKit.startStreaming never ran). Clear the attempt span.
 			emitFunnel( 'broadcast_error', { attempt_id: currentAttemptId, mode: bcTelemetryMode(), phase: '4', error_code: 'whip_failed' } );
@@ -5754,9 +5776,9 @@ document.addEventListener("DOMContentLoaded", function () {
 			var uri = (typeof uriOverride === 'string') ? uriOverride : (vars.obs_uri || '');
 			var key = (typeof keyOverride === 'string') ? keyOverride : (vars.obs_stream || '');
 
-			/* Larix combined RTMP â€” obs_uri + obs_stream, no slash inserted
-			   (obs_uri already ends in '/'). Matches the plugin. */
-			var larixRtmp = (uri !== '' || key !== '') ? (uri + key) : '';
+			/* Larix combined RTMP â€” obs_uri + '/' + obs_stream
+			   (obs_uri stops before the last '/'), so the slash goes back in. */
+			var larixRtmp = (uri !== '' && key !== '') ? (uri + '/' + key) : '';
 
 			var ph = encoderSetup._placeholder;
 
@@ -6266,7 +6288,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	function stop() {
 		if ( bcTurningOn && ! streamingStarted ) {
 			cancelBroadcastStartup();
-		} else if ( streamingStarted || pendingReconnect ) {
+		} else if ( streamingStarted || pendingReconnect || considerReconnect ) {
+			// considerReconnect covers the reconnect gap after the pending timer
+			// fired, when streamingStarted is false but a reconnect is still queued.
 			stopStreaming();
 		}
 	}

@@ -12,20 +12,51 @@ class Wpstream_Content_Library {
         $this->main = $main;
     }
 
+    /**
+     * The channels or videos listed on one library page, newest first.
+     *
+     * Free items are their own post type. Paid items are WooCommerce products,
+     * so only products of the matching WpStream type (or a subscription flagged
+     * for that kind) are read, never the rest of the shop.
+     *
+     * @param string $kind 'channel' or 'video'.
+     * @return WP_Post[] Items the current user may edit.
+     */
     private function items( $kind ) {
-        $posts = get_posts( array(
-            'post_type' => array_merge( array( 'channel' === $kind ? 'wpstream_product' : 'wpstream_product_vod' ), post_type_exists( 'product' ) ? array( 'product' ) : array() ),
-            'post_status' => array( 'publish', 'draft', 'private', 'pending', 'future', 'trash' ),
-            'posts_per_page' => -1,
-            'orderby' => 'date',
-            'order' => 'DESC',
+        global $wpdb;
+        $free_type = 'channel' === $kind ? 'wpstream_product' : 'wpstream_product_vod';
+        $paid_type = 'channel' === $kind ? 'live_stream' : 'video_on_demand';
+        $live_flag = 'channel' === $kind ? 'yes' : 'no';
+
+        // Paid items: products whose product_type term is this kind, or a
+        // subscription whose live-event flag matches this kind.
+        $paid_sql = post_type_exists( 'product' ) ? $wpdb->prepare(
+            " OR ( p.post_type = 'product' AND EXISTS (
+                SELECT 1 FROM {$wpdb->term_relationships} tr
+                INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = 'product_type'
+                INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                WHERE tr.object_id = p.ID AND ( t.slug = %s OR ( t.slug = 'subscription' AND EXISTS (
+                    SELECT 1 FROM {$wpdb->postmeta} pm WHERE pm.post_id = p.ID AND pm.meta_key = '_subscript_live_event' AND pm.meta_value = %s
+                ) ) )
+            ) )",
+            $paid_type,
+            $live_flag
+        ) : '';
+
+        // One query for the IDs, every status the library shows, newest first.
+        $ids = $wpdb->get_col( $wpdb->prepare(
+            "SELECT p.ID FROM {$wpdb->posts} p
+             WHERE p.post_status IN ( 'publish', 'draft', 'private', 'pending', 'future', 'trash' )
+               AND ( p.post_type = %s{$paid_sql} )
+             ORDER BY p.post_date DESC, p.ID DESC",
+            $free_type
         ) );
-        return array_values( array_filter( $posts, function ( $post ) use ( $kind ) {
-            if ( ! current_user_can( 'edit_post', $post->ID ) ) { return false; }
-            if ( 'product' !== $post->post_type ) { return true; }
-            $type = wpstream_get_product_type_slug( $post->ID );
-            return $type === ( 'channel' === $kind ? 'live_stream' : 'video_on_demand' ) ||
-                ( 'subscription' === $type && ( 'channel' === $kind ? 'yes' : 'no' ) === get_post_meta( $post->ID, '_subscript_live_event', true ) );
+
+        // Load the posts in one go, then keep those the user may edit.
+        _prime_post_caches( array_map( 'intval', $ids ) );
+        $posts = array_filter( array_map( 'get_post', $ids ) );
+        return array_values( array_filter( $posts, function ( $post ) {
+            return current_user_can( 'edit_post', $post->ID );
         } ) );
     }
 
@@ -85,9 +116,10 @@ class Wpstream_Content_Library {
         echo '</select></label><div data-library-price' . ( 'free' === $access ? ' hidden' : '' ) . '><label>' . esc_html__( 'Price', 'wpstream' ) . ( function_exists( 'get_woocommerce_currency' ) ? ' (' . esc_html( get_woocommerce_currency() ) . ')' : '' ) . '<input name="library_price" type="number" min="0" step="any" value="' . esc_attr( get_post_meta( $post->ID, '_regular_price', true ) ) . '"></label></div>';
         $parents = (array) get_post_meta( $post->ID, '_wpstream_parent_sub', true );
         $own_plan = 'subscription' === wpstream_get_product_type_slug( $post->ID );
-        $plan_mode = $own_plan && ! get_option( 'wpstream_global_sub' ) ? 'own' : 'existing';
+        // An item with its own plan keeps it, also after Global Subscription Mode is turned on.
+        $plan_mode = $own_plan ? 'own' : 'existing';
         echo '<div data-library-subscription' . ( 'subscription' !== $access ? ' hidden' : '' ) . '><label>' . esc_html__( 'Subscription', 'wpstream' ) . '<select name="library_subscription_mode">';
-        if ( $own_plan && ! get_option( 'wpstream_global_sub' ) ) { echo '<option value="own" selected>' . esc_html__( 'Its own subscription', 'wpstream' ) . '</option>'; }
+        if ( $own_plan ) { echo '<option value="own" selected>' . esc_html__( 'Its own subscription', 'wpstream' ) . '</option>'; }
         echo '<option value="existing"' . selected( $plan_mode, 'existing', false ) . '>' . esc_html__( 'Use an existing subscription', 'wpstream' ) . '</option>';
         if ( ! get_option( 'wpstream_global_sub' ) ) { echo '<option value="create">' . esc_html__( 'Create a new subscription', 'wpstream' ) . '</option>'; }
         echo '</select></label><div data-library-plan-fields' . ( 'existing' !== $plan_mode ? ' hidden' : '' ) . '><label>' . esc_html__( 'Choose subscription', 'wpstream' ) . '<select name="library_plan"><option value="">' . esc_html__( 'Choose a subscription', 'wpstream' ) . '</option>';
@@ -167,11 +199,21 @@ class Wpstream_Content_Library {
             $change_access = isset( $_POST['library_access'] );
             $plan_id = 0;
             $plan_mode = isset( $_POST['library_subscription_mode'] ) && is_scalar( $_POST['library_subscription_mode'] ) ? sanitize_key( $_POST['library_subscription_mode'] ) : '';
-            if ( $change_access && 'subscription' === $access && get_option( 'wpstream_global_sub' ) && 'existing' !== $plan_mode ) { return __( 'Choose an existing subscription in Global Subscription Mode.', 'wpstream' ); }
+            $own_plan = 'subscription' === wpstream_get_product_type_slug( $post->ID );
+            // Global Subscription Mode allows only existing plans, besides an item's own plan it already has.
+            if ( $change_access && 'subscription' === $access && get_option( 'wpstream_global_sub' ) && 'existing' !== $plan_mode && ! ( 'own' === $plan_mode && $own_plan ) ) { return __( 'Choose an existing subscription in Global Subscription Mode.', 'wpstream' ); }
             if ( $change_access && 'subscription' === $access && 'existing' === $plan_mode ) {
                 $plan_id = isset( $_POST['library_plan'] ) && is_scalar( $_POST['library_plan'] ) ? absint( $_POST['library_plan'] ) : 0;
-                $plan = wc_get_product( $plan_id );
-                if ( ! $plan || $plan_id === $post->ID || ! $plan->is_type( 'subscription' ) || 'publish' !== $plan->get_status() || ! current_user_can( 'edit_post', $plan_id ) ) { return __( 'Choose an existing subscription.', 'wpstream' ); }
+                // No plan picked for an item that already sells through one (even a
+                // plan since trashed, which the editor no longer lists): keep how it
+                // is sold and save only the text.
+                $current_plans = (array) get_post_meta( $post->ID, '_wpstream_parent_sub', true );
+                if ( 0 === $plan_id && 'subscription' === $previous && ! $own_plan && ! empty( $current_plans[0] ) ) {
+                    $change_access = false;
+                } else {
+                    $plan = wc_get_product( $plan_id );
+                    if ( ! $plan || $plan_id === $post->ID || ! $plan->is_type( 'subscription' ) || 'publish' !== $plan->get_status() || ! current_user_can( 'edit_post', $plan_id ) ) { return __( 'Choose an existing subscription.', 'wpstream' ); }
+                }
             }
             $create_plan = $change_access && 'subscription' === $access && 'create' === $plan_mode;
             $plan_name = isset( $_POST['library_subscription_name'] ) && is_scalar( $_POST['library_subscription_name'] ) ? sanitize_text_field( wp_unslash( $_POST['library_subscription_name'] ) ) : '';
@@ -218,8 +260,12 @@ class Wpstream_Content_Library {
                         $terms = wp_set_object_terms( $id, $type, 'product_type' );
                         if ( is_wp_error( $terms ) ) { return $terms->get_error_message(); }
                         clean_post_cache( $id );
-                        $product = wc_get_product( $id );
-                        if ( ! $product ) { return __( 'The product could not be saved.', 'wpstream' ); }
+                        // Build the product with its own class: wc_get_product() reads a cached type,
+                        // and a hook that loaded this post earlier caches 'simple', which save() would
+                        // then write back over the term set above.
+                        $classes = array( 'subscription' => 'WC_Product_Subscription', 'live_stream' => 'WC_Product_Live_Stream', 'video_on_demand' => 'WC_Product_Video_On_Demand' );
+                        $product = new $classes[ $type ]( $id );
+                        if ( ! $product->get_id() ) { return __( 'The product could not be saved.', 'wpstream' ); }
                         $product->set_regular_price( $plan_id ? '' : $price );
                         // Preserve a valid existing sale price; changing the regular price should not cancel a sale.
                         $product->set_price( $plan_id ? '' : ( $product->is_on_sale() ? $product->get_sale_price() : $price ) );
@@ -276,7 +322,9 @@ class Wpstream_Content_Library {
             } elseif ( 'restore' === $action && 'trash' === get_post_status( $id ) ) {
                 $previous = get_post_meta( $id, '_wp_trash_meta_status', true );
                 $result = wp_untrash_post( $id );
-                if ( $result && in_array( $previous, array( 'publish', 'draft', 'private', 'pending', 'future' ), true ) ) {
+                // A paid channel keeps the draft status its untrash rule gives it, so it is not back on sale.
+                $paid_channel = 'product' === get_post_type( $id ) && Wpstream_Streaming_Content_Creation::is_live_channel_post( $id );
+                if ( $result && ! $paid_channel && in_array( $previous, array( 'publish', 'draft', 'private', 'pending', 'future' ), true ) ) {
                     $result = wp_update_post( array( 'ID' => $id, 'post_status' => $previous ), true );
                 }
             } else { continue; }

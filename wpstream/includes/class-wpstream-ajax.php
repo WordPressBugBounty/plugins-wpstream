@@ -221,27 +221,45 @@ class WpStream_Ajax {
 		// absent on a malformed request, so read them with safe defaults.
 		$thumb_id     = isset( $_POST['thumb_id'] ) ? intval( $_POST['thumb_id'] ) : 0;
 		$title        = sanitize_text_field( $_POST['title'] ?? '' );
-		$description  = sanitize_text_field( $_POST['description'] ?? '' );
+		// Description keeps its paragraphs and post-safe HTML. The value stays
+		// slashed, like the title, because wp_update_post() unslashes it.
+		$description  = wp_filter_post_kses( $_POST['description'] ?? '' );
 		$channel_paid = intval( $_POST['channel_paid'] ?? 0 );
+		// Same paid-creation rule as channel creation: a user who may not create
+		// paid channels gets no paid toggle, so the channel keeps its current
+		// free/paid state whatever the request says.
+		$can_set_paid = current_user_can( 'manage_options' )
+			|| ( function_exists( 'wpstream_return_user_can_create_paid' ) && wpstream_return_user_can_create_paid() );
+		if ( ! $can_set_paid ) {
+			$channel_paid = 'product' === get_post_type( $postID ) ? 1 : 0;
+		}
 		$images       = sanitize_text_field( $_POST['images'] ?? '' );
 	        // Strip stray commas and enforce the gallery limit on the CSV image-id list.
 	        $images       = wpstream_limit_gallery_images( $images );
 	        $channel_price=0;
 		// Paid channels carry a price; read it as a float when supplied.
-		if ( isset( $_POST['channel_price'] ) ) {
+		$has_price = isset( $_POST['channel_price'] ) && '' !== trim( (string) $_POST['channel_price'] );
+		if ( $has_price ) {
 			$channel_price = floatval( $_POST['channel_price'] );
 		}
 		// $postID was already read and ownership-checked above.
 
 		// Free channels use the custom post type; paid ones become WooCommerce products.
 		$previous_access = 'product' === get_post_type( $postID ) ? 'paid' : 'free';
-		$new_post_type   = 'wpstream_product';
+		// A product that already sells a channel (pay-per-view or its own
+		// subscription) keeps its product type; anything else becomes Live Channel.
+		$keep_product_type = 'paid' === $previous_access && Wpstream_Streaming_Content_Creation::is_live_channel_post( $postID );
+		$new_post_type     = 'wpstream_product';
 		if ( $channel_paid == 1 ) {
-			// Paid: switch to the product post type and persist the price meta.
+			// Paid: switch to the product post type. A channel is never shipped.
 			$new_post_type = 'product';
-			update_post_meta( $postID, '_price', $channel_price );
-			update_post_meta( $postID, '_regular_price', $channel_price );
-
+			update_post_meta( $postID, '_virtual', 'yes' );
+			// Write the price only when one was entered, so a missing price
+			// does not put the channel on sale for 0.
+			if ( $has_price ) {
+				update_post_meta( $postID, '_price', $channel_price );
+				update_post_meta( $postID, '_regular_price', $channel_price );
+			}
 		}
 
 		// Only proceed when we have a real post to update.
@@ -263,8 +281,10 @@ class WpStream_Ajax {
 			*/
 			if ( $channel_paid == 1 ) {
 				// Paid channels store their gallery in WooCommerce product meta.
-				update_post_meta( $postID, '_product_type', 'live_stream' );
-				wp_set_post_terms( $postID, 'live_stream', 'product_type' );
+				if ( ! $keep_product_type ) {
+					update_post_meta( $postID, '_product_type', 'live_stream' );
+					wp_set_post_terms( $postID, 'live_stream', 'product_type' );
+				}
 				update_post_meta( $postID, '_product_image_gallery', $images );
 			} else {
 
@@ -989,10 +1009,10 @@ class WpStream_Ajax {
 				$featured = intval( $_POST['featured'] );
 			}
 
-			if ( isset( $_POST['taxonomies'] ) ) {
-				// Sanitize each taxonomy value when an array was submitted.
-				$taxonomies_raw = sanitize_text_field( wp_unslash( $_POST['taxonomies'] ) );
-				$taxonomies     = is_array( $taxonomies_raw ) ? array_map( 'sanitize_text_field', $taxonomies_raw ) : array();
+			$taxonomies = array();
+			if ( isset( $_POST['taxonomies'] ) && is_array( $_POST['taxonomies'] ) ) {
+				// The form posts { taxonomy: [term ids] }; sanitize every nested value.
+				$taxonomies = map_deep( wp_unslash( $_POST['taxonomies'] ), 'sanitize_text_field' );
 			}
 			// Strip stray commas and enforce the gallery limit on the image id list.
 			$images = wpstream_limit_gallery_images( $images );
@@ -1000,7 +1020,9 @@ class WpStream_Ajax {
 			// Store the gallery/price differently for products vs custom channels.
 			if ( get_post_type( $post_id ) === 'product' ) {
 				update_post_meta( $post_id, '_product_image_gallery', $images );
+				// WooCommerce charges _price; keep it equal to the edited regular price.
 				update_post_meta( $post_id, '_regular_price', $price );
+				update_post_meta( $post_id, '_price', $price );
 			} else {
 				// Free channels store each image id as its own gallery meta row;
 				// clear the old gallery first so the limited list replaces it.
@@ -1026,25 +1048,21 @@ class WpStream_Ajax {
 
 			// Reassign terms for each submitted taxonomy.
 			foreach ( $taxonomies as $taxonomy => $term_ids ) {
-				// Clear existing terms in this taxonomy first.
-				wp_remove_object_terms( $post_id, '', $taxonomy );
-
-				if ( is_array( $term_ids ) ) {
-					foreach ( $term_ids as $key => $term_id ) {
-						// Tags are set by name (appended), other taxonomies by term id.
-						if ( 'product_tag' === $taxonomy || 'post_tag' === $taxonomy ) {
-							$tagterm = get_term( $term_id );
-
-							if ( $tagterm && ! is_wp_error( $tagterm ) ) {
-								$tag_term_name = $tagterm->name;
-								wp_set_post_terms( $post_id, $tag_term_name, $taxonomy, true );
-							}
-						} elseif ( -1 !== $term_id ) {
-							// Skip the -1 "none" sentinel; otherwise assign the term id.
-							wp_set_post_terms( $post_id, intval( $term_id ), $taxonomy, true );
-						}
-					}
+				// Only the taxonomies the dashboard shows may be edited; WooCommerce's
+				// internal product_type/product_visibility terms are never touched here.
+				if ( ! is_object_in_taxonomy( get_post_type( $post_id ), $taxonomy ) || in_array( $taxonomy, array( 'product_type', 'product_visibility' ), true ) ) {
+					continue;
 				}
+				// Integer term ids (tags included); drop the -1 "none" sentinel.
+				$term_ids = array_filter(
+					array_map( 'intval', (array) $term_ids ),
+					function ( $term_id ) {
+						return $term_id > 0;
+					}
+				);
+				// Replace the taxonomy's terms in one call, so an emptied category
+				// falls back to WordPress's default term instead of keeping old ones.
+				wp_set_object_terms( $post_id, array_values( $term_ids ), $taxonomy );
 			}
 
 			// Echo the saved values back for the dashboard to confirm/update state.

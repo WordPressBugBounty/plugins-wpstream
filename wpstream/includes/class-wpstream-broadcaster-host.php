@@ -16,7 +16,12 @@ class Wpstream_Broadcaster_Host {
             // Atomic lock prevents double clicks from creating two first channels.
             $lock = 'wpstream_first_channel_lock';
             if ( ! add_option( $lock, time(), '', false ) ) {
-                wp_safe_redirect( admin_url( 'admin.php?page=wpstream_live_channels' ) ); exit;
+                // A lock younger than a minute belongs to a request still creating the channel.
+                if ( time() - (int) get_option( $lock ) < MINUTE_IN_SECONDS ) {
+                    wp_safe_redirect( admin_url( 'admin.php?page=wpstream_live_channels' ) ); exit;
+                }
+                // An older lock was left by a request that died mid-creation; take it over.
+                update_option( $lock, time(), false );
             }
             try {
                 $channels = self::channels();

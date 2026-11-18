@@ -33,8 +33,8 @@ if ( ! function_exists( 'wpstream_blog_list_shortcodes' ) ) {
 
 		// This list always queries standard blog posts.
 		$item_post_type = 'post';
-		// Number of posts per page, capped so a request cannot force an unbounded query.
-		$posts_per_page = wpstream_item_list_page_size( $attributes['number'] );
+		// Number of posts per page: the widget's saved size is kept; only a guest AJAX request is capped.
+		$posts_per_page = wpstream_item_list_page_size( $attributes['number'], ! empty( $attributes['is_ajax_request'] ) );
 
 		// Base pagination query-var; suffixed with the widget uid so multiple lists don't clash.
 		$query_var_name = 'paged';
@@ -68,11 +68,13 @@ if ( ! function_exists( 'wpstream_blog_list_shortcodes' ) ) {
 
 		// For each supplied filter input, add a taxonomy clause to the query.
 		foreach ( $wpstream_item_list_shortcodes_input_to_tax as $input => $taxonomy ) :
-			if ( isset( $attributes[ $input ] ) && ! empty( $attributes[ $input ] ) ) {
+			// Split a multi-pick value such as "3, 5" into separate term ids.
+			$term_ids = isset( $attributes[ $input ] ) ? wpstream_item_list_term_ids( $attributes[ $input ] ) : array();
+			if ( ! empty( $term_ids ) ) {
 				$tax_array         = array(
 					'taxonomy' => $taxonomy,
 					'field'    => 'term_id',
-					'terms'    => array( $attributes[ $input ] ),
+					'terms'    => $term_ids,
 				);
 				$tax_query_array[] = $tax_array;
 
@@ -636,11 +638,13 @@ if ( ! function_exists( 'wpestream_blog_post_slider_items' ) ) :
 
 		// Add a taxonomy clause for each supplied filter input.
 		foreach ( $wpstream_item_list_shortcodes_input_to_tax as $input => $taxonomy ) :
-			if ( isset( $attributes[ $input ] ) && ! empty( $attributes[ $input ] ) ) {
+			// Split a multi-pick value such as "3, 5" into separate term ids.
+			$term_ids = isset( $attributes[ $input ] ) ? wpstream_item_list_term_ids( $attributes[ $input ] ) : array();
+			if ( ! empty( $term_ids ) ) {
 				$tax_array         = array(
 					'taxonomy' => $taxonomy,
 					'field'    => 'term_id',
-					'terms'    => array( $attributes[ $input ] ),
+					'terms'    => $term_ids,
 				);
 				$tax_query_array[] = $tax_array;
 

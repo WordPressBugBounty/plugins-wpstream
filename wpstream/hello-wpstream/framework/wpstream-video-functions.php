@@ -137,15 +137,18 @@ function wpstream_theme_display_better_messages_chat($post_id){
 
 		// Look up the chat room already linked to this post, if any.
 		$chat_post_id = intval( get_post_meta( $post_id, 'wpstream_chat_post_id', true ) );
-		// No room yet, or the bound room was deleted/trashed: create a fresh one
-		// and re-bind it instead of rendering the shortcode against a dead id.
-		$room_status = $chat_post_id > 0 ? get_post_status( $chat_post_id ) : false;
-		if ( false === $room_status || 'trash' === $room_status ) {
-			$chat_post_id = wpstream_create_better_messages_chat( $post_id );
+		// No room yet, or the bound room is unusable (deleted, trashed, draft,
+		// private, not a chat room, or made for another post): create a fresh
+		// one and re-bind it instead of rendering the shortcode against it.
+		if ( ! wpstream_chat_room_is_usable( $chat_post_id, $post_id ) ) {
+			$chat_post_id = intval( wpstream_create_better_messages_chat( $post_id ) );
 		}
 
-		// Render the chat room via its Better Messages shortcode.
-		print do_shortcode('[bp_better_messages_chat_room id="'.intval($chat_post_id).'"]');
+		// Render only when a room exists; a failed creation prints nothing.
+		if ( $chat_post_id > 0 ) {
+			// Render the chat room via its Better Messages shortcode.
+			print do_shortcode('[bp_better_messages_chat_room id="'.intval($chat_post_id).'"]');
+		}
 	}else{
 		// Plugin missing: tell the user what to install.
 		esc_html_e('For chat support you need to install Better Messages plugin','hello-wpstream');
@@ -158,14 +161,51 @@ endif;
 
 
 /**
- * Create Better messages chat room 
+ * Tell whether a chat room id can be shown for a piece of content.
+ *
+ * Usable means: a published bpbm-chat post that was not created for a
+ * different post. Rooms without an owner record (made before owners were
+ * stored, or bound by hand) belong to whoever points at them.
+ *
+ * @param int $room_id The bound chat room post ID.
+ * @param int $post_id The content the room should serve.
+ * @return bool True when the room can be rendered for this content.
+ *
+ * @package wpstream-theme
+ */
+if ( ! function_exists( 'wpstream_chat_room_is_usable' ) ) :
+	function wpstream_chat_room_is_usable( $room_id, $post_id ) {
+		global $wpdb;
+		$room_id = intval( $room_id );
+		if ( $room_id <= 0 ) {
+			return false;
+		}
+
+		// Read type and status straight from the database (no cache, no query objects).
+		$room = $wpdb->get_row( $wpdb->prepare( "SELECT post_type, post_status FROM {$wpdb->posts} WHERE ID = %d", $room_id ) );
+		if ( ! $room || 'bpbm-chat' !== $room->post_type || 'publish' !== $room->post_status ) {
+			return false;
+		}
+
+		// A recorded owner that is another post means this id was copied along with the meta.
+		$owner = $wpdb->get_var( $wpdb->prepare( "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = 'wpstream_chat_owner_post_id' LIMIT 1", $room_id ) );
+		return null === $owner || '' === $owner || intval( $owner ) === intval( $post_id );
+	}
+endif;
+
+
+
+/**
+ * Create Better messages chat room
  *
  * Creates a Better Messages chat post (post type bpbm-chat) owned by the
  * content's author (never the visitor who happened to trigger creation) and
- * links it back to the content via post meta.
+ * links it back to the content via post meta. A short lock keeps two
+ * simultaneous first viewers from creating two rooms: the one that loses the
+ * lock gets no room for that page view.
  *
  * @param int $post_id The content the new chat room is attached to.
- * @return int|null New chat room post ID, or null when Better Messages is inactive.
+ * @return int|null New chat room post ID, or null when Better Messages is inactive or creation failed.
  *
  * @package wpstream-theme
  */
@@ -174,10 +214,31 @@ endif;
 
  if ( ! function_exists( 'wpstream_create_better_messages_chat' ) ) :
 	function wpstream_create_better_messages_chat($post_id){
-		
+
 		// Bail silently unless Better Messages is available.
 		if(function_exists('better_messages')){
 			$post_id = intval( $post_id );
+
+			// Take the creation lock; add_option fails when another request holds it.
+			$lock_name = 'wpstream_chat_lock_' . $post_id;
+			$old_lock  = get_option( $lock_name );
+			if ( $old_lock && ( time() - intval( $old_lock ) ) > 30 ) {
+				// A crashed request left the lock behind: clear it.
+				delete_option( $lock_name );
+			}
+			if ( ! add_option( $lock_name, time(), '', 'no' ) ) {
+				// Someone else is creating the room right now: show no chat on this
+				// one page view; the next view renders the winner's room.
+				return null;
+			}
+
+			// Lock held: a request that finished just before us may already have bound a room.
+			wp_cache_delete( $post_id, 'post_meta' );
+			$existing = intval( get_post_meta( $post_id, 'wpstream_chat_post_id', true ) );
+			if ( wpstream_chat_room_is_usable( $existing, $post_id ) ) {
+				delete_option( $lock_name );
+				return $existing;
+			}
 
 			// Build the chat post: titled after the content, published, owned by the content's author.
 			$post = array(
@@ -201,9 +262,14 @@ endif;
 			// Insert the chat room and remember its ID on the source content.
 			$chat_post_id = wp_insert_post( $post );
 			if ( ! $chat_post_id || is_wp_error( $chat_post_id ) ) {
+				delete_option( $lock_name );
 				return null;
 			}
+			// Record which content the room was made for, so a copy of that content
+			// (which copies the binding meta too) does not share this room.
+			update_post_meta( $chat_post_id, 'wpstream_chat_owner_post_id', $post_id );
 			update_post_meta( $post_id, 'wpstream_chat_post_id', $chat_post_id );
+			delete_option( $lock_name );
 
 			/**
 			 * Fires after a Better Messages chat room is created and bound to
@@ -372,14 +438,12 @@ if ( ! function_exists( 'wpstream_theme_display_player' ) ) {
 			// The viewer is entitled to watch: pick the correct player for the content type.
 			if ( $wpstream_plugin->main->wpstream_player->wpstream_check_if_player_can_dsplay_theme( $post_id ) ) {
 
-				// Subscriptions only ever show a trailer here.
-				if ( 'subscription' === get_post_type( $post_id )  ) {
-					$wpstream_plugin->main->wpstream_player->wpstream_video_on_demand_player_only_trailer( $post_id );
-				} elseif ( 'product' === get_post_type( $post_id ) && function_exists('wc_get_product')  ) {
-					// WooCommerce product: bundles show only a trailer, others the full player.
+				if ( 'product' === get_post_type( $post_id ) && function_exists('wc_get_product')  ) {
+					// WooCommerce product: subscriptions (a product type, not a post
+					// type) and bundles show only a trailer, others the full player.
 					$product      = wc_get_product( $post_id );
 					$product_type = $product->get_type();
-					if ( 'wpstream_bundle' === $product_type ) {
+					if ( in_array( $product_type, array( 'subscription', 'wpstream_bundle' ), true ) ) {
 						$wpstream_plugin->main->wpstream_player->wpstream_video_on_demand_player_only_trailer( $post_id );
 					} else {
 						$wpstream_plugin->main->wpstream_player->wpstream_video_player_shortcode( $post_id );

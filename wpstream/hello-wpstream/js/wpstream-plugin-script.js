@@ -114,7 +114,10 @@ function wpstream_elementor_contact_process_form(form_submit) {
             button.val(wpstreamPluginScriptsVars.send_mess);
             button.text(wpstreamPluginScriptsVars.send_mess);
             button.prop('disabled', false);
-            jQuery(".wpstream_elementor_form .elementor-field").val('');
+            // Keep what the visitor typed when the message was not sent, so nothing is lost.
+            if (data.sent) {
+                jQuery(".wpstream_elementor_form .elementor-field").val('');
+            }
 
             var aTag = jQuery(".wpstream_elementor_form");
             jQuery('html,body').animate({scrollTop: aTag.offset().top - 120}, 'slow');
@@ -124,7 +127,10 @@ function wpstream_elementor_contact_process_form(form_submit) {
 
         },
         error: function (errorThrown) {
-
+            // The request failed (stale page, network, server error): bring the button back so the visitor can retry.
+            button.val(wpstreamPluginScriptsVars.send_mess);
+            button.text(wpstreamPluginScriptsVars.send_mess);
+            button.prop('disabled', false);
         }
 
     });

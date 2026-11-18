@@ -1169,7 +1169,7 @@ class Wpstream_Admin {
         // Check if plugin is outdated
         // Mark the plugin outdated if WP's update transient lists an available update for it.
         $update_plugins = get_site_transient('update_plugins');
-        if (isset($update_plugins->response['plugin/wpstream.php'])) {
+        if (isset($update_plugins->response['wpstream/wpstream.php'])) {
             $wpstream_plugin_outdated = true;
         }
 
@@ -1491,7 +1491,7 @@ class Wpstream_Admin {
     public function wpstream_render_outdated_plugin_notice() {
         // Only render when WP's update transient lists an update for the plugin.
         $has_update = get_site_transient('update_plugins');
-        if (isset($has_update->response['plugin/wpstream.php'])) {
+        if (isset($has_update->response['wpstream/wpstream.php'])) {
             // Below: warning notice linking to the WP updates page.
             ?>
             <div class="notice notice-warning is-dismissible">
@@ -1991,19 +1991,16 @@ class Wpstream_Admin {
          *
          * The local deletion proceeds whatever the service answers — this hook
          * cannot cancel it, and a channel the customer removed must leave the
-         * site either way.
+         * site either way. A refused or failed cloud delete is retried later
+         * (see wpstream_delete_remote_channel()).
          *
          * @param  int     $post_id Post ID being permanently deleted.
          * @param  WP_Post $post    Post object being permanently deleted.
          * @return void
          */
         public function wpstream_delete_remote_channel_on_delete( $post_id, $post ) {
-            // Only Live Channel posts: the free post type, or a WooCommerce
-            // product of the live_stream type (paid channels).
-            $is_live_channel = $post instanceof WP_Post
-                && ( 'wpstream_product' === $post->post_type
-                    || ( 'product' === $post->post_type && has_term( 'live_stream', 'product_type', $post_id ) ) );
-            if ( ! $is_live_channel ) {
+            // Only Live Channel posts (free, paid, or sold as their own subscription).
+            if ( ! Wpstream_Streaming_Content_Creation::is_live_channel_post( $post ) ) {
                 return;
             }
 
@@ -2012,7 +2009,37 @@ class Wpstream_Admin {
                 return;
             }
 
-            $this->main->wpstream_live_connection->wpstream_delete_channel( $post_id );
+            $this->wpstream_delete_remote_channel( $post_id );
+        }
+
+        /**
+         * Ask the service to delete a channel; when it does not, try again in
+         * an hour, for up to a day.
+         *
+         * The service refuses to delete a channel that is still live, and a
+         * channel left behind there keeps counting against the plan's channel
+         * cap. The service finds the channel by post ID and site domain, so the
+         * retry still works after the local post is gone. A channel the service
+         * no longer knows counts as deleted.
+         *
+         * Also hooked to the `wpstream_retry_remote_channel_delete` cron event.
+         *
+         * @param int $post_id Channel post ID.
+         * @param int $attempt Retries already made; 0 for the first call.
+         * @return void
+         */
+        public function wpstream_delete_remote_channel( $post_id, $attempt = 0 ) {
+            $response = $this->main->wpstream_live_connection->wpstream_delete_channel( intval( $post_id ) );
+
+            // Deleted now, or already gone from the service: nothing left to do.
+            if ( is_array( $response ) && ( ! empty( $response['success'] ) || 'NO_SUCH_CHANNEL' === ( $response['error'] ?? '' ) ) ) {
+                return;
+            }
+
+            // Refused or unreachable: try again in an hour, at most 24 times.
+            if ( intval( $attempt ) < 24 ) {
+                wp_schedule_single_event( time() + HOUR_IN_SECONDS, 'wpstream_retry_remote_channel_delete', array( intval( $post_id ), intval( $attempt ) + 1 ) );
+            }
         }
 
         /**
@@ -2026,7 +2053,7 @@ class Wpstream_Admin {
          * @return string
          */
         public function wpstream_paid_live_untrash_status( $new_status, $post_id, $previous_status ) {
-            if ( 'product' === get_post_type( $post_id ) && has_term( 'live_stream', 'product_type', $post_id ) ) {
+            if ( 'product' === get_post_type( $post_id ) && Wpstream_Streaming_Content_Creation::is_live_channel_post( $post_id ) ) {
                 return 'draft';
             }
             return $new_status;
@@ -2088,11 +2115,17 @@ class Wpstream_Admin {
                 );
 
 
+                // Fields that hold a URL: sanitize_text_field() would strip their
+                // percent-encoded characters (%20, %2F), so they keep URL sanitizing.
+                $url_keys = array( 'wpstream_free_video_external', 'wpstream_closed_captions_file' );
+
                 // Save each allow-listed, scalar POST field as sanitized post meta.
                 foreach ($_POST as $key => $value) {
                     if( !is_array ($value) ){
                         if (in_array ($key, $allowed_keys)) {
-                            $postmeta = sanitize_text_field ( $value );
+                            $postmeta = in_array( $key, $url_keys, true )
+                                ? esc_url_raw( wp_unslash( $value ), array( 'http', 'https' ) )
+                                : sanitize_text_field ( $value );
                             update_post_meta($post_id, sanitize_key($key), $postmeta );
                         }
                     }
@@ -2983,7 +3016,7 @@ class Wpstream_Admin {
 
             // Which notice was dismissed.
             $notice_type    =   esc_html($_POST['notice_type']);
-            $notices        =   get_option('wp_stream_notices');
+            $notices        =   get_option('wpstream_notices');
 
             // Normalise to an array.
             if(! is_array($notices) ){
@@ -3243,13 +3276,18 @@ class Wpstream_Admin {
         }
 
         // Prepare a clean filename (similar to the standard upload process)
-        // Keep the extension, slugify the base name (spaces -> _, strip non-word chars).
-        $file_name_array = explode(".", $file_name);
-        $file_extension = $file_name_array[count($file_name_array) - 1];
-        $temp_file_name = $file_name_array[0];
+        // Keep the extension (after the last dot) and slugify everything before it:
+        // spaces -> _, then drop what is not a letter, digit or _ in any alphabet.
+        $last_dot = strrpos($file_name, '.');
+        $file_extension = false === $last_dot ? '' : substr($file_name, $last_dot + 1);
+        $temp_file_name = false === $last_dot ? $file_name : substr($file_name, 0, $last_dot);
         $temp_file_name = str_replace(' ', '_', $temp_file_name);
-        $temp_file_name = preg_replace('/\W/', '', $temp_file_name);
-        $clean_file_name = $temp_file_name . '.' . $file_extension;
+        $temp_file_name = (string) preg_replace('/\W/u', '', $temp_file_name);
+        // A name made only of symbols still needs a base name.
+        if ('' === $temp_file_name) {
+            $temp_file_name = 'video';
+        }
+        $clean_file_name = $temp_file_name . ('' !== $file_extension ? '.' . $file_extension : '');
 
         // Make API call to initiate multipart upload; the auth token is
         // injected by the transport (not-connected surfaces as a WP_Error

@@ -212,15 +212,10 @@ class Wpstream_Public {
 				    $this->wpstream_get_player_i18n_config()
 			    );
 
-				// Resolve adaptive bitrate through the Channel Settings Module.
-				$abr_enabled = false;
-				$post_id = get_the_ID();
-				$post_meta = $post_id ? $this->main->channel_settings->read( $post_id )['options'] : array();
-				if ( ! empty( $post_meta ) && isset( $post_meta['adaptive_bitrate'] ) && 1 === (int) $post_meta['adaptive_bitrate'] ) {
-					$abr_enabled = true;
-				}
-				// Localize the main player script with UI strings, player theme/logo, streamify flag, status nonce and ABR flag.
-				wp_localize_script( 'wpstream-player', 'wpstream_player_vars', $this->wpstream_get_player_vars_config( $abr_enabled ) );
+				// Localize the main player script with UI strings, player theme, status nonce and
+				// page-level fallbacks. Each live player reads its own channel's ABR, watermark and
+				// plan from its wrapper's data attributes, so the page's settings are not read here.
+				wp_localize_script( 'wpstream-player', 'wpstream_player_vars', $this->wpstream_get_player_vars_config( false ) );
                 
                 // The built-in SockJS/WebSocket chat client was removed (issue #110):
                 // live chat is provided by the Better Messages integration in the
@@ -511,7 +506,7 @@ class Wpstream_Public {
      * @since     3.0.1
      * @return    nothing
         */
-        public function wpstream_my_custom_endpoints() {
+        public static function wpstream_my_custom_endpoints() {
             // Register the "My Videos" account endpoint on the site root and pages.
             add_rewrite_endpoint( 'video-list', EP_ROOT | EP_PAGES );
             // Register the "My Live Streams" account endpoint on the site root and pages.

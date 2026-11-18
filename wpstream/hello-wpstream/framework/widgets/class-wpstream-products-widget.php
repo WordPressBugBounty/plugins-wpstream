@@ -223,7 +223,7 @@ if ( ! class_exists( 'Wpstream_Products_Widget' ) && class_exists( 'WC_Product' 
 		 */
 		public function widget( $args, $instance ) {
 			// Tell WooCommerce loop templates they are rendering inside a widget.
-			wc_set_loop_prop( 'name', 'widget' );
+			if ( function_exists( 'wc_set_loop_prop' ) ) { wc_set_loop_prop( 'name', 'widget' ); } // The helper is missing when WooCommerce's front-end functions are not loaded.
 
 			// Run the configured product query.
 			$products = $this->get_products( $args, $instance );
